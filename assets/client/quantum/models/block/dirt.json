@@ -1,0 +1,27 @@
+{
+  // This uses Minecraft's json schema for models
+  parent: "block/cube_all"
+  textures: {
+    up: "dirt",
+    down: "dirt",
+    north: "dirt",
+    south: "dirt",
+    west: "dirt",
+    east: "dirt"
+  }
+
+  elements: [
+    {
+      from: [0, 0, 0],
+      to: [16, 16, 16],
+      faces: {
+        up: { texture: "#up", uvs: [0, 0, 16, 16], cullface: "up" },
+        down: { texture: "#down", uvs: [0, 0, 16, 16], cullface: "down" },
+        north: { texture: "#north", uvs: [0, 0, 16, 16], cullface: "north" },
+        south: { texture: "#south", uvs: [0, 0, 16, 16], cullface: "south" },
+        west: { texture: "#west", uvs: [0, 0, 16, 16], cullface: "west" },
+        east: { texture: "#east", uvs: [0, 0, 16, 16], cullface: "east" }
+      }
+    }
+  ]
+}

@@ -1,0 +1,34 @@
+package dev.ultreon.quantum.client.resource
+
+import dev.ultreon.quantum.client.texture.TextureManager
+import dev.ultreon.quantum.logger
+import dev.ultreon.quantum.resource.Resource
+import dev.ultreon.quantum.resource.ResourceCategory
+import dev.ultreon.quantum.resource.StaticResource
+import dev.ultreon.quantum.util.NamespaceID
+
+class TextureCategory(override val parent: TexturesCategory, val textureManager: TextureManager, override val name: String) : ResourceCategory {
+  private val resources = HashMap<String, Resource>()
+
+  override fun get(domain: String, name: String): Resource? {
+    return resources["$domain:$name"]
+  }
+
+  override fun set(domain: String, filename: String, value: StaticResource) {
+    logger.debug("Loading texture: $domain:$filename")
+    resources["$domain:$filename"] = value
+  }
+
+  override fun iterator(): Iterator<Resource> {
+    return resources.values.iterator()
+  }
+
+  operator fun set(id: NamespaceID, value: Resource) {
+    logger.debug("Loading texture: $id")
+    resources[id.toString()] = value
+  }
+
+  override fun get(name: String): ResourceCategory? {
+    return null
+  }
+}

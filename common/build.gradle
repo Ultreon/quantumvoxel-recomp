@@ -1,0 +1,58 @@
+apply plugin: 'application'
+apply plugin: 'org.jetbrains.kotlin.jvm'
+
+
+java.sourceCompatibility = 8
+java.targetCompatibility = 8
+if (JavaVersion.current().isJava9Compatible()) {
+  compileJava.options.release.set(8)
+}
+kotlin.compilerOptions.jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_1_8)
+
+mainClassName = 'dev.ultreon.quantum.headless.HeadlessLauncher'
+application.setMainClass(mainClassName)
+eclipse.project.name = appName + '-headless'
+
+dependencies {
+  api "com.badlogicgames.gdx:gdx-ai:$aiVersion"
+  api "com.badlogicgames.gdx:gdx:$gdxVersion"
+
+  implementation 'com.caoccao.javet:javet:4.1.1'
+  implementation 'com.caoccao.javet:javenode:0.8.0'
+
+  api "io.github.libktx:ktx-ai:$ktxVersion"
+  api "io.github.libktx:ktx-app:$ktxVersion"
+  api "io.github.libktx:ktx-artemis:$ktxVersion"
+  api "io.github.libktx:ktx-assets-async:$ktxVersion"
+  api "io.github.libktx:ktx-assets:$ktxVersion"
+  api "io.github.libktx:ktx-async:$ktxVersion"
+  api "io.github.libktx:ktx-collections:$ktxVersion"
+  api "io.github.libktx:ktx-i18n:$ktxVersion"
+  api "io.github.libktx:ktx-inject:$ktxVersion"
+  api "io.github.libktx:ktx-json:$ktxVersion"
+  api "io.github.libktx:ktx-log:$ktxVersion"
+  api "io.github.libktx:ktx-math:$ktxVersion"
+  api "io.github.libktx:ktx-preferences:$ktxVersion"
+  api "io.github.libktx:ktx-reflect:$ktxVersion"
+
+  // ByteBuddy
+  implementation "net.bytebuddy:byte-buddy:$byteBuddyVersion"
+}
+
+jar {
+  archiveBaseName.set(appName)
+  duplicatesStrategy(DuplicatesStrategy.EXCLUDE)
+  dependsOn configurations.runtimeClasspath
+  from { configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) } }
+  manifest {
+    attributes 'Main-Class': project.mainClassName
+  }
+  doLast {
+    file(archiveFile).setExecutable(true, false)
+  }
+}
+
+// Equivalent to the jar task; here for compatibility with gdx-setup.
+tasks.register('dist') {
+  dependsOn 'jar'
+}

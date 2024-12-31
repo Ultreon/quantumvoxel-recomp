@@ -1,0 +1,50 @@
+apply plugin: 'application'
+apply plugin: 'org.jetbrains.kotlin.jvm'
+
+
+java.sourceCompatibility = 8
+java.targetCompatibility = 8
+if (JavaVersion.current().isJava9Compatible()) {
+  compileJava.options.release.set(8)
+}
+kotlin.compilerOptions.jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_1_8)
+
+mainClassName = 'dev.ultreon.quantum.headless.HeadlessLauncher'
+application.setMainClass(mainClassName)
+eclipse.project.name = appName + '-headless'
+
+dependencies {
+  implementation project(':common')
+
+  implementation "com.badlogicgames.gdx:gdx-backend-headless:$gdxVersion"
+  implementation "com.badlogicgames.gdx:gdx-box2d-platform:$gdxVersion:natives-desktop"
+  implementation "com.badlogicgames.gdx:gdx-platform:$gdxVersion:natives-desktop"
+  implementation "net.onedaybeard.artemis:artemis-odb:$artemisOdbVersion"
+
+  implementation 'com.caoccao.javet:javet-node-linux-arm64:4.1.1'
+  implementation 'com.caoccao.javet:javet-node-linux-x86_64:4.1.1'
+  implementation 'com.caoccao.javet:javet-node-macos-arm64:4.1.1'
+  implementation 'com.caoccao.javet:javet-node-macos-x86_64:4.1.1'
+  implementation 'com.caoccao.javet:javet-node-windows-x86_64:4.1.1'
+
+  // ByteBuddy
+  implementation "net.bytebuddy:byte-buddy:$byteBuddyVersion"
+}
+
+jar {
+  archiveBaseName.set(appName)
+  duplicatesStrategy(DuplicatesStrategy.EXCLUDE)
+  dependsOn configurations.runtimeClasspath
+  from { configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) } }
+  manifest {
+    attributes 'Main-Class': project.mainClassName
+  }
+  doLast {
+    file(archiveFile).setExecutable(true, false)
+  }
+}
+
+// Equivalent to the jar task; here for compatibility with gdx-setup.
+tasks.register('dist') {
+  dependsOn 'jar'
+}
