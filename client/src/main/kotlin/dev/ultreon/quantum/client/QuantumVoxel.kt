@@ -5,7 +5,9 @@ package dev.ultreon.quantum.client
 import com.artemis.World
 import com.badlogic.gdx.Gdx
 import com.badlogic.gdx.utils.SharedLibraryLoader
+import dev.ultreon.quantum.blocks.Blocks
 import dev.ultreon.quantum.client.model.JsonModelLoader
+import dev.ultreon.quantum.client.model.ModelRegistry
 import dev.ultreon.quantum.client.resource.TexturesCategory
 import dev.ultreon.quantum.client.texture.TextureManager
 import dev.ultreon.quantum.logger
@@ -38,20 +40,22 @@ object QuantumVoxel : KtxGame<KtxScreen>() {
   override fun create() {
     super.create()
 
+    Blocks
+
     textureManager.init()
     textureManager.registerAtlas("block")
 
     resourceManager.load(if (SharedLibraryLoader.isAndroid) {
       Gdx.files.internal("quantum.zip")
     } else {
-      // Locate resource "._assetroot" and use its parent directory as the root
+      // Locate resource "_assetroot" and use its parent directory as the root
       val resource = QuantumVoxel::class.java.classLoader.getResource("_assetroot")
-      logger.info("Asset root: $resource")
       val path = resource?.toURI()?.toPath()?.parent ?: throw FileNotFoundException("Asset root not found")
-      logger.info("Asset root: $path")
       Gdx.files.absolute(path.toString())
     })
+
     textureManager.pack()
+    ModelRegistry.loadModels()
 
     addScreen(GameScreen(world))
     setScreen<GameScreen>()
@@ -62,6 +66,8 @@ object QuantumVoxel : KtxGame<KtxScreen>() {
 
     textureManager.disposeSafely()
     world.dispose()
+
+    ModelRegistry.dispose()
   }
 }
 

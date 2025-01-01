@@ -29,7 +29,7 @@ class ResourceManager(
       val resourceNode = category[path[i]]
       category = resourceNode as ResourceCategory? ?: throw NoSuchResourceException(location)
     }
-
+    
     return category[location.domain, path.subList(1, path.size).joinToString("/")] ?: throw NoSuchResourceException(location)
   }
 
@@ -110,7 +110,6 @@ class ResourceManager(
   }
 
   private fun loadCategory(file: FileHandle, domain: String, category: ResourceCategory? = null, path: String = "") {
-    logger.debug("Loading resource category: ${file.path()}")
     file.list().forEach {
       when {
         it.isDirectory -> loadCategory(it, domain, category!![it.name()] ?: throw NoSuchResourceCategoryException(it.name()), path + it.name() + "/")
@@ -126,7 +125,6 @@ class ResourceManager(
       logger.warn("Empty file: $file")
     }
 
-    logger.debug("Loading resource: $domain:$path")
     category[domain, path] = StaticResource(NamespaceID.of(domain, path), readBytes)
   }
 }

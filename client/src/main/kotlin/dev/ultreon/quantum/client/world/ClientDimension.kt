@@ -1,134 +1,211 @@
 package dev.ultreon.quantum.client.world
 
-import com.badlogic.gdx.graphics.GL20
-import com.badlogic.gdx.graphics.VertexAttribute
-import com.badlogic.gdx.graphics.VertexAttributes
+import com.badlogic.gdx.graphics.Camera
 import com.badlogic.gdx.graphics.g3d.*
-import com.badlogic.gdx.graphics.g3d.utils.MeshPartBuilder
-import com.badlogic.gdx.graphics.g3d.utils.ModelBuilder
+import com.badlogic.gdx.math.GridPoint3
+import com.badlogic.gdx.utils.LongMap
 import com.badlogic.gdx.utils.Pool
 import dev.ultreon.quantum.blocks.Block
 import dev.ultreon.quantum.blocks.Blocks
-import dev.ultreon.quantum.client.QuantumVoxel
-import dev.ultreon.quantum.client.model.FaceCull
-import dev.ultreon.quantum.client.part
-import dev.ultreon.quantum.client.relative
 import dev.ultreon.quantum.logger
+import dev.ultreon.quantum.math.Vector3D
 import dev.ultreon.quantum.world.BlockFlags
 import dev.ultreon.quantum.world.Dimension
 import ktx.assets.disposeSafely
 import ktx.collections.GdxArray
-import ktx.collections.map
+import ktx.collections.sortBy
+import kotlin.system.measureTimeMillis
 
-private const val SIZE = 32
+const val renderDistance = 2
 
 class ClientDimension(private val material: Material) : Dimension(), RenderableProvider {
-  val blocks = Array(SIZE) { Array(SIZE) { Array(SIZE) { Blocks.air } } }
-  private var worldModel: Model? = null
-  var worldModelInstance: ModelInstance? = null
-    private set
-
-  // TODO : Temporary model
-  val model = QuantumVoxel.jsonModelLoader.load(Blocks.soil)
+  val chunks: LongMap<ClientChunk> = LongMap()
+  val chunksToLoad = GdxArray<Pair<GridPoint3, Long>>()
 
   override fun get(x: Int, y: Int, z: Int): Block {
-    if (x < 0 || x >= SIZE || y < 0 || y >= SIZE || z < 0 || z >= SIZE) return Blocks.air
-    return blocks[x][y][z]
+    return chunks.get(location(x, y, z))?.get(x.mod(SIZE), y.mod(SIZE), z.mod(SIZE)) ?: Blocks.air
   }
 
   override fun set(x: Int, y: Int, z: Int, block: Block, flags: BlockFlags) {
-    if (x < 0 || x >= SIZE || y < 0 || y >= SIZE || z < 0 || z >= SIZE) return
-    blocks[x][y][z] = block
+    chunks.get(location(x, y, z))?.set(x % SIZE, y % SIZE, z % SIZE, block, flags)
   }
 
-  fun fillUpTo(y: Int, block: Block, flags: BlockFlags) {
+  fun location(x: Int, y: Int, z: Int): Long {
+    return (x.toLong() and 0xFFFFFF) or
+            ((y.toLong() and 0xFFFFFF) shl 24) or
+            ((z.toLong() and 0xFFFFFF) shl 48)
+  }
+
+  fun chunkAt(x: Int, y: Int, z: Int): ClientChunk? {
+    return chunks.get(location(x, y, z))
+  }
+
+  fun chunkAtBlock(x: Int, y: Int, z: Int): ClientChunk? {
+    return chunkAt(x.floorDiv(SIZE), y.floorDiv(SIZE), z.floorDiv(SIZE))
+  }
+
+  fun put(chunk: ClientChunk) {
+    val location = location(chunk.chunkPos.x, chunk.chunkPos.y, chunk.chunkPos.z)
+    if (chunks.containsKey(location)) {
+      remove(chunks.get(location))
+      logger.warn("Overridden chunk at ${chunk.chunkPos}")
+    }
+    chunks.put(location, chunk)
+  }
+
+  fun remove(chunk: ClientChunk) {
+    chunks.remove(location(chunk.chunkPos.x, chunk.chunkPos.y, chunk.chunkPos.z))
+    chunk.disposeSafely()
+
+    forChunksAround(chunk) { rebuild() }
+
+    logger.debug("Unloaded chunk: ${chunk.chunkPos}")
+  }
+
+  fun loadChunk(cx: Int, cy: Int, cz: Int, build: Boolean = true) = put(ClientChunk(cx, cy, cz, material, this).apply {
+    generate(this)
+    if (build) {
+      rebuild()
+      forChunksAround(this) { rebuild() }
+    }
+  })
+
+  inline fun forChunksAround(chunk: ClientChunk, crossinline action: ClientChunk.() -> Unit) {
+    val position = chunk.chunkPos
+    var didAction = false
+    for (x in (position.x - 1)..(position.x + 1)) {
+      for (y in (position.y - 1)..(position.y + 1)) {
+        for (z in (position.z - 1)..(position.z + 1)) {
+          if (x == position.x && y == position.y && z == position.z) {
+            continue
+          }
+
+          chunks.get(location(x, y, z))?.let(action)?.let {
+            didAction = true
+          }
+        }
+      }
+    }
+
+    if (!didAction) {
+      logger.warn("Didn't find any loaded chunks around ${chunk.chunkPos}")
+    }
+  }
+
+  fun pollChunkLoad() {
+    if (chunksToLoad.isEmpty) return
+    val toLoad = chunksToLoad.removeIndex(0)
+    loadChunk(toLoad.first.x, toLoad.first.y, toLoad.first.z)
+  }
+
+  fun pollAllChunks() {
+    logger.debug("About to load ${chunksToLoad.size} chunks!")
+
+    measureTimeMillis {
+      var lastLogTime = System.currentTimeMillis()
+      while (!chunksToLoad.isEmpty) {
+        val toLoad = chunksToLoad.removeIndex(0)
+        loadChunk(toLoad.first.x, toLoad.first.y, toLoad.first.z, build = false)
+        if (System.currentTimeMillis() - lastLogTime > 1000) {
+          logger.debug("${chunksToLoad.size} chunks remaining!")
+          lastLogTime = System.currentTimeMillis()
+        }
+      }
+    }.also {
+      logger.debug("Loaded ${chunks.size} chunks in $it ms!")
+    }
+
+    rebuildAll()
+
+    logger.debug("Rebuilt all chunks!")
+  }
+
+  fun rebuildAll() {
+    for (chunk in chunks.values()) {
+      chunk.rebuild()
+    }
+  }
+
+  fun refreshChunks(position: Vector3D) {
+    val requiredChunks = GdxArray<Pair<GridPoint3, Long>>()
+    for (x in -renderDistance..renderDistance) {
+      for (y in -renderDistance..renderDistance) {
+        for (z in -renderDistance..renderDistance) {
+          val cy = y + position.y.toInt() * SIZE
+          val cx = x + position.x.toInt() * SIZE
+          val cz = z + position.z.toInt() * SIZE
+
+          val chunk = chunks[location(cx, cy, cz)]
+          if (chunk == null) {
+            requiredChunks.add(GridPoint3(cx, cy, cz) to location(cx, cy, cz))
+          }
+        }
+      }
+    }
+
+    for (chunk in chunks.values()) {
+      if (requiredChunks.none { it.first.x == chunk.chunkPos.x && it.first.y == chunk.chunkPos.y && it.first.z == chunk.chunkPos.z }) {
+        remove(chunk)
+        forChunksAround(chunk) { rebuild() }
+      }
+    }
+
+    requiredChunks.sortBy {
+      it.first.dst2(position.x.toInt(), position.y.toInt(), position.z.toInt())
+    }
+    for (chunk in chunksToLoad) {
+      if (chunk.first.dst(position.x.toInt(), position.y.toInt(), position.z.toInt()) > renderDistance * SIZE) {
+        chunksToLoad.removeValue(chunk, true)
+      }
+    }
+    for (chunk in requiredChunks) {
+      this.chunksToLoad.add(chunk)
+    }
+  }
+
+  private fun generate(chunk: ClientChunk) {
+    val wx = chunk.chunkPos.x * SIZE
+    val wy = chunk.chunkPos.y * SIZE
+    val wz = chunk.chunkPos.z * SIZE
+
     for (x in 0 until SIZE) {
-      for (z in 0 until SIZE) {
-        for (i in y downTo 0) {
-          if (get(x, i, z) == Blocks.air) {
-            set(x, i, z, block, flags)
-          }
+      for (y in 0 until SIZE) {
+        for (z in 0 until SIZE) {
+          val block = generateBlock(wx + x, wy + y, wz + z)
+          chunk.set(x, y, z, block, BlockFlags.NONE)
         }
       }
     }
   }
 
-  fun rebuild() {
-    worldModel.disposeSafely()
-    worldModel = null
-    worldModelInstance = null
-
-    worldModel = buildModel()
-    worldModelInstance = ModelInstance(worldModel)
-  }
-
-  private fun buildModel(): Model {
-    val builder = ModelBuilder()
-    builder.begin()
-    builder.part("world", vertexAttributes = VertexAttributes(
-      VertexAttribute.Position(),
-      VertexAttribute.Normal(),
-      VertexAttribute.ColorPacked(),
-      VertexAttribute.TexCoords(0)
-    ), primitiveType = GL20.GL_TRIANGLES, material = this.material) {
-      for (x in 0..15) {
-        for (y in 0..15) {
-          for (z in 0..15) {
-            loadBlockInto(x, y, z)
-          }
-        }
-      }
-    }
-
-    return builder.end().apply {
-      meshes.map { it.numVertices }.sum().let { vertexCount ->
-        logger.info("Built world model with $vertexCount vertices")
-      }
-      meshes.map { it.numIndices }.sum().let { indexCount ->
-        logger.info("Built world model with $indexCount indices")
-      }
-
-      val verticesBuffer = meshes.get(0).getVerticesBuffer(false)
-      verticesBuffer.position(0)
-      for (i in 0 until verticesBuffer.limit() / 12 step 12) {
-        val x = verticesBuffer[i * 3 + 0]
-        val y = verticesBuffer[i * 3 + 1]
-        val z = verticesBuffer[i * 3 + 2]
-        var norX = verticesBuffer[i * 3 + 3]
-        var norY = verticesBuffer[i * 3 + 4]
-        var norZ = verticesBuffer[i * 3 + 5]
-        val u = verticesBuffer[i * 3 + 6]
-        val v = verticesBuffer[i * 3 + 7]
-        val colR = verticesBuffer[i * 3 + 8]
-        val colG = verticesBuffer[i * 3 + 9]
-        val colB = verticesBuffer[i * 3 + 10]
-        val colA = verticesBuffer[i * 3 + 11]
-        logger.debug("Vertex ${i / 12}: ($x, $y, $z, $norX, $norY, $norZ, $u, $v, $colR, $colG, $colB, $colA)")
-      }
-    }
-  }
-
-  private fun MeshPartBuilder.loadBlockInto(x: Int, y: Int, z: Int) {
-    val block = get(x, y, z)
-    if (block != Blocks.air) {
-      model?.loadInto(
-        this, x, y, z, FaceCull(
-          back = get(x, y, z + 1) != Blocks.air,
-          front = get(x, y, z - 1) != Blocks.air,
-          left = get(x - 1, y, z) != Blocks.air,
-          right = get(x + 1, y, z) != Blocks.air,
-          top = get(x, y + 1, z) != Blocks.air,
-          bottom = get(x, y - 1, z) != Blocks.air
-        )
-      ) ?: throw IllegalStateException("Failed to load model")
+  private fun generateBlock(wx: Int, wy: Int, wz: Int): Block {
+    if (wy > 64) {
+      return Blocks.air
+    } else if (wy == 64) {
+      return Blocks.grass
+    } else if (wy > 60) {
+      return Blocks.soil
+    } else {
+      return Blocks.stone
     }
   }
 
   override fun getRenderables(array: GdxArray<Renderable>, pool: Pool<Renderable>) {
-    worldModelInstance?.getRenderables(array, pool) ?: logger.warn("Failed to get renderable")
+    for (chunk in chunks.values()) {
+      chunk.getRenderables(array, pool)
+    }
   }
 
   override fun dispose() {
-    worldModel.disposeSafely()
+    for (chunk in chunks.values()) {
+      chunk.disposeSafely()
+    }
+    chunks.clear()
+  }
+
+  fun updateLocations(camera: Camera, position: Vector3D) {
+    for (chunk in chunks.values()) {
+      chunk.reposition(camera, position)
+    }
   }
 }

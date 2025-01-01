@@ -17,7 +17,7 @@ import dev.ultreon.quantum.client.entity.PositionComponent
 import dev.ultreon.quantum.client.entity.RunningComponent
 import dev.ultreon.quantum.client.input.KeyBinds
 import dev.ultreon.quantum.client.world.ClientDimension
-import dev.ultreon.quantum.id
+import dev.ultreon.quantum.client.world.Skybox
 import dev.ultreon.quantum.util.NamespaceID
 import dev.ultreon.quantum.vec3d
 import dev.ultreon.quantum.world.BlockFlags
@@ -45,6 +45,7 @@ import ktx.math.vec3
  *              for managing entities and components.
  */
 class GameScreen(world: World) : KtxScreen {
+  private var lastPollTime: Long = 0
   private val speed: Float = 1f
   private val modelBatch = ModelBatch(
     QuantumVoxel.resourceManager[NamespaceID.of(path = "shaders/default.vsh")].text,
@@ -54,19 +55,45 @@ class GameScreen(world: World) : KtxScreen {
   private val spriteBatch = SpriteBatch()
   private val texture = texture(NamespaceID.of(path = "block/soil.png"))
   val material = material {
-    diffuse(texture)
+    diffuse(texture.texture)
     cullFace(GL20.GL_BACK)
   }
   private val dimension: ClientDimension = ClientDimension(material).apply {
-    for (x in 1..14) {
-      for (y in 1..14) {
-        for (z in 1..14) {
+    for (x in 0..15) {
+      for (y in 0..6) {
+        for (z in 0..15) {
           set(x, y, z, Blocks.soil, BlockFlags.NONE)
         }
       }
+      for (z in 0..15) {
+        set(x, 7, z, Blocks.grass, BlockFlags.NONE)
+      }
     }
+
+    // Make a house
+    // Back wall
+    for (x in 5..10) {
+      for (y in 8..11) {
+        set(x, y, 5, Blocks.cobblestone, BlockFlags.NONE)
+        set(x, y, 10, Blocks.cobblestone, BlockFlags.NONE)
+      }
+    }
+    for (z in 6..9) {
+      for (y in 8..11) {
+        set(5, y, z, Blocks.cobblestone, BlockFlags.NONE)
+        set(10, y, z, Blocks.cobblestone, BlockFlags.NONE)
+      }
+    }
+    for (x in 5..10) {
+      for (z in 5..10) {
+        set(x, 11, z, Blocks.cobblestone, BlockFlags.NONE)
+        set(x, 11, z, Blocks.cobblestone, BlockFlags.NONE)
+      }
+    }
+
+    set(8, 8, 10, Blocks.air, BlockFlags.NONE)
+    set(8, 9, 10, Blocks.air, BlockFlags.NONE)
   }
-  private var cube = QuantumVoxel.jsonModelLoader.load(Blocks.soil) ?: error("Failed to load model for ${Blocks.soil.id}")
 
   val camera = perspectiveCamera {
     position.set(0f, 0f, 0f)
@@ -75,7 +102,7 @@ class GameScreen(world: World) : KtxScreen {
     update()
   }
 
-  val position = vec3d(0.0, 0.0, 0.0)
+  val position = vec3d(0.0, 65.0, 0.0)
 
   val vel = vec3(0f, 0f, 0f)
 
@@ -100,8 +127,12 @@ class GameScreen(world: World) : KtxScreen {
     set(ColorAttribute.createAmbientLight(1F, 1F, 1F, 1F))
   }
 
+  val skybox = Skybox()
+
   init {
-    dimension.rebuild()
+    world.inject(player)
+
+    dimension.refreshChunks(player.getComponent(PositionComponent::class.java).position)
   }
 
   /**
@@ -111,13 +142,17 @@ class GameScreen(world: World) : KtxScreen {
    * @param delta A `Float` value representing the time elapsed since the last frame, used to scale time-dependent calculations.
    */
   override fun render(delta: Float) {
-    clearScreen(red = 0.2f, green = 0.2f, blue = 0.2f)
+    val position: PositionComponent = player.getComponent(PositionComponent::class.java)
 
-    dimension.worldModelInstance?.relative(camera, position)
+    clearScreen(red = 0F, green = 0F, blue = 0F)
+    Gdx.gl.glDepthMask(false)
+    skybox.render(camera, position.xRot)
 
+    dimension.updateLocations(camera, position.position)
+
+    Gdx.gl.glDepthMask(true)
     modelBatch.begin(camera)
     modelBatch.renderContext.setBlending(false, GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA)
-    modelBatch.renderContext.setCullFace(GL20.GL_NONE)
     modelBatch.render(dimension)
     modelBatch.end()
 
@@ -128,11 +163,9 @@ class GameScreen(world: World) : KtxScreen {
 
     input()
 
-    val position: PositionComponent = player.getComponent(PositionComponent::class.java)
-    position.xRot = (position.xRot + 180) % 360 - 180
-    position.yRot = position.yRot.coerceIn(-89.99F, 89.99F)
-
-    spriteBatch.use { drawInfo(position) }
+    spriteBatch.use {
+      drawInfo(position)
+    }
 
     move()
     controllerMove()
@@ -142,6 +175,11 @@ class GameScreen(world: World) : KtxScreen {
     }
 
     move(position, delta)
+
+    if (lastPollTime + 100 < System.currentTimeMillis()) {
+      dimension.pollChunkLoad()
+      lastPollTime = System.currentTimeMillis()
+    }
 
     Gdx.app.graphics.setTitle("Quantum Voxel - FPS: ${Gdx.graphics.framesPerSecond}")
   }
@@ -191,6 +229,9 @@ class GameScreen(world: World) : KtxScreen {
     position.xRot -= deltaX * 0.5f
     position.xHeadRot = position.xRot
     position.yRot += deltaY * 0.5f
+
+    position.xRot = (position.xRot + 180) % 360 - 180
+    position.yRot = position.yRot.coerceIn(-89.99F, 89.99F)
 
     position.lookVec(camera.direction)
     camera.update()
@@ -273,7 +314,8 @@ class GameScreen(world: World) : KtxScreen {
 
   override fun dispose() {
     modelBatch.disposeSafely()
-    cube.dispose()
+    skybox.disposeSafely()
+    spriteBatch.disposeSafely()
     super.dispose()
   }
 

@@ -77,17 +77,27 @@ class JsonModelLoader @JvmOverloads constructor(
   @Throws(IOException::class)
   fun load(block: Block): JsonModel? {
     val namespaceID: NamespaceID = block.id.mapPath { path -> "models/blocks/$path.json" }
-    val resource: Resource = resourceManager[namespaceID] ?: return null
-    logger.debug("Loading block model: $namespaceID")
-    return this.load(block.key, JsonReader().parse(resource.inputStream()))
+    try {
+      val resource: Resource = resourceManager[namespaceID] ?: return null
+      logger.debug("Loading block model: $namespaceID")
+      return this.load(block.key, JsonReader().parse(resource.inputStream()))
+    } catch (e: IOException) {
+      logger.error("Couldn't load block model for ${block.id}: ${e.message}")
+      return null
+    }
   }
 
   @Throws(IOException::class)
   fun load(item: Item): JsonModel? {
     val namespaceID: NamespaceID = item.id.mapPath { path -> "models/items/$path.json" }
-    val resource: Resource = resourceManager[namespaceID] ?: return null
-    logger.debug("Loading item model: $namespaceID")
-    return this.load(item.key, JsonReader().parse(resource.inputStream()))
+    try {
+      val resource: Resource = resourceManager[namespaceID] ?: return null
+      logger.debug("Loading item model: $namespaceID")
+      return this.load(item.key, JsonReader().parse(resource.inputStream()))
+    } catch (e: IOException) {
+      logger.error("Couldn't load item model for ${item.id}: ${e.message}")
+      return null
+    }
   }
 
   @Suppress("SpellCheckingInspection")
@@ -157,7 +167,7 @@ class JsonModelLoader @JvmOverloads constructor(
       val key1: String = e.name ?: throw IOException("Invalid face at ${e.trace()}: $e")
       val value: JsonValue = if (e.isObject) e else throw IOException("Invalid face at ${e.trace()}: $e")
       val direction: Direction = Direction.valueOf(key1.uppercase())
-      val uvs = value.get("uvs")?.asFloatArray() ?: throw IOException("Invalid 'uvs' array at ${value.trace()}: $value")
+      val uvs = value.get("uv")?.asFloatArray() ?: throw IOException("Invalid 'uv' array at ${value.trace()}: $value")
       val texture: String = value.get("texture")?.asString() ?: throw IOException("Invalid 'texture' value at ${value.trace()}: $value")
       val rotation = value.get("rotation")?.asInt() ?: 0
       val tintIndex = value.get("tintindex")?.asInt() ?: 0
@@ -344,10 +354,12 @@ class JsonModelLoader @JvmOverloads constructor(
         v10.setNor(direction.normal)
         v11.setNor(direction.normal)
 
-        v00.setUV(faceElement.uvs.x1 / 16, faceElement.uvs.y2 / 16)
-        v01.setUV(faceElement.uvs.x1 / 16, faceElement.uvs.y1 / 16)
-        v10.setUV(faceElement.uvs.x2 / 16, faceElement.uvs.y2 / 16)
-        v11.setUV(faceElement.uvs.x2 / 16, faceElement.uvs.y1 / 16)
+        val region = QuantumVoxel.textureManager[texture!!]
+
+        v00.setUV(faceElement.uvs.x1 / 16 + region.u, faceElement.uvs.y2 / 16 + region.v2)
+        v01.setUV(faceElement.uvs.x1 / 16 + region.u, faceElement.uvs.y1 / 16 + region.v)
+        v10.setUV(faceElement.uvs.x2 / 16 + region.u2, faceElement.uvs.y2 / 16 + region.v2)
+        v11.setUV(faceElement.uvs.x2 / 16 + region.u2, faceElement.uvs.y1 / 16 + region.v)
 
         when (direction) {
           UP -> {
@@ -458,10 +470,12 @@ class JsonModelLoader @JvmOverloads constructor(
         v10.setNor(direction.normal)
         v11.setNor(direction.normal)
 
-        v00.setUV(0F, 0F)
-        v01.setUV(0F, 1F)
-        v10.setUV(1F, 0F)
-        v11.setUV(1F, 1F)
+        val region = QuantumVoxel.textureManager[texture!!]
+
+        v00.setUV(faceElement.uvs.x1 / 16 / region.texture.width + region.u, faceElement.uvs.y2 / 16 / region.texture.height + region.v2)
+        v01.setUV(faceElement.uvs.x1 / 16 / region.texture.width + region.u, faceElement.uvs.y1 / 16 / region.texture.height + region.v)
+        v10.setUV(faceElement.uvs.x2 / 16 / region.texture.width + region.u2, faceElement.uvs.y2 / 16 / region.texture.height + region.v2)
+        v11.setUV(faceElement.uvs.x2 / 16 / region.texture.width + region.u2, faceElement.uvs.y1 / 16 / region.texture.height + region.v)
 
         when (direction) {
           UP -> {

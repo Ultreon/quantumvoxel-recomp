@@ -46,7 +46,6 @@ class TextureManager(val resourceManager: ResourceManager) {
       texturesCategory[name]?.forEach { resource ->
         if (resource is StaticResource) {
           val location = resource.location
-          logger.debug("Packing texture: $location")
           packer.pack("$location", Pixmap(resource.data, 0, resource.data.size))
         }
       } ?: logger.error("Atlas not found: $name")

@@ -15,7 +15,6 @@ class TextureCategory(override val parent: TexturesCategory, val textureManager:
   }
 
   override fun set(domain: String, filename: String, value: StaticResource) {
-    logger.debug("Loading texture: $domain:$filename")
     resources["$domain:$filename"] = value
   }
 
@@ -24,7 +23,6 @@ class TextureCategory(override val parent: TexturesCategory, val textureManager:
   }
 
   operator fun set(id: NamespaceID, value: Resource) {
-    logger.debug("Loading texture: $id")
     resources[id.toString()] = value
   }
 

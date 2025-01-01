@@ -10,17 +10,17 @@ class Lwjgl3Logger(inName: String) : Logger {
 
   override fun info(message: String) {
     for (message in message.lines())
-      println("${ANSI.RESET}${ANSI.BG_BLUE}${ANSI.FG_BRIGHT_WHITE} INFO  ${ANSI.RESET}${ANSI.FG_BLUE}${ANSI.BG_BRIGHT_WHITE} ${ANSI.FG_BLUE}$nerdName ${ANSI.RESET}${ANSI.FG_WHITE} $message")
+      println("${ANSI.RESET}${ANSI.BG_BLUE}${ANSI.FG_BRIGHT_WHITE} INFO  ${ANSI.RESET}${ANSI.FG_BLUE}${ANSI.BG_BRIGHT_BLACK} ${ANSI.FG_BLUE}$nerdName ${ANSI.RESET}${ANSI.FG_WHITE} $message")
   }
 
   override fun error(message: String) {
     for (message in message.lines())
-      println("${ANSI.RESET}${ANSI.BG_RED}${ANSI.FG_BRIGHT_WHITE} ERROR ${ANSI.RESET}${ANSI.FG_RED}${ANSI.BG_BRIGHT_WHITE} ${ANSI.FG_RED}$nerdName ${ANSI.RESET}${ANSI.FG_WHITE} $message")
+      println("${ANSI.RESET}${ANSI.BG_RED}${ANSI.FG_BRIGHT_WHITE} ERROR ${ANSI.RESET}${ANSI.FG_RED}${ANSI.BG_BRIGHT_BLACK} ${ANSI.FG_RED}$nerdName ${ANSI.RESET}${ANSI.FG_WHITE} $message")
   }
 
   override fun warn(message: String) {
     for (message in message.lines())
-      println("${ANSI.RESET}${ANSI.BG_BRIGHT_RED}${ANSI.FG_BRIGHT_WHITE} WARN  ${ANSI.RESET}${ANSI.FG_BRIGHT_RED}${ANSI.BG_BRIGHT_WHITE} ${ANSI.FG_BRIGHT_RED}$nerdName ${ANSI.RESET}${ANSI.FG_WHITE} $message")
+      println("${ANSI.RESET}${ANSI.BG_YELLOW}${ANSI.FG_BRIGHT_WHITE} WARN  ${ANSI.RESET}${ANSI.FG_YELLOW}${ANSI.BG_BRIGHT_BLACK} ${ANSI.FG_YELLOW}$nerdName ${ANSI.RESET}${ANSI.FG_WHITE} $message")
   }
 
   override fun debug(message: String) {
@@ -30,6 +30,6 @@ class Lwjgl3Logger(inName: String) : Logger {
 
   override fun trace(message: String) {
     for (message in message.lines())
-      println("${ANSI.RESET}${ANSI.BG_WHITE}${ANSI.FG_BRIGHT_WHITE} TRACE ${ANSI.RESET}${ANSI.FG_WHITE}${ANSI.BG_BRIGHT_WHITE} ${ANSI.FG_WHITE}$nerdName ${ANSI.RESET}${ANSI.FG_WHITE} $message")
+      println("${ANSI.RESET}${ANSI.BG_WHITE}${ANSI.FG_BRIGHT_WHITE} TRACE ${ANSI.RESET}${ANSI.FG_WHITE}${ANSI.BG_BRIGHT_BLACK} ${ANSI.FG_WHITE}$nerdName ${ANSI.RESET}${ANSI.FG_WHITE} $message")
   }
 }
