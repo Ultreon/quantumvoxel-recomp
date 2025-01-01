@@ -9,10 +9,11 @@ import dev.ultreon.quantum.util.NamespaceID
 import ktx.assets.disposeSafely
 import java.util.function.Consumer
 
-class JsonModel(val id: NamespaceID,
-                private val textureElements: Map<String, NamespaceID>, private val modelElements: List<ModelElement>,
-                val ambientOcclusion: Boolean,
-                val display: JsonModelLoader.Display
+class JsonModel(
+  val id: NamespaceID,
+  private val textureElements: Map<String, NamespaceID>, private val modelElements: List<ModelElement>,
+  val ambientOcclusion: Boolean,
+  val display: JsonModelLoader.Display,
 ) : BlockModel, ItemModel {
 
   override var model: Model? = null
@@ -30,12 +31,12 @@ class JsonModel(val id: NamespaceID,
     }
   }
 
-  override fun loadInto(builder: MeshPartBuilder, faceCull: FaceCull) {
+  override fun loadInto(builder: MeshPartBuilder, x: Int, y: Int, z: Int, faceCull: FaceCull) {
     var i = 0
     val modelElementsSize = modelElements.size
     while (i < modelElementsSize) {
       val modelElement: ModelElement = modelElements[i]
-      modelElement.loadInto(i, faceCull, builder, textureElements)
+      modelElement.loadInto(i, faceCull, x, y, z, builder, textureElements)
       i++
     }
   }

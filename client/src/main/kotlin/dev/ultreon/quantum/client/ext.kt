@@ -17,7 +17,9 @@ import com.badlogic.gdx.math.Vector3
 import dev.ultreon.quantum.InternalApi
 import dev.ultreon.quantum.math.Vector3D
 import dev.ultreon.quantum.util.NamespaceID
+import dev.ultreon.quantum.vec3d
 import ktx.math.mat4
+import ktx.math.unaryMinus
 import ktx.math.vec3
 
 inline fun ModelBuilder.part(
@@ -431,16 +433,12 @@ fun instance(model: Model, init: ModelInstance.() -> Unit = {}): ModelInstance {
   return instance
 }
 
-fun vec3d(x: Double, y: Double, z: Double): Vector3D {
-  return Vector3D(x, y, z)
-}
-
 private var tmpVecD = vec3d(0.0, 0.0, 0.0)
 internal var tmpVec = vec3(0F, 0F, 0F)
 
 fun ModelInstance.relative(camera: Camera, position: Vector3D): ModelInstance {
-  this.transform.setTranslation(tmpVecD.set(position.x, position.y, position.z).sub(camera.position).let {
+  this.transform.setTranslation(-(tmpVecD.set(position.x, position.y, position.z).sub(camera.position).let {
     return@let tmpVec.set(it.x.toFloat(), it.y.toFloat(), it.z.toFloat())
-  })
+  }))
   return this
 }

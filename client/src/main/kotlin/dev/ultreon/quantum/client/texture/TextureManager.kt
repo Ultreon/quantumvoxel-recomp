@@ -61,8 +61,11 @@ class TextureManager(val resourceManager: ResourceManager) {
     packers.clear()
   }
 
-  operator fun get(texture: NamespaceID?): TextureRegion {
-    val atlas = atlases[texture!!.path.split("/")[0]]!!
+  operator fun get(texture: NamespaceID): TextureRegion {
+    val atlas = atlases[texture.path.split("/")[0]] ?: run {
+      logger.warn("Atlas not found: ${texture.path.split("/")[0]}")
+      return fallbackTexture
+    }
     return atlas.findRegion("$texture") ?: run {
       logger.warn("Texture not found: $texture")
       fallbackTexture

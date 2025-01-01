@@ -2,12 +2,12 @@
   // This uses Minecraft's json schema for models
   parent: "block/cube_all"
   textures: {
-    up: "dirt",
-    down: "dirt",
-    north: "dirt",
-    south: "dirt",
-    west: "dirt",
-    east: "dirt"
+    up: "block/soil",
+    down: "block/soil",
+    north: "block/soil",
+    south: "block/soil",
+    west: "block/soil",
+    east: "block/soil"
   }
 
   elements: [

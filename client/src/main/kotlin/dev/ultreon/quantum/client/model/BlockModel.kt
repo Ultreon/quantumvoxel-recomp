@@ -11,7 +11,7 @@ import ktx.assets.disposeSafely
 interface BlockModel : LoadableResource {
   val isCustom: Boolean
 
-  fun loadInto(builder: MeshPartBuilder, faceCull: FaceCull) {
+  fun loadInto(builder: MeshPartBuilder, x: Int, y: Int, z: Int, faceCull: FaceCull) {
     // Do nothing
   }
 

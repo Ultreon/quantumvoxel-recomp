@@ -1,6 +1,5 @@
 package dev.ultreon.langgen.api;
 
-import dev.ultreon.langgen.LangGenConfig;
 import org.jetbrains.annotations.Nullable;
 import org.reflections.Reflections;
 import org.reflections.scanners.Scanners;

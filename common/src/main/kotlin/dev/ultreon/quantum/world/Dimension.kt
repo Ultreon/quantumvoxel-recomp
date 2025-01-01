@@ -18,7 +18,7 @@ value class BlockFlags(val value: Int) {
   }
 }
 
-abstract class World : Disposable {
+abstract class Dimension : Disposable {
   abstract operator fun get(x: Int, y: Int, z: Int): Block
   operator fun set(x: Int, y: Int, z: Int, block: Block) =
     set(x, y, z, block, BlockFlags.SYNC + BlockFlags.UPDATE)

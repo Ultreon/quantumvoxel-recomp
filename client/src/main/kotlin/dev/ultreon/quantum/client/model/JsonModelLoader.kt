@@ -76,7 +76,7 @@ class JsonModelLoader @JvmOverloads constructor(
 
   @Throws(IOException::class)
   fun load(block: Block): JsonModel? {
-    val namespaceID: NamespaceID = block.id.mapPath { path -> "models/blocks/$path.json5" }
+    val namespaceID: NamespaceID = block.id.mapPath { path -> "models/blocks/$path.json" }
     val resource: Resource = resourceManager[namespaceID] ?: return null
     logger.debug("Loading block model: $namespaceID")
     return this.load(block.key, JsonReader().parse(resource.inputStream()))
@@ -84,7 +84,7 @@ class JsonModelLoader @JvmOverloads constructor(
 
   @Throws(IOException::class)
   fun load(item: Item): JsonModel? {
-    val namespaceID: NamespaceID = item.id.mapPath { path -> "models/items/$path.json5" }
+    val namespaceID: NamespaceID = item.id.mapPath { path -> "models/items/$path.json" }
     val resource: Resource = resourceManager[namespaceID] ?: return null
     logger.debug("Loading item model: $namespaceID")
     return this.load(item.key, JsonReader().parse(resource.inputStream()))
@@ -157,10 +157,10 @@ class JsonModelLoader @JvmOverloads constructor(
       val key1: String = e.name ?: throw IOException("Invalid face at ${e.trace()}: $e")
       val value: JsonValue = if (e.isObject) e else throw IOException("Invalid face at ${e.trace()}: $e")
       val direction: Direction = Direction.valueOf(key1.uppercase())
-      val uvs = value.get("uv").asFloatArray()
-      val texture: String = value.get("texture").asString()
-      val rotation = value.get("rotation").asInt()
-      val tintIndex = value.get("tintindex").asInt()
+      val uvs = value.get("uvs")?.asFloatArray() ?: throw IOException("Invalid 'uvs' array at ${value.trace()}: $value")
+      val texture: String = value.get("texture")?.asString() ?: throw IOException("Invalid 'texture' value at ${value.trace()}: $value")
+      val rotation = value.get("rotation")?.asInt() ?: 0
+      val tintIndex = value.get("tintindex")?.asInt() ?: 0
       val cullFace = value.get("cullface")?.asString()
 
       faceElems[direction] = FaceElement(
@@ -179,7 +179,7 @@ class JsonModelLoader @JvmOverloads constructor(
     for (entry in textures) {
       val name: String = entry.name!!
       val stringId: String = entry.asString()
-      val id: NamespaceID = NamespaceID.parse(stringId).mapPath { path -> "textures/$path.png" }
+      val id: NamespaceID = NamespaceID.parse(stringId).mapPath { path -> "$path.png" }
       textureElements[name] = id
     }
 
@@ -188,7 +188,7 @@ class JsonModelLoader @JvmOverloads constructor(
 
   fun load(key: ResourceId<*>, id: NamespaceID): BlockModel? {
     return try {
-      val resource: Resource = resourceManager[id.mapPath { path -> "models/$path.json5" }]
+      val resource: Resource = resourceManager[id.mapPath { path -> "models/$path.json" }]
       this.load(key, JsonReader().parse(resource.inputStream()))
     } catch (e: IOException) {
       null
@@ -322,9 +322,9 @@ class JsonModelLoader @JvmOverloads constructor(
       val v11 = VertexInfo()
       for ((direction, faceElement) in blockFaceFaceElementMap) {
         val texRef = faceElement.texture
-        val texture: NamespaceID? = if (texRef == "#missing") NamespaceID.of(path = "textures/block/error.png")
+        val texture: NamespaceID? = if (texRef == "#missing") NamespaceID.of(path = "block/error.png")
         else if (texRef.startsWith("#")) textureElements[texRef.substring(1)]
-        else NamespaceID.parse(texRef).mapPath { path -> "textures/$path.png" }
+        else NamespaceID.parse(texRef).mapPath { path -> "$path.png" }
 
         meshBuilder.begin(
           VertexAttributes(
@@ -344,10 +344,10 @@ class JsonModelLoader @JvmOverloads constructor(
         v10.setNor(direction.normal)
         v11.setNor(direction.normal)
 
-        v00.setUV(faceElement.uvs.x1, faceElement.uvs.y2)
-        v01.setUV(faceElement.uvs.x1, faceElement.uvs.y1)
-        v10.setUV(faceElement.uvs.x2, faceElement.uvs.y2)
-        v11.setUV(faceElement.uvs.x2, faceElement.uvs.y1)
+        v00.setUV(faceElement.uvs.x1 / 16, faceElement.uvs.y2 / 16)
+        v01.setUV(faceElement.uvs.x1 / 16, faceElement.uvs.y1 / 16)
+        v10.setUV(faceElement.uvs.x2 / 16, faceElement.uvs.y2 / 16)
+        v11.setUV(faceElement.uvs.x2 / 16, faceElement.uvs.y1 / 16)
 
         when (direction) {
           UP -> {
@@ -396,7 +396,7 @@ class JsonModelLoader @JvmOverloads constructor(
         meshBuilder.rect(v00, v10, v11, v01)
 
         val material = Material()
-        material.set(TextureAttribute.createDiffuse(QuantumVoxel.textureManager[texture]))
+        material.set(TextureAttribute.createDiffuse(QuantumVoxel.textureManager[texture!!]))
         material.set(BlendingAttribute(GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA))
         material.set(FloatAttribute(FloatAttribute.AlphaTest))
         material.set(DepthTestAttribute(GL20.GL_LEQUAL))
@@ -434,7 +434,7 @@ class JsonModelLoader @JvmOverloads constructor(
     override fun toString(): String =
       "ModelElement[blockFaceFaceElementMap=$blockFaceFaceElementMap, shade=$shade, rotation=$rotation, from=$from, to=$to]"
 
-    fun loadInto(i: Int, faceCull: FaceCull, builder: MeshPartBuilder, textureElements: Map<String, NamespaceID>) {
+    fun loadInto(i: Int, faceCull: FaceCull, x: Int, y: Int, z: Int, builder: MeshPartBuilder, textureElements: Map<String, NamespaceID>) {
       val blockFaceFaceElementMap: Map<Direction, FaceElement> = this.blockFaceFaceElementMap
       val v00 = VertexInfo()
       val v01 = VertexInfo()
@@ -444,9 +444,9 @@ class JsonModelLoader @JvmOverloads constructor(
         if (faceCull.face(direction)) continue
 
         val texRef = faceElement.texture
-        val texture: NamespaceID? = if (texRef == "#missing") NamespaceID.of(path = "textures/block/error.png")
+        val texture: NamespaceID? = if (texRef == "#missing") NamespaceID.of(path = "block/error.png")
         else if (texRef.startsWith("#")) textureElements[texRef.substring(1)]
-        else NamespaceID.parse(texRef).mapPath { path -> "textures/$path.png" }
+        else NamespaceID.parse(texRef).mapPath { path -> "$path.png" }
 
         v00.setCol(Color.WHITE)
         v01.setCol(Color.WHITE)
@@ -458,10 +458,10 @@ class JsonModelLoader @JvmOverloads constructor(
         v10.setNor(direction.normal)
         v11.setNor(direction.normal)
 
-        v00.setUV(faceElement.uvs.x1, faceElement.uvs.y2)
-        v01.setUV(faceElement.uvs.x1, faceElement.uvs.y1)
-        v10.setUV(faceElement.uvs.x2, faceElement.uvs.y2)
-        v11.setUV(faceElement.uvs.x2, faceElement.uvs.y1)
+        v00.setUV(0F, 0F)
+        v01.setUV(0F, 1F)
+        v10.setUV(1F, 0F)
+        v11.setUV(1F, 1F)
 
         when (direction) {
           UP -> {
@@ -507,13 +507,18 @@ class JsonModelLoader @JvmOverloads constructor(
           }
         }
 
+        v00.position.scl(1 / 16F).add(x.toFloat(), y.toFloat(), z.toFloat())
+        v01.position.scl(1 / 16F).add(x.toFloat(), y.toFloat(), z.toFloat())
+        v10.position.scl(1 / 16F).add(x.toFloat(), y.toFloat(), z.toFloat())
+        v11.position.scl(1 / 16F).add(x.toFloat(), y.toFloat(), z.toFloat())
+
         builder.rect(v00, v10, v11, v01)
 
-        val material = Material()
-        material.set(TextureAttribute.createDiffuse(QuantumVoxel.textureManager[texture]))
-        material.set(BlendingAttribute(GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA))
-        material.set(FloatAttribute(FloatAttribute.AlphaTest))
-        material.set(DepthTestAttribute(GL20.GL_LEQUAL))
+//        val material = Material()
+//        material.set(TextureAttribute.createDiffuse(QuantumVoxel.textureManager[texture!!]))
+//        material.set(BlendingAttribute(GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA))
+//        material.set(FloatAttribute(FloatAttribute.AlphaTest))
+//        material.set(DepthTestAttribute(GL20.GL_LEQUAL))
       }
     }
 

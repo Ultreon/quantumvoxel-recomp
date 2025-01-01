@@ -25,12 +25,12 @@ class ResourceManager(
     val path = location.path.split('/')
     var category = categories[path[0]] ?: throw NoSuchResourceCategoryException(path[0])
 
-    for (i in 1 until path.size) {
+    for (i in 1 until path.size - 1) {
       val resourceNode = category[path[i]]
       category = resourceNode as ResourceCategory? ?: throw NoSuchResourceException(location)
     }
 
-    return category[location.domain, path[path.size - 1]] ?: throw NoSuchResourceException(location)
+    return category[location.domain, path.subList(1, path.size).joinToString("/")] ?: throw NoSuchResourceException(location)
   }
 
   fun load(file: FileHandle) {

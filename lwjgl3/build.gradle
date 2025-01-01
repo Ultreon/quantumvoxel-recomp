@@ -37,6 +37,7 @@ dependencies {
   implementation "com.badlogicgames.gdx:gdx-box2d-platform:$gdxVersion:natives-desktop"
   implementation "com.badlogicgames.gdx:gdx-freetype-platform:$gdxVersion:natives-desktop"
   implementation "com.badlogicgames.gdx:gdx-platform:$gdxVersion:natives-desktop"
+  implementation "com.badlogicgames.gdx:gdx:$gdxVersion"
   implementation "de.tomgrill.gdxdialogs:gdx-dialogs-desktop:$dialogsVersion"
   implementation project(':client')
 
@@ -167,33 +168,33 @@ if (enableGraalNative == 'true') {
   apply from: file("nativeimage.gradle")
 }
 
-//task generateBindings(type: JavaExec) {
-//  classpath = sourceSets.main.runtimeClasspath
-//  mainClass = 'dev.ultreon.langgen.Main'
-//  args = ['--js', '--stub', '--output='+file("../modules")]
-//
-//  inputs.files(sourceSets.main.allSource)
-//  outputs.dir(file("../modules"))
-//
-//  group = 'build'
-//  description = 'Generate bindings'
-//
-//  finalizedBy('compileTypescript')
-//}
-//
-//tasks.register('compileTypescript', Exec) {
-//  group = 'build'
-//  description = 'Compile typescript'
-//
-//  inputs.files(fileTree("../modules"))
-//  outputs.files(fileTree("../modules"))
-//
-//  if (System.getProperty('os.name').toLowerCase().contains('windows')) {
-//    commandLine 'cmd', '/c', 'npm', 'run', 'build'
-//  } else {
-//    commandLine 'bash', '-c', 'npm run build'
-//  }
-//  workingDir rootProject.file('modules')
-//}
-//
-//classes.finalizedBy generateBindings
+task generateBindings(type: JavaExec) {
+  classpath = sourceSets.main.runtimeClasspath
+  mainClass = 'dev.ultreon.langgen.Main'
+  args = ['--js', '--stub', '--output='+file("../modules")]
+
+  inputs.files(sourceSets.main.allSource)
+  outputs.dir(file("../modules"))
+
+  group = 'build'
+  description = 'Generate bindings'
+
+  finalizedBy('compileTypescript')
+}
+
+tasks.register('compileTypescript', Exec) {
+  group = 'build'
+  description = 'Compile typescript'
+
+  inputs.files(fileTree("../modules"))
+  outputs.files(fileTree("../modules"))
+
+  if (System.getProperty('os.name').toLowerCase().contains('windows')) {
+    commandLine 'cmd', '/c', 'npm', 'run', 'build'
+  } else {
+    commandLine 'bash', '-c', 'npm run build'
+  }
+  workingDir rootProject.file('modules')
+}
+
+classes.finalizedBy generateBindings

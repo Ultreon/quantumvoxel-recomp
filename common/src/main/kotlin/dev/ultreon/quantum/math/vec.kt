@@ -204,6 +204,24 @@ data class Vector3D(
     return result
   }
 
+  operator fun get(axis: Int): Double {
+    return when (axis) {
+      0 -> x
+      1 -> y
+      2 -> z
+      else -> throw IllegalArgumentException("Invalid axis: $axis")
+    }
+  }
+
+  operator fun set(axis: Int, value: Double) {
+    when (axis) {
+      0 -> x = value
+      1 -> y = value
+      2 -> z = value
+      else -> throw IllegalArgumentException("Invalid axis: $axis")
+    }
+  }
+
   companion object {
     fun zero() = Vector3D(0.0, 0.0, 0.0)
     fun one() = Vector3D(1.0, 1.0, 1.0)

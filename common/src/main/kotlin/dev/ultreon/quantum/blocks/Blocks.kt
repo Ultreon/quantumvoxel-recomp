@@ -5,7 +5,7 @@ import dev.ultreon.quantum.util.NamespaceID
 
 object Blocks {
   val air: Block = register("air", Block())
-  val dirt = register("dirt", Block())
+  val soil = register("soil", Block())
 
 
   fun register(name: String, block: Block): Block {
