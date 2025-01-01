@@ -1,0 +1,22 @@
+{
+    "configurations": [
+        {
+            "type": "gradle",
+            "name": "Run LWJGL3",
+            "tasks": ["lwjgl3:run"],
+//            "args": ["--console=plain"]
+        },
+        {
+            "type": "gradle",
+            "name": "Run Android",
+            "tasks": ["android:run"],
+//            "args": ["--console=plain"]
+        },
+        {
+            "type": "gradle",
+            "name": "Run Server",
+            "tasks": ["server:run"],
+//            "args": ["--console=plain"]
+        }
+    ]
+}
