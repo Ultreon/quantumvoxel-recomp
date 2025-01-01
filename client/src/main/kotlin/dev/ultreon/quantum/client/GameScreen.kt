@@ -27,6 +27,23 @@ import ktx.assets.disposeSafely
 import ktx.graphics.use
 import ktx.math.vec3
 
+/**
+ * Represents the main game screen responsible for rendering and managing the player's interaction
+ * with the game world. This class implements the `KtxScreen` interface and handles functionality
+ * such as input handling, rendering, player movement, camera operations, and resource management.
+ *
+ * The `GameScreen` for example manages:
+ * - Rendering 3D models and 2D overlays.
+ * - Camera and viewport configurations.
+ * - Input processing for movement, actions, and interaction.
+ * - Player entity initialization and behavior updates.
+ * - Environmental light and textures.
+ *
+ * @constructor Creates a `GameScreen` instance that initializes the game world, rendering environment,
+ *              camera, player entity, and necessary assets.
+ * @param world Represents the Artemis `World` instance holding the ECS (Entity Component System) structure
+ *              for managing entities and components.
+ */
 class GameScreen(world: World) : KtxScreen {
   private val speed: Float = 1f
   private val modelBatch = ModelBatch(
@@ -52,7 +69,7 @@ class GameScreen(world: World) : KtxScreen {
   private var cube = QuantumVoxel.jsonModelLoader.load(Blocks.soil) ?: error("Failed to load model for ${Blocks.soil.id}")
 
   val camera = perspectiveCamera {
-    position.set(0f, 0f, 5f)
+    position.set(0f, 0f, 0f)
     near = 0.01f
     far = 500f
     update()
@@ -80,15 +97,19 @@ class GameScreen(world: World) : KtxScreen {
   }
 
   val environment = Environment().apply {
-    set(
-      ColorAttribute.createAmbientLight(1F, 1F, 1F, 1F),
-    )
+    set(ColorAttribute.createAmbientLight(1F, 1F, 1F, 1F))
   }
 
   init {
     dimension.rebuild()
   }
 
+  /**
+   * Renders the frame for the game world. This method is called every frame and handles all rendering
+   * and game state updates based on the time delta between frames.
+   *
+   * @param delta A `Float` value representing the time elapsed since the last frame, used to scale time-dependent calculations.
+   */
   override fun render(delta: Float) {
     clearScreen(red = 0.2f, green = 0.2f, blue = 0.2f)
 
@@ -125,6 +146,12 @@ class GameScreen(world: World) : KtxScreen {
     Gdx.app.graphics.setTitle("Quantum Voxel - FPS: ${Gdx.graphics.framesPerSecond}")
   }
 
+  /**
+   * Updates the position and velocity of the player based on the current movement inputs and delta time.
+   *
+   * @param position A `PositionComponent` representing the current position and rotation state of the entity.
+   * @param delta A `Float` representing the time elapsed since the last frame, used for scaling movement.
+   */
   private fun move(position: PositionComponent, delta: Float) {
 //    when {
 //      moveX > 0 -> position.xRot = max(position.xRot - 45 / (position.xHeadRot - position.xRot + 50), position.xRot - 90)
@@ -152,6 +179,11 @@ class GameScreen(world: World) : KtxScreen {
     }
   }
 
+  /**
+   * Updates the player's rotation and camera direction based on mouse movement.
+   *
+   * @param position A `PositionComponent` that represents the current position and rotation state of the player.
+   */
   private fun look(position: PositionComponent) {
     val deltaX = Gdx.input.deltaX
     val deltaY = Gdx.input.deltaY
@@ -182,6 +214,14 @@ class GameScreen(world: World) : KtxScreen {
       KeyBinds.runningKey.isPressed() && Gdx.input.isCursorCatched
   }
 
+  /**
+   * Renders various debugging and informational data as an overlay on the screen.
+   *
+   * This function displays the player's current position, movement states, rotation values,
+   * camera details, and frames per second (FPS). It uses a `SpriteBatch` instance to draw each line of text.
+   *
+   * @param position The player's current position and rotation, represented by a `PositionComponent` instance.
+   */
   private fun drawInfo(position: PositionComponent) {
     font.draw(spriteBatch, "X: ${player.getComponent(PositionComponent::class.java).position.x}", 10f, 10f)
     font.draw(spriteBatch, "Y: ${player.getComponent(PositionComponent::class.java).position.y}", 10f, 20f)
@@ -237,11 +277,23 @@ class GameScreen(world: World) : KtxScreen {
     super.dispose()
   }
 
+  /**
+   * Adjusts the camera viewport dimensions to match the new width and height of the window.
+   *
+   * This method ensures that the camera's viewport is updated whenever the game window is resized.
+   * It invokes the parent class's `resize` method, recalculates the camera's viewport width and height
+   * based on the provided dimensions, and updates the camera configuration.
+   *
+   * @param width The new width of the game window in pixels.
+   * @param height The new height of the game window in pixels.
+   */
   override fun resize(width: Int, height: Int) {
     super.resize(width, height)
 
     camera.viewportWidth = width.toFloat()
     camera.viewportHeight = height.toFloat()
     camera.update()
+
+    spriteBatch.projectionMatrix = spriteBatch.projectionMatrix.setToOrtho2D(0f, 0f, width.toFloat(), height.toFloat())
   }
 }
