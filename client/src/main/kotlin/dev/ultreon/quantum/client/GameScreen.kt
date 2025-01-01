@@ -105,80 +105,27 @@ class GameScreen(world: World) : KtxScreen {
     moveX = 0F
     moveY = 0F
 
-    forward = KeyBinds.walkForwardsKey.isPressed() && Gdx.input.isCursorCatched
-    backward = KeyBinds.walkBackwardsKey.isPressed() && Gdx.input.isCursorCatched
-    strafeLeft = KeyBinds.walkLeftKey.isPressed() && Gdx.input.isCursorCatched
-    strafeRight = KeyBinds.walkRightKey.isPressed() && Gdx.input.isCursorCatched
-    up = KeyBinds.jumpKey.isPressed() && Gdx.input.isCursorCatched
-    down = KeyBinds.crouchKey.isPressed() && Gdx.input.isCursorCatched
+    input()
 
-    spriteBatch.use {
-      font.draw(spriteBatch, "X: ${player.getComponent(PositionComponent::class.java).position.x}", 10f, 10f)
-      font.draw(spriteBatch, "Y: ${player.getComponent(PositionComponent::class.java).position.y}", 10f, 20f)
-      font.draw(spriteBatch, "Z: ${player.getComponent(PositionComponent::class.java).position.z}", 10f, 30f)
+    val position: PositionComponent = player.getComponent(PositionComponent::class.java)
+    position.xRot = (position.xRot + 180) % 360 - 180
+    position.yRot = position.yRot.coerceIn(-89.99F, 89.99F)
 
-      font.draw(spriteBatch, "Forward: $forward", 10f, 40f)
-      font.draw(spriteBatch, "Backward: $backward", 10f, 50f)
-      font.draw(spriteBatch, "Strafe Left: $strafeLeft", 10f, 60f)
-      font.draw(spriteBatch, "Strafe Right: $strafeRight", 10f, 70f)
-
-      font.draw(spriteBatch, "Real X: ${this.position.x}", 10f, 80f)
-      font.draw(spriteBatch, "Real Y: ${this.position.y}", 10f, 90f)
-      font.draw(spriteBatch, "Real Z: ${this.position.z}", 10f, 100f)
-
-      font.draw(spriteBatch, "X Rotation: ${player.getComponent(PositionComponent::class.java).xRot}", 10f, 110f)
-      font.draw(spriteBatch, "Y Rotation: ${player.getComponent(PositionComponent::class.java).yRot}", 10f, 120f)
-      font.draw(spriteBatch, "X Head Rotation: ${player.getComponent(PositionComponent::class.java).xHeadRot}", 10f, 130f)
-
-      font.draw(spriteBatch, "Running: ${player.getComponent(RunningComponent::class.java).running}", 10f, 140f)
-
-      font.draw(spriteBatch, "FPS: ${Gdx.graphics.framesPerSecond}", 10f, 150f)
-
-      font.draw(spriteBatch, "Camera Position: ${camera.position}", 10f, 160f)
-      font.draw(spriteBatch, "Camera Direction: ${camera.direction}", 10f, 170f)
-      font.draw(spriteBatch, "Camera Up: ${camera.up}", 10f, 180f)
-
-      val position: PositionComponent = player.getComponent(PositionComponent::class.java)
-      position.xRot = (position.xRot + 180) % 360 - 180
-      position.yRot = position.yRot.coerceIn(-89.99F, 89.99F)
-
-      font.draw(spriteBatch, "Direction: " + when {
-        position.yRot < -45 -> "Up"
-        position.yRot > 45 -> "Down"
-        position.xRot < -45 && position.xRot > -135 -> "Left"
-        position.xRot > 45 && position.xRot < 135 -> "Right"
-        position.xRot > 135 || position.xRot < -135 -> "Backward"
-        else -> "Forward"
-      }, 10f, 190f)
-    }
-
-    if (Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE)) {
-      Gdx.input.isCursorCatched = false
-    }
-    if (Gdx.input.isButtonJustPressed(Input.Buttons.LEFT)) {
-      Gdx.input.isCursorCatched = true
-    }
-    player.getComponent(RunningComponent::class.java).running =
-      KeyBinds.runningKey.isPressed() && Gdx.input.isCursorCatched
+    spriteBatch.use { drawInfo(position) }
 
     move()
     controllerMove()
 
-    val position: PositionComponent = player.getComponent(PositionComponent::class.java)
-
     if (Gdx.input.isCursorCatched) {
-      val deltaX = Gdx.input.deltaX
-      val deltaY = Gdx.input.deltaY
-
-      position.xRot -= deltaX * 0.5f
-      position.xHeadRot = position.xRot
-      position.yRot += deltaY * 0.5f
-
-      position.lookVec(camera.direction)
-      camera.update()
+      look(position)
     }
 
+    move(position, delta)
 
+    Gdx.app.graphics.setTitle("Quantum Voxel - FPS: ${Gdx.graphics.framesPerSecond}")
+  }
+
+  private fun move(position: PositionComponent, delta: Float) {
 //    when {
 //      moveX > 0 -> position.xRot = max(position.xRot - 45 / (position.xHeadRot - position.xRot + 50), position.xRot - 90)
 //      moveX < -0 -> position.xRot = min(position.xRot + 45 / (position.xRot - position.xHeadRot + 50), position.xRot + 90)
@@ -186,7 +133,8 @@ class GameScreen(world: World) : KtxScreen {
 //      moveY != 0F && position.xRot < position.xHeadRot -> position.xRot = min(position.xRot + (45 / (position.xHeadRot - position.xRot)), position.xHeadRot)
 //    }
 
-    tmpVec.set(moveX, 0f, -moveY).nor().scl(speed)/*.rotate(Vector3.X, position.yRot + 90)*/.rotate(Vector3.Y, position.xHeadRot + 90)
+    tmpVec.set(moveX, 0f, -moveY).nor().scl(speed)/*.rotate(Vector3.X, position.yRot + 90)*/
+      .rotate(Vector3.Y, position.xHeadRot + 90)
 
     var flight = 0F
 
@@ -202,8 +150,73 @@ class GameScreen(world: World) : KtxScreen {
       position.position.add(vel)
       this.position.set(position.position.x, position.position.y, position.position.z)
     }
+  }
 
-    Gdx.app.graphics.setTitle("Quantum Voxel - FPS: ${Gdx.graphics.framesPerSecond}")
+  private fun look(position: PositionComponent) {
+    val deltaX = Gdx.input.deltaX
+    val deltaY = Gdx.input.deltaY
+
+    position.xRot -= deltaX * 0.5f
+    position.xHeadRot = position.xRot
+    position.yRot += deltaY * 0.5f
+
+    position.lookVec(camera.direction)
+    camera.update()
+  }
+
+  private fun input() {
+    forward = KeyBinds.walkForwardsKey.isPressed() && Gdx.input.isCursorCatched
+    backward = KeyBinds.walkBackwardsKey.isPressed() && Gdx.input.isCursorCatched
+    strafeLeft = KeyBinds.walkLeftKey.isPressed() && Gdx.input.isCursorCatched
+    strafeRight = KeyBinds.walkRightKey.isPressed() && Gdx.input.isCursorCatched
+    up = KeyBinds.jumpKey.isPressed() && Gdx.input.isCursorCatched
+    down = KeyBinds.crouchKey.isPressed() && Gdx.input.isCursorCatched
+
+    if (Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE)) {
+      Gdx.input.isCursorCatched = false
+    }
+    if (Gdx.input.isButtonJustPressed(Input.Buttons.LEFT)) {
+      Gdx.input.isCursorCatched = true
+    }
+    player.getComponent(RunningComponent::class.java).running =
+      KeyBinds.runningKey.isPressed() && Gdx.input.isCursorCatched
+  }
+
+  private fun drawInfo(position: PositionComponent) {
+    font.draw(spriteBatch, "X: ${player.getComponent(PositionComponent::class.java).position.x}", 10f, 10f)
+    font.draw(spriteBatch, "Y: ${player.getComponent(PositionComponent::class.java).position.y}", 10f, 20f)
+    font.draw(spriteBatch, "Z: ${player.getComponent(PositionComponent::class.java).position.z}", 10f, 30f)
+
+    font.draw(spriteBatch, "Forward: $forward", 10f, 40f)
+    font.draw(spriteBatch, "Backward: $backward", 10f, 50f)
+    font.draw(spriteBatch, "Strafe Left: $strafeLeft", 10f, 60f)
+    font.draw(spriteBatch, "Strafe Right: $strafeRight", 10f, 70f)
+
+    font.draw(spriteBatch, "Real X: ${this.position.x}", 10f, 80f)
+    font.draw(spriteBatch, "Real Y: ${this.position.y}", 10f, 90f)
+    font.draw(spriteBatch, "Real Z: ${this.position.z}", 10f, 100f)
+
+    font.draw(spriteBatch, "X Rotation: ${player.getComponent(PositionComponent::class.java).xRot}", 10f, 110f)
+    font.draw(spriteBatch, "Y Rotation: ${player.getComponent(PositionComponent::class.java).yRot}", 10f, 120f)
+    font.draw(spriteBatch, "X Head Rotation: ${player.getComponent(PositionComponent::class.java).xHeadRot}", 10f, 130f)
+
+    font.draw(spriteBatch, "Running: ${player.getComponent(RunningComponent::class.java).running}", 10f, 140f)
+
+    font.draw(spriteBatch, "FPS: ${Gdx.graphics.framesPerSecond}", 10f, 150f)
+
+    font.draw(spriteBatch, "Camera Position: ${camera.position}", 10f, 160f)
+    font.draw(spriteBatch, "Camera Direction: ${camera.direction}", 10f, 170f)
+    font.draw(spriteBatch, "Camera Up: ${camera.up}", 10f, 180f)
+    font.draw(
+      spriteBatch, "Direction: " + when {
+        position.yRot < -45 -> "Up"
+        position.yRot > 45 -> "Down"
+        position.xRot < -45 && position.xRot > -135 -> "Left"
+        position.xRot > 45 && position.xRot < 135 -> "Right"
+        position.xRot > 135 || position.xRot < -135 -> "Backward"
+        else -> "Forward"
+      }, 10f, 190f
+    )
   }
 
   fun move() {
