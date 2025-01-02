@@ -1,17 +1,19 @@
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+
 apply plugin: 'application'
 apply plugin: 'org.jetbrains.kotlin.jvm'
 
 
-java.sourceCompatibility = 8
-java.targetCompatibility = 8
+java.sourceCompatibility = 11
+java.targetCompatibility = 11
 if (JavaVersion.current().isJava9Compatible()) {
-  compileJava.options.release.set(8)
+  compileJava.options.release.set(11)
 }
-kotlin.compilerOptions.jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_1_8)
+kotlin.compilerOptions.jvmTarget.set(JvmTarget.JVM_11)
 
 mainClassName = 'dev.ultreon.quantum.headless.HeadlessLauncher'
 application.setMainClass(mainClassName)
-eclipse.project.name = appName + '-headless'
+eclipse.project.name = appName + '-server'
 
 dependencies {
   implementation project(':common')

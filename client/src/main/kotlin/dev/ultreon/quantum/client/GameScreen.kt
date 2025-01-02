@@ -12,13 +12,12 @@ import com.badlogic.gdx.graphics.g3d.ModelBatch
 import com.badlogic.gdx.graphics.g3d.attributes.ColorAttribute
 import com.badlogic.gdx.math.Vector3
 import dev.ultreon.quantum.blocks.Blocks
-import dev.ultreon.quantum.client.entity.PlayerComponent
-import dev.ultreon.quantum.client.entity.PositionComponent
-import dev.ultreon.quantum.client.entity.RunningComponent
+import dev.ultreon.quantum.entity.PlayerComponent
+import dev.ultreon.quantum.entity.PositionComponent
+import dev.ultreon.quantum.entity.RunningComponent
 import dev.ultreon.quantum.client.input.KeyBinds
 import dev.ultreon.quantum.client.world.ClientDimension
 import dev.ultreon.quantum.client.world.Skybox
-import dev.ultreon.quantum.logger
 import dev.ultreon.quantum.math.Vector3D
 import dev.ultreon.quantum.util.NamespaceID
 import dev.ultreon.quantum.vec3d
@@ -62,42 +61,7 @@ class GameScreen(world: World) : KtxScreen {
     diffuse(texture.texture)
     cullFace(GL20.GL_BACK)
   }
-  private val dimension: ClientDimension = ClientDimension(material).apply {
-    for (x in 0..15) {
-      for (y in 0..6) {
-        for (z in 0..15) {
-          set(x, y, z, Blocks.soil, BlockFlags.NONE)
-        }
-      }
-      for (z in 0..15) {
-        set(x, 7, z, Blocks.grass, BlockFlags.NONE)
-      }
-    }
-
-    // Make a house
-    // Back wall
-    for (x in 5..10) {
-      for (y in 8..11) {
-        set(x, y, 5, Blocks.cobblestone, BlockFlags.NONE)
-        set(x, y, 10, Blocks.cobblestone, BlockFlags.NONE)
-      }
-    }
-    for (z in 6..9) {
-      for (y in 8..11) {
-        set(5, y, z, Blocks.cobblestone, BlockFlags.NONE)
-        set(10, y, z, Blocks.cobblestone, BlockFlags.NONE)
-      }
-    }
-    for (x in 5..10) {
-      for (z in 5..10) {
-        set(x, 11, z, Blocks.cobblestone, BlockFlags.NONE)
-        set(x, 11, z, Blocks.cobblestone, BlockFlags.NONE)
-      }
-    }
-
-    set(8, 8, 10, Blocks.air, BlockFlags.NONE)
-    set(8, 9, 10, Blocks.air, BlockFlags.NONE)
-  }
+  private val dimension: ClientDimension = ClientDimension(material)
 
   val camera = perspectiveCamera {
     position.set(0f, 0f, 0f)
@@ -176,7 +140,7 @@ class GameScreen(world: World) : KtxScreen {
     move()
     controllerMove()
 
-    if (Gdx.input.isCursorCatched) {
+    if (Gdx.input.isCursorCatched || gamePlatform.isMobile) {
       look(position)
     }
 
@@ -254,21 +218,21 @@ class GameScreen(world: World) : KtxScreen {
   }
 
   private fun input() {
-    forward = KeyBinds.walkForwardsKey.isPressed() && Gdx.input.isCursorCatched
-    backward = KeyBinds.walkBackwardsKey.isPressed() && Gdx.input.isCursorCatched
-    strafeLeft = KeyBinds.walkLeftKey.isPressed() && Gdx.input.isCursorCatched
-    strafeRight = KeyBinds.walkRightKey.isPressed() && Gdx.input.isCursorCatched
-    up = KeyBinds.jumpKey.isPressed() && Gdx.input.isCursorCatched
-    down = KeyBinds.crouchKey.isPressed() && Gdx.input.isCursorCatched
+    forward = KeyBinds.walkForwardsKey.isPressed() && (Gdx.input.isCursorCatched || gamePlatform.isMobile)
+    backward = KeyBinds.walkBackwardsKey.isPressed() && (Gdx.input.isCursorCatched || gamePlatform.isMobile)
+    strafeLeft = KeyBinds.walkLeftKey.isPressed() && (Gdx.input.isCursorCatched || gamePlatform.isMobile)
+    strafeRight = KeyBinds.walkRightKey.isPressed() && (Gdx.input.isCursorCatched || gamePlatform.isMobile)
+    up = KeyBinds.jumpKey.isPressed() && (Gdx.input.isCursorCatched || gamePlatform.isMobile)
+    down = KeyBinds.crouchKey.isPressed() && (Gdx.input.isCursorCatched || gamePlatform.isMobile)
 
-    if (Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE)) {
+    if (Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE) && !gamePlatform.isMobile) {
       Gdx.input.isCursorCatched = false
     }
-    if (Gdx.input.isButtonJustPressed(Input.Buttons.LEFT)) {
+    if (Gdx.input.isButtonJustPressed(Input.Buttons.LEFT) && !gamePlatform.isMobile) {
       Gdx.input.isCursorCatched = true
     }
     player.getComponent(RunningComponent::class.java).running =
-      KeyBinds.runningKey.isPressed() && Gdx.input.isCursorCatched
+      KeyBinds.runningKey.isPressed() && (Gdx.input.isCursorCatched || gamePlatform.isMobile)
 
     if (Gdx.input.isKeyJustPressed(Input.Keys.F1)) {
       dimension.rebuildAll()
@@ -321,6 +285,8 @@ class GameScreen(world: World) : KtxScreen {
 
     font.draw(spriteBatch, "Velocity: $vel", 10f, 200f)
     font.draw(spriteBatch, "Chunk Position: ${position.chunkPosition}", 10f, 210f)
+
+    font.draw(spriteBatch, "Is Mobile: ${gamePlatform.isMobile}", 10f, 220f)
   }
 
   fun move() {

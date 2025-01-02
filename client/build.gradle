@@ -1,5 +1,16 @@
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+
 [compileJava, compileTestJava]*.options*.encoding = 'UTF-8'
-eclipse.project.name = appName + '-core'
+
+java.sourceCompatibility = 11
+java.targetCompatibility = 11
+if (JavaVersion.current().isJava9Compatible()) {
+  compileJava.options.release.set(11)
+}
+kotlin.compilerOptions.jvmTarget.set(JvmTarget.JVM_11)
+compileKotlin.kotlinOptions.jvmTarget = 11
+
+eclipse.project.name = appName + '-client'
 
 dependencies {
   api project(':common')

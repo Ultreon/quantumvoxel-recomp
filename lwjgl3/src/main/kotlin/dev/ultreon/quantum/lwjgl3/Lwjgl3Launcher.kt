@@ -56,6 +56,24 @@ fun main() {
         }
       }
     }
+
+    override val isMobile: Boolean
+      get() = false
+
+    override fun dispose() {
+      logger.info("Exiting...")
+
+      // Loop through threads and interrupt them, unless they are the main thread
+      Thread.getAllStackTraces().keys.filter { it != Thread.currentThread() }.forEach {
+        if (it.id == Thread.currentThread().id) return@forEach
+        it.interrupt()
+        it.join(1000)
+        if (it.isAlive) {
+          logger.error("Thread ${it.name} is still running! Halting JVM...")
+          Runtime.getRuntime().halt(1)
+        }
+      }
+    }
   }
 
   // Extract mac64/*.dylib or macarm64/*.dylib into the same directory as where it ran from

@@ -19,6 +19,9 @@ class AndroidLauncher : AndroidApplication() {
       override fun loadResources(resourceManager: ResourceManager) {
         resourceManager.load(Gdx.files.internal("quantum.zip"))
       }
+
+      override val isMobile: Boolean
+        get() = true
     }
     initialize(QuantumVoxel, AndroidApplicationConfiguration().apply {
       // Configure your application here.

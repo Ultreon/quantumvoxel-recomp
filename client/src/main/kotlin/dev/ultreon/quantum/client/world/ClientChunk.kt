@@ -19,13 +19,20 @@ import dev.ultreon.quantum.logger
 import dev.ultreon.quantum.math.Vector3D
 import dev.ultreon.quantum.world.BlockFlags
 import dev.ultreon.quantum.world.Dimension
+import dev.ultreon.quantum.world.SIZE
 import ktx.assets.disposeSafely
 import ktx.collections.GdxArray
 
-const val SIZE = 16
-
 class ClientChunk(x: Int, y: Int, z: Int, private val material: Material, val dimension: ClientDimension) : Dimension(),
   RenderableProvider {
+  val start: GridPoint3
+    get() = chunkPos.cpy().also {
+      it.x *= SIZE
+      it.y *= SIZE
+      it.z *= SIZE
+    }
+  private var hasBlocks: Boolean = false
+  private var airBlocks: Int = SIZE * SIZE * SIZE
   private var dirty: Boolean = true
   val chunkPos: GridPoint3 = GridPoint3(x, y, z)
 
@@ -39,7 +46,23 @@ class ClientChunk(x: Int, y: Int, z: Int, private val material: Material, val di
   }
 
   override fun set(x: Int, y: Int, z: Int, block: Block, flags: BlockFlags) {
+    val x = (x % SIZE + SIZE) % SIZE
+    val y = (y % SIZE + SIZE) % SIZE
+    val z = (z % SIZE + SIZE) % SIZE
+    val block1 = blocks[x][y][z]
+    if (block1 == Blocks.air) {
+      airBlocks--
+    } else {
+      airBlocks++
+    }
     blocks[x][y][z] = block
+    if (block == Blocks.air) {
+      airBlocks++
+    } else {
+      airBlocks--
+    }
+
+    hasBlocks = airBlocks < SIZE * SIZE * SIZE
   }
 
   fun fillUpTo(y: Int, block: Block, flags: BlockFlags) {
@@ -64,10 +87,15 @@ class ClientChunk(x: Int, y: Int, z: Int, private val material: Material, val di
     }
 
     worldModel = buildModel()
+    if (worldModel == null) {
+      return
+    }
     worldModelInstance = ModelInstance(worldModel)
   }
 
-  private fun buildModel(): Model {
+  private fun buildModel(): Model? {
+    if (!hasBlocks) return null
+
     val builder = ModelBuilder()
     builder.begin()
     builder.part(
@@ -81,7 +109,7 @@ class ClientChunk(x: Int, y: Int, z: Int, private val material: Material, val di
       for (x in 0..<SIZE) {
         for (y in 0..<SIZE) {
           for (z in 0..<SIZE) {
-            loadBlockInto(x, y, z)
+            loadBlockInto(this, x, y, z)
           }
         }
       }
@@ -90,12 +118,12 @@ class ClientChunk(x: Int, y: Int, z: Int, private val material: Material, val di
     return builder.end()
   }
 
-  private fun MeshPartBuilder.loadBlockInto(x: Int, y: Int, z: Int) {
+  private fun loadBlockInto(meshPartBuilder: MeshPartBuilder, x: Int, y: Int, z: Int) {
     val block = get(x, y, z)
     if (block != Blocks.air) {
       val model = ModelRegistry[block]
       model.loadInto(
-        this, x, y, z, FaceCull(
+        meshPartBuilder, x, y, z, FaceCull(
           back = getSafe(x, y, z + 1) != Blocks.air,
           front = getSafe(x, y, z - 1) != Blocks.air,
           left = getSafe(x - 1, y, z) != Blocks.air,
@@ -104,6 +132,8 @@ class ClientChunk(x: Int, y: Int, z: Int, private val material: Material, val di
           bottom = getSafe(x, y - 1, z) != Blocks.air
         )
       )
+
+      this.hasBlocks = true
     }
   }
 
@@ -118,7 +148,7 @@ class ClientChunk(x: Int, y: Int, z: Int, private val material: Material, val di
   }
 
   override fun getRenderables(array: GdxArray<Renderable>, pool: Pool<Renderable>) {
-    worldModelInstance?.getRenderables(array, pool) ?: logger.warn("Failed to get renderable")
+    worldModelInstance?.getRenderables(array, pool)
   }
 
   override fun dispose() {

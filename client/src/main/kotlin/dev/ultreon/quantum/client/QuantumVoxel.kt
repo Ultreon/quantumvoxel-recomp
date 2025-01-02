@@ -115,6 +115,8 @@ object QuantumVoxel : KtxGame<KtxScreen>() {
 
       addScreen(GameScreen(world))
       setScreen<GameScreen>()
+
+      logger.debug("Quantum Voxel started!", this)
     } catch (e: Exception) {
       logger.error(e.stackTraceToString())
       this.crash = e
@@ -133,6 +135,8 @@ object QuantumVoxel : KtxGame<KtxScreen>() {
     world.dispose()
 
     ModelRegistry.dispose()
+
+    gamePlatform.dispose()
   }
 
   /**

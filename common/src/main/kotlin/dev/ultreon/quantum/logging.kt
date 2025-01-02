@@ -8,6 +8,21 @@ interface Logger {
   fun error(message: String)
   fun debug(message: String)
   fun trace(message: String)
+  fun info(message: String, obj: Any?) {
+    info(message + " :: " + obj.toString())
+  }
+  fun warn(message: String, obj: Any?) {
+    warn(message + " :: " + obj.toString())
+  }
+  fun error(message: String, obj: Any?) {
+    error(message + " :: " + obj.toString())
+  }
+  fun debug(message: String, obj: Any?) {
+    debug(message + " :: " + obj.toString())
+  }
+  fun trace(message: String, obj: Any?) {
+    trace(message + " :: " + obj.toString())
+  }
 }
 
 var factory = LoggerFactory {

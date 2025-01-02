@@ -11,6 +11,7 @@ import dev.ultreon.quantum.logger
 import dev.ultreon.quantum.math.Vector3D
 import dev.ultreon.quantum.world.BlockFlags
 import dev.ultreon.quantum.world.Dimension
+import dev.ultreon.quantum.world.SIZE
 import ktx.assets.disposeSafely
 import ktx.collections.GdxArray
 import ktx.collections.sortBy
@@ -21,6 +22,7 @@ const val renderDistance = 8
 class ClientDimension(private val material: Material) : Dimension(), RenderableProvider {
   val chunks: LongMap<ClientChunk> = LongMap()
   val chunksToLoad = GdxArray<Pair<GridPoint3, Long>>()
+  val generator = Generator()
 
   override fun get(x: Int, y: Int, z: Int): Block {
     return chunks.get(location(x.floorDiv(SIZE), y.floorDiv(SIZE), z.floorDiv(SIZE)))
@@ -199,18 +201,20 @@ class ClientDimension(private val material: Material) : Dimension(), RenderableP
   }
 
   private fun generate(chunk: ClientChunk) {
-    val wx = chunk.chunkPos.x * SIZE
-    val wy = chunk.chunkPos.y * SIZE
-    val wz = chunk.chunkPos.z * SIZE
+//    val wx = chunk.chunkPos.x * SIZE
+//    val wy = chunk.chunkPos.y * SIZE
+//    val wz = chunk.chunkPos.z * SIZE
+//
+//    for (x in 0 until SIZE) {
+//      for (y in 0 until SIZE) {
+//        for (z in 0 until SIZE) {
+//          val block = generateBlock(wx + x, wy + y, wz + z)
+//          chunk.set(x, y, z, block, BlockFlags.NONE)
+//        }
+//      }
+//    }
 
-    for (x in 0 until SIZE) {
-      for (y in 0 until SIZE) {
-        for (z in 0 until SIZE) {
-          val block = generateBlock(wx + x, wy + y, wz + z)
-          chunk.set(x, y, z, block, BlockFlags.NONE)
-        }
-      }
-    }
+    generator.generate(chunk)
   }
 
   private fun generateBlock(wx: Int, wy: Int, wz: Int): Block {

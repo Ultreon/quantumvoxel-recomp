@@ -683,3 +683,5 @@ export class Matrix3 {
     return `Matrix3(m: ${this.m})`;
   }
 }
+
+console.

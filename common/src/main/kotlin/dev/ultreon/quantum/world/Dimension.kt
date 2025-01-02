@@ -3,6 +3,8 @@ package dev.ultreon.quantum.world
 import com.badlogic.gdx.utils.Disposable
 import dev.ultreon.quantum.blocks.Block
 
+const val SIZE = 16
+
 @JvmInline
 value class BlockFlags(val value: Int) {
   fun has(flag: Int): Boolean = value and flag == flag

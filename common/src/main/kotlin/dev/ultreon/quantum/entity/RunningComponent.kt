@@ -1,4 +1,4 @@
-package dev.ultreon.quantum.client.entity
+package dev.ultreon.quantum.entity
 
 import com.artemis.Component
 import dev.ultreon.quantum.math.Vector3D
