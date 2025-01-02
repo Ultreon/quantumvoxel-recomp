@@ -4,7 +4,6 @@ import com.badlogic.gdx.files.FileHandle
 import dev.ultreon.quantum.LoggerFactory
 import dev.ultreon.quantum.util.NamespaceID
 import java.util.zip.ZipInputStream
-import kotlin.math.log
 
 private val logger = LoggerFactory["QV:Resources"]
 
@@ -62,7 +61,7 @@ class ResourceManager(
       category = resourceNode ?: throw NoSuchResourceException(location)
     }
     
-    return category[location.domain, path.subList(1, path.size).joinToString("/")] ?: throw NoSuchResourceException(location)
+    return category[location.domain, path.subList(0, path.size).joinToString("/")] ?: throw NoSuchResourceException(location)
   }
 
   /**
@@ -117,26 +116,24 @@ class ResourceManager(
   }
 
   private fun loadCategory(zip: ZipInputStream, categories: MutableList<String>, category: ResourceCategory? = null, filename: String, domain: String, parent: String = "") {
-    val path = if (parent == "") "${categories[0]}/$filename" else "$parent/${categories[0]}/$filename"
+    val path = if (parent == "") "" else parent
     logger.debug("Loading resource category: $domain:$path")
     logger.debug("Remaining path: ${categories.joinToString("/")}")
     logger.debug("Parent Category: ${category?.name}")
     logger.debug("Parent Category Path: $parent")
-    logger.debug("Category Name: ${categories[0]}")
-
-    val resourceCategory = (if (category != null) category[categories[0]] else this.categories[categories[0]])
-    if (resourceCategory == null) {
-      logger.error("Unknown category: ${categories[0]}")
-      throw NoSuchResourceCategoryException(categories[0])
-    }
-
-    val categoryName = categories.removeAt(0)
 
     if (categories.isEmpty()) {
+      logger.debug("Going to load resource: $domain:$path/$filename")
+      val resourceCategory = category ?: error("Invalid resource: $filename, not in a category!")
       resourceCategory ?: throw NoSuchResourceCategoryException(path)
-      resourceCategory[domain, filename] = StaticResource(NamespaceID.of(domain, path), zip.readBytes())
+      resourceCategory[domain, "$path/$filename"] = StaticResource(NamespaceID.of(domain, "$path/$filename"), zip.readBytes())
     } else {
-      loadCategory(zip, categories, category?.get(categoryName) ?: this.categories[categoryName], filename, domain, if (parent == "") categoryName else "$parent/$categoryName")
+      val categoryName = categories.removeAt(0)
+      logger.debug("Category Name: $categoryName")
+
+      val s = if (parent == "") categoryName else "$parent/$categoryName"
+      logger.debug("Going to load resource category: $domain:$s")
+      loadCategory(zip, categories, category?.get(categoryName) ?: this.categories[categoryName], filename, domain, s)
     }
   }
 
@@ -158,14 +155,14 @@ class ResourceManager(
               logger.warn("Unknown category: $categoryPath" )
               return@last
             }
-            loadCategory(category, domain, category1)
+            loadCategory(category, domain, category1, category.name())
           }
         }
       }
     }
   }
 
-  private fun loadCategory(file: FileHandle, domain: String, category: ResourceCategory? = null, path: String = "") {
+  private fun loadCategory(file: FileHandle, domain: String, category: ResourceCategory? = null, path: String) {
     file.list().forEach {
       when {
         it.isDirectory -> loadCategory(it, domain, category!![it.name()] ?: throw NoSuchResourceCategoryException(it.name()), path + it.name() + "/")

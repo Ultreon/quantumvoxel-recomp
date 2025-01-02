@@ -99,7 +99,7 @@ object QuantumVoxel : KtxGame<KtxScreen>() {
     try {
       Gdx.graphics.setVSync(false)
 
-      Blocks
+      Blocks.init()
 
       textureManager.init()
       textureManager.registerAtlas("block")
@@ -107,13 +107,7 @@ object QuantumVoxel : KtxGame<KtxScreen>() {
       if (!Gdx.files.isLocalStorageAvailable || Gdx.files.internal("quantum.zip").exists() || System.getProperty("quantum.nativeimage")?.toBoolean() == true) {
         resourceManager.load(Gdx.files.internal("quantum.zip"))
       } else {
-        try {
-          gamePlatform.loadResources(resourceManager)
-        } catch (e: Exception) {
-          ZipInputStream(QuantumVoxel::class.java.getResourceAsStream("/quantum.zip")?.buffered() ?: Files.newInputStream(Paths.get("quantum.zip")).buffered()).use {
-            resourceManager.loadZip(it)
-          }
-        }
+        gamePlatform.loadResources(resourceManager)
       }
 
       textureManager.pack()
@@ -122,6 +116,7 @@ object QuantumVoxel : KtxGame<KtxScreen>() {
       addScreen(GameScreen(world))
       setScreen<GameScreen>()
     } catch (e: Exception) {
+      logger.error(e.stackTraceToString())
       this.crash = e
       this.crashSpriteBatch = SpriteBatch()
       this.crashFont = BitmapFont()

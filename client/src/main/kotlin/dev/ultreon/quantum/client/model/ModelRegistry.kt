@@ -45,6 +45,7 @@ object ModelRegistry : Disposable {
 
   fun loadModels() {
     val jsonModelLoader = QuantumVoxel.jsonModelLoader
+    if (Registries.blocks.values.isEmpty()) logger.error("Where are my blocks?")
     Registries.blocks.values.forEach {
       if (it != Blocks.air) logger.debug("Loading block model for ${it.id}")
       else return@forEach

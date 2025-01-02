@@ -57,7 +57,7 @@ class GameScreen(world: World) : KtxScreen {
   )
   private val font = BitmapFont()
   private val spriteBatch = SpriteBatch()
-  private val texture = texture(NamespaceID.of(path = "block/soil.png"))
+  private val texture = texture(NamespaceID.of(path = "textures/block/soil.png"))
   val material = material {
     diffuse(texture.texture)
     cullFace(GL20.GL_BACK)

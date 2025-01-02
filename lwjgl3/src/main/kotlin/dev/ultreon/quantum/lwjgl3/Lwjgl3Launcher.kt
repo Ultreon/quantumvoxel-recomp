@@ -17,7 +17,9 @@ import dev.ultreon.quantum.factory
 import dev.ultreon.quantum.resource.ResourceManager
 import java.io.FileNotFoundException
 import java.nio.file.Files
+import java.nio.file.Paths
 import java.nio.file.StandardCopyOption
+import java.util.zip.ZipInputStream
 import kotlin.io.path.Path
 import kotlin.io.path.toPath
 import com.badlogic.gdx.backends.lwjgl3.Lwjgl3Application as OpenGLApp
@@ -41,10 +43,18 @@ fun main() {
 
   gamePlatform = object : GamePlatform {
     override fun loadResources(resourceManager: ResourceManager) {
-      // Locate resource "_assetroot" and use its parent directory as the root
-      val resource = QuantumVoxel::class.java.classLoader.getResource("_assetroot")
-      val path = resource?.toURI()?.toPath()?.parent ?: throw FileNotFoundException("Asset root not found")
-      resourceManager.load(Gdx.files.absolute(path.toString()))
+      try {
+        // Locate resource "_assetroot" and use its parent directory as the root
+        val resource = QuantumVoxel::class.java.classLoader.getResource("_assetroot")
+        val path = resource?.toURI()?.toPath()?.parent ?: throw FileNotFoundException("Asset root not found")
+        resourceManager.load(Gdx.files.absolute(path.toString()))
+
+      } catch (e: Exception) {
+        ZipInputStream(QuantumVoxel::class.java.getResourceAsStream("/quantum.zip")?.buffered()
+                ?: Files.newInputStream(Paths.get("quantum.zip")).buffered()).use {
+          resourceManager.loadZip(it)
+        }
+      }
     }
   }
 

@@ -1,8 +1,6 @@
 package dev.ultreon.quantum.client
 
-import dev.ultreon.quantum.resource.Resource
-import dev.ultreon.quantum.resource.ResourceCategory
-import dev.ultreon.quantum.resource.StaticResource
+import dev.ultreon.quantum.resource.*
 
 class ModelsCategory : ResourceCategory {
   override val name: String = "models"

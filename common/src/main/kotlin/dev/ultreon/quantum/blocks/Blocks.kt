@@ -15,4 +15,13 @@ object Blocks {
     Registries.blocks.register(NamespaceID.of(path = name), block)
     return block
   }
+
+  /**
+   * Initializes the necessary components or configurations for the system.
+   * Specifically required for TeaVM to function properly as it doesn't handle
+   * dynamically loading the class by relying solely on the "Blocks" construct in Kotlin.
+   */
+  fun init() {
+    // No-op
+  }
 }

@@ -189,7 +189,7 @@ class JsonModelLoader @JvmOverloads constructor(
     for (entry in textures) {
       val name: String = entry.name!!
       val stringId: String = entry.asString()
-      val id: NamespaceID = NamespaceID.parse(stringId).mapPath { path -> "$path.png" }
+      val id: NamespaceID = NamespaceID.parse(stringId).mapPath { path -> "textures/$path.png" }
       textureElements[name] = id
     }
 
@@ -198,7 +198,7 @@ class JsonModelLoader @JvmOverloads constructor(
 
   fun load(key: ResourceId<*>, id: NamespaceID): BlockModel? {
     return try {
-      val resource: Resource = resourceManager[id.mapPath { path -> "models/$path.json" }]
+      val resource: Resource = resourceManager[id.mapPath { path -> "models/${key.name.path}/$path.json" }]
       this.load(key, JsonReader().parse(resource.inputStream()))
     } catch (e: IOException) {
       null
@@ -332,9 +332,9 @@ class JsonModelLoader @JvmOverloads constructor(
       val v11 = VertexInfo()
       for ((direction, faceElement) in blockFaceFaceElementMap) {
         val texRef = faceElement.texture
-        val texture: NamespaceID? = if (texRef == "#missing") NamespaceID.of(path = "block/error.png")
+        val texture: NamespaceID? = if (texRef == "#missing") NamespaceID.of(path = "textures/block/error.png")
         else if (texRef.startsWith("#")) textureElements[texRef.substring(1)]
-        else NamespaceID.parse(texRef).mapPath { path -> "$path.png" }
+        else NamespaceID.parse(texRef).mapPath { path -> "textures/$path.png" }
 
         meshBuilder.begin(
           VertexAttributes(
@@ -456,9 +456,9 @@ class JsonModelLoader @JvmOverloads constructor(
         if (faceCull.face(direction)) continue
 
         val texRef = faceElement.texture
-        val texture: NamespaceID? = if (texRef == "#missing") NamespaceID.of(path = "block/error.png")
+        val texture: NamespaceID? = if (texRef == "#missing") NamespaceID.of(path = "textures/block/error.png")
         else if (texRef.startsWith("#")) textureElements[texRef.substring(1)]
-        else NamespaceID.parse(texRef).mapPath { path -> "$path.png" }
+        else NamespaceID.parse(texRef).mapPath { path -> "textures/$path.png" }
 
         v00.setCol(Color.WHITE)
         v01.setCol(Color.WHITE)

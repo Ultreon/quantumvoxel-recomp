@@ -1,5 +1,6 @@
 package dev.ultreon.quantum.client
 
+import dev.ultreon.quantum.logger
 import dev.ultreon.quantum.resource.Resource
 import dev.ultreon.quantum.resource.ResourceCategory
 import dev.ultreon.quantum.resource.StaticResource
@@ -16,6 +17,7 @@ class SimpleCategory(override val name: String, override val parent: ResourceCat
   }
 
   override fun set(domain: String, filename: String, value: StaticResource) {
+    logger.debug("Setting resource: $domain:$filename")
     resources["$domain:$filename"] = value
   }
 
