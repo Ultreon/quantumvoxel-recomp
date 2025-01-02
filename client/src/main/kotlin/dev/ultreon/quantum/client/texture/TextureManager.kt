@@ -6,6 +6,7 @@ import com.badlogic.gdx.graphics.Texture
 import com.badlogic.gdx.graphics.g2d.PixmapPacker
 import com.badlogic.gdx.graphics.g2d.TextureAtlas
 import com.badlogic.gdx.graphics.g2d.TextureRegion
+import com.badlogic.gdx.utils.Disposable
 import dev.ultreon.quantum.client.resource.TextureCategory
 import dev.ultreon.quantum.client.resource.TexturesCategory
 import dev.ultreon.quantum.logger
@@ -14,13 +15,42 @@ import dev.ultreon.quantum.resource.StaticResource
 import dev.ultreon.quantum.util.NamespaceID
 import ktx.assets.disposeSafely
 
-class TextureManager(val resourceManager: ResourceManager) {
+/**
+ * Manages textures and texture atlases used in the application.
+ *
+ * The `TextureManager` is responsible for initializing, registering, and managing
+ * texture atlases, as well as safely disposing of texture resources when no longer needed.
+ * It provides fallback textures for missing resources, preventing application crashes due
+ * to missing texture data.
+ *
+ * The fallback texture is used when a texture or atlas cannot be found, providing
+ * a mechanism to prevent runtime errors caused by missing resources.
+ *
+ * @constructor
+ * Creates a new instance of `TextureManager` with the given `ResourceManager`.
+ *
+ * @property resourceManager The resource manager used to load and manage resources.
+ */
+class TextureManager(val resourceManager: ResourceManager) : Disposable {
   private val atlases: MutableMap<String, TextureAtlas> = HashMap()
   private lateinit var texturesCategory: TexturesCategory
   private val packers: MutableMap<String, PixmapPacker> = HashMap()
+  private val warns: MutableSet<NamespaceID> = HashSet()
+  private val atlasWarns: MutableSet<String> = HashSet()
 
   private lateinit var fallbackTexture: TextureRegion
 
+  /**
+   * Initializes the textures category and sets up a fallback texture to be used when
+   * a requested texture is not found in the atlases.
+   *
+   * This method retrieves the `textures` category from the `resourceManager` and assigns it to
+   * the `texturesCategory` property. It also creates a default fallback texture region using
+   * a temporary pixmap to draw a small 2x2 texture with a specific color.
+   *
+   * Ensures that the fallback texture can be utilized when handling missing textures
+   * in the texture management system.
+   */
   fun init() {
     texturesCategory = resourceManager["textures"] as TexturesCategory
     fallbackTexture = TextureRegion(Pixmap(2, 2, Format.RGB888).let { pixmap ->
@@ -33,6 +63,15 @@ class TextureManager(val resourceManager: ResourceManager) {
     }, 0, 0, 2, 2)
   }
 
+  /**
+   * Registers a new texture atlas with the specified name.
+   *
+   * This method registers a new atlas in the texture category
+   * system by associating it with a newly created `TextureCategory` instance.
+   * This ensures that the atlas is properly tracked and available for resource management.
+   *
+   * @param name The unique identifier for the texture atlas to be registered.
+   */
   fun registerAtlas(name: String) {
     val skylineStrategy = PixmapPacker.SkylineStrategy()
     packers[name] = PixmapPacker(4096, 4096, Format.RGBA8888, 0, false, skylineStrategy)
@@ -40,6 +79,12 @@ class TextureManager(val resourceManager: ResourceManager) {
     texturesCategory.register(name, TextureCategory(texturesCategory, this, name))
   }
 
+  /**
+   * Packs all registered texture atlases by processing their associated resources.
+   *
+   * This method ensures that all texture resources are properly packed into texture atlases
+   * and made available for efficient rendering within the application.
+   */
   fun pack() {
     packers.forEach { (name, packer) ->
       logger.debug("Packing atlas: $name")
@@ -60,18 +105,37 @@ class TextureManager(val resourceManager: ResourceManager) {
     packers.clear()
   }
 
+  /**
+   * Retrieves a texture region associated with the specified `NamespaceID`.
+   *
+   * This operator function attempts to locate the texture within its relevant atlas
+   * by extracting the atlas name from the texture's path. If the atlas is not found,
+   * a fallback texture will be used, and a warning will be logged only once per missing atlas.
+   *
+   * If the atlas exists but the specific texture region cannot be located,
+   * the fallback texture will also be returned, and a warning will be logged only once per missing texture.
+   *
+   * @param texture The `NamespaceID` representing the texture to retrieve.
+   * @return The corresponding `TextureRegion` if found, or the fallback texture if the specified texture or atlas is missing.
+   */
   operator fun get(texture: NamespaceID): TextureRegion {
     val atlas = atlases[texture.path.split("/")[0]] ?: run {
-      logger.warn("Atlas not found: ${texture.path.split("/")[0]}")
+      if (texture.path.split("/")[0] !in atlasWarns) {
+        logger.warn("Atlas not found: ${texture.path.split("/")[0]}")
+        atlasWarns += texture.path.split("/")[0]
+      }
       return fallbackTexture
     }
     return atlas.findRegion("$texture") ?: run {
-      logger.warn("Texture not found: $texture")
+      if (texture !in warns) {
+        logger.warn("Texture not found: $texture")
+        warns += texture
+      }
       fallbackTexture
     }
   }
 
-  fun disposeSafely() {
+  fun dispose() {
     atlases.forEach { (_, atlas) ->
       atlas.disposeSafely()
     }

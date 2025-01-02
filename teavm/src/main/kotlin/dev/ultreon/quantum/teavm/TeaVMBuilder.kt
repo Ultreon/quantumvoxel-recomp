@@ -13,10 +13,13 @@ object TeaVMBuilder {
   @JvmStatic
   fun main(arguments: Array<String>) {
     val teaBuildConfiguration = TeaBuildConfiguration().apply {
-      assetsPath.add(AssetFileHandle("../assets"))
+      assetsPath.add(AssetFileHandle("build/assets"))
       webappPath = File("build/dist").canonicalPath
       // Register any extra classpath assets here:
       // additionalAssetsClasspathFiles += "dev/ultreon/quantum/asset.extension"
+
+      this.showLoadingLogo = true
+      this.logoPath = "logo.png"
     }
 
     // Register any classes or packages that require reflection here:
@@ -25,7 +28,7 @@ object TeaVMBuilder {
     val tool = TeaBuilder.config(teaBuildConfiguration)
     tool.mainClass = "dev.ultreon.quantum.teavm.TeaVMLauncher"
     tool.optimizationLevel = TeaVMOptimizationLevel.FULL
-    tool.setObfuscated(true)
+    tool.setObfuscated(false)
     TeaBuilder.build(tool)
   }
 }

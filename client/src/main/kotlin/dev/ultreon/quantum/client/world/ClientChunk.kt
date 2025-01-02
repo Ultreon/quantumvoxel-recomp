@@ -21,12 +21,12 @@ import dev.ultreon.quantum.world.BlockFlags
 import dev.ultreon.quantum.world.Dimension
 import ktx.assets.disposeSafely
 import ktx.collections.GdxArray
-import ktx.collections.map
 
 const val SIZE = 16
 
 class ClientChunk(x: Int, y: Int, z: Int, private val material: Material, val dimension: ClientDimension) : Dimension(),
   RenderableProvider {
+  private var dirty: Boolean = true
   val chunkPos: GridPoint3 = GridPoint3(x, y, z)
 
   val blocks = Array(SIZE) { Array(SIZE) { Array(SIZE) { Blocks.air } } }
@@ -55,9 +55,13 @@ class ClientChunk(x: Int, y: Int, z: Int, private val material: Material, val di
   }
 
   fun rebuild() {
-    worldModel.disposeSafely()
-    worldModel = null
-    worldModelInstance = null
+    dirty = false
+
+    if (worldModelInstance != null || worldModel != null) {
+      worldModel.disposeSafely()
+      worldModel = null
+      worldModelInstance = null
+    }
 
     worldModel = buildModel()
     worldModelInstance = ModelInstance(worldModel)
@@ -108,7 +112,6 @@ class ClientChunk(x: Int, y: Int, z: Int, private val material: Material, val di
       val wx = chunkPos.x * SIZE + localX
       val wy = chunkPos.y * SIZE + localY
       val wz = chunkPos.z * SIZE + localZ
-      logger.debug("$localX, $localY, $localZ :: $chunkPos :: $wx, $wy, $wz")
       return dimension[wx, wy, wz]
     }
     return this[localX, localY, localZ]
@@ -128,4 +131,11 @@ class ClientChunk(x: Int, y: Int, z: Int, private val material: Material, val di
         .sub(this.chunkPos.x * SIZE.toFloat(), this.chunkPos.y * SIZE.toFloat(), this.chunkPos.z * SIZE.toFloat())
     )
   }
+
+  fun markDirty() {
+    this.dirty = true
+  }
+
+  val isDirty: Boolean
+    get() = this.dirty
 }

@@ -1,5 +1,7 @@
 package dev.ultreon.quantum
 
+import com.badlogic.gdx.Gdx
+
 interface Logger {
   fun info(message: String)
   fun warn(message: String)
@@ -11,23 +13,23 @@ interface Logger {
 var factory = LoggerFactory {
   object : Logger {
     override fun info(message: String) {
-      // No-op
+      Gdx.app.applicationLogger.log(it, "[INFO] $message")
     }
 
     override fun warn(message: String) {
-      // No-op
+      Gdx.app.applicationLogger.error(it, "[WARN] $message")
     }
 
     override fun error(message: String) {
-      // No-op
+      Gdx.app.applicationLogger.error(it, "[ERROR] $message")
     }
 
     override fun debug(message: String) {
-      // No-op
+      Gdx.app.applicationLogger.log(it, "[DEBUG] $message")
     }
 
     override fun trace(message: String) {
-      // No-op
+      Gdx.app.applicationLogger.debug(it, "[TRACE] $message")
     }
   }
 }

@@ -18,6 +18,8 @@ import dev.ultreon.quantum.client.entity.RunningComponent
 import dev.ultreon.quantum.client.input.KeyBinds
 import dev.ultreon.quantum.client.world.ClientDimension
 import dev.ultreon.quantum.client.world.Skybox
+import dev.ultreon.quantum.logger
+import dev.ultreon.quantum.math.Vector3D
 import dev.ultreon.quantum.util.NamespaceID
 import dev.ultreon.quantum.vec3d
 import dev.ultreon.quantum.world.BlockFlags
@@ -45,6 +47,8 @@ import ktx.math.vec3
  *              for managing entities and components.
  */
 class GameScreen(world: World) : KtxScreen {
+  private var lastRefreshPosition: Vector3D = vec3d()
+  private var lastRefreshTime: Long = 0
   private var lastPollTime: Long = 0
   private val speed: Float = 1f
   private val modelBatch = ModelBatch(
@@ -120,7 +124,9 @@ class GameScreen(world: World) : KtxScreen {
     it.edit()
       .add(PlayerComponent("Player"))
       .add(RunningComponent(1.6F))
-      .add(PositionComponent())
+      .add(PositionComponent(vec3d(0, 65, 0)))
+
+    lastRefreshPosition.set(it.getComponent(PositionComponent::class.java).position)
   }
 
   val environment = Environment().apply {
@@ -130,7 +136,7 @@ class GameScreen(world: World) : KtxScreen {
   val skybox = Skybox()
 
   init {
-    world.inject(player)
+//    world.inject(player)
 
     dimension.refreshChunks(player.getComponent(PositionComponent::class.java).position)
   }
@@ -179,6 +185,16 @@ class GameScreen(world: World) : KtxScreen {
     if (lastPollTime + 100 < System.currentTimeMillis()) {
       dimension.pollChunkLoad()
       lastPollTime = System.currentTimeMillis()
+    }
+
+    if (lastRefreshTime + 1000 < System.currentTimeMillis()) {
+      if (position.position != lastRefreshPosition) {
+        dimension.refreshChunks(player.getComponent(PositionComponent::class.java).position)
+        lastRefreshTime = System.currentTimeMillis()
+        lastRefreshPosition = position.position.copy()
+      } else {
+        lastRefreshTime = System.currentTimeMillis()
+      }
     }
 
     Gdx.app.graphics.setTitle("Quantum Voxel - FPS: ${Gdx.graphics.framesPerSecond}")
@@ -253,6 +269,10 @@ class GameScreen(world: World) : KtxScreen {
     }
     player.getComponent(RunningComponent::class.java).running =
       KeyBinds.runningKey.isPressed() && Gdx.input.isCursorCatched
+
+    if (Gdx.input.isKeyJustPressed(Input.Keys.F1)) {
+      dimension.rebuildAll()
+    }
   }
 
   /**
@@ -298,6 +318,9 @@ class GameScreen(world: World) : KtxScreen {
         else -> "Forward"
       }, 10f, 190f
     )
+
+    font.draw(spriteBatch, "Velocity: $vel", 10f, 200f)
+    font.draw(spriteBatch, "Chunk Position: ${position.chunkPosition}", 10f, 210f)
   }
 
   fun move() {

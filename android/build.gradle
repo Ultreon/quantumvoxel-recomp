@@ -17,16 +17,17 @@ android {
       aidl.setSrcDirs(['src/main/java', 'src/main/kotlin'])
       renderscript.setSrcDirs(['src/main/java', 'src/main/kotlin'])
       res.setSrcDirs(['res'])
-      assets.setSrcDirs(['../assets'])
+      assets.setSrcDirs(['build/assets'])
       jniLibs.setSrcDirs(['libs'])
     }
   }
   packagingOptions {
     resources {
-      excludes += ['META-INF/robovm/ios/robovm.xml', 'META-INF/DEPENDENCIES.txt', 'META-INF/DEPENDENCIES',
-                   'META-INF/dependencies.txt', '**/*.gwt.xml']
+      excludes += ['META-INF/robovm/ios/robovm.xml', 'META-INF/DEPENDENCIES.txt', 'META-INF/INDEX.LIST', 'META-INF/DEPENDENCIES',
+                   'META-INF/dependencies.txt', '**/*.gwt.xml', "META-INF/native-image/**/*", "META-INF/native-image/**/*"]
       pickFirsts += ['META-INF/LICENSE.txt', 'META-INF/LICENSE', 'META-INF/license.txt', 'META-INF/LGPL2.1',
-                     'META-INF/NOTICE.txt', 'META-INF/NOTICE', 'META-INF/notice.txt']
+                     'META-INF/NOTICE.txt', 'META-INF/io.netty.versions.properties', 'META-INF/NOTICE', 'META-INF/notice.txt', 'META-INF/vertx/vertx-version.txt',
+                     'kotlin/internal/internal.kotlin_builtins', 'kotlin/reflect/reflect.kotlin_builtins', "**/*.rl", "**/*.glsl"]
     }
   }
   defaultConfig {
@@ -66,8 +67,11 @@ dependencies {
   //noinspection GradleDependency
   implementation "com.badlogicgames.gdx:gdx-backend-android:$gdxVersion"
   implementation "de.tomgrill.gdxdialogs:gdx-dialogs-android:$dialogsVersion"
-  implementation project(':client')
-
+  implementation project(':client'), {
+    exclude group: "com.caoccao.javet", module: "javet"
+    exclude group: "org.aya-prover.gdx-box2d", module: "box2d"
+  }
+  implementation 'androidx.core:core-ktx:1.12.0' // Use the latest version available
   natives implementation('com.caoccao.javet:javet-node-android:4.1.1')
   natives "com.badlogicgames.gdx:gdx-box2d-platform:$gdxVersion:natives-arm64-v8a"
   natives "com.badlogicgames.gdx:gdx-box2d-platform:$gdxVersion:natives-armeabi-v7a"
@@ -116,6 +120,14 @@ tasks.matching { it.name.contains("merge") && it.name.contains("JniLibFolders") 
   packageTask.dependsOn 'copyAndroidNatives'
 }
 
+tasks.matching { it.name.contains("Resources") && it.name.startsWith("process") }.configureEach { packageTask ->
+  packageTask.dependsOn 'zipAssets'
+}
+
+tasks.matching { it.name.contains("Assets") && it.name.startsWith("merge") }.configureEach { packageTask ->
+  packageTask.dependsOn 'zipAssets'
+}
+
 tasks.register('run', Exec) {
   def path
   def localProperties = project.file("../local.properties")
@@ -139,3 +151,8 @@ tasks.register('run', Exec) {
 }
 
 eclipse.project.name = appName + "-android"
+
+tasks.register("zipAssets", Zip) {
+  from rootProject.file("assets")
+  archiveFile.set file("build/assets/quantum.zip")
+}

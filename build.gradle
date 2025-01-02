@@ -65,7 +65,7 @@ configure(subprojects - project(':android')) {
 
 subprojects {
   version = '$projectVersion'
-  ext.appName = 'XintecRPG'
+  ext.appName = 'QuantumVoxel'
   repositories {
     mavenCentral()
     maven { url 'https://s01.oss.sonatype.org' }
@@ -80,4 +80,4 @@ subprojects {
   }
 }
 
-eclipse.project.name = 'XintecRPG' + '-parent'
+eclipse.project.name = 'QuantumVoxel' + '-parent'

@@ -16,24 +16,26 @@ import ktx.collections.GdxArray
 import ktx.collections.sortBy
 import kotlin.system.measureTimeMillis
 
-const val renderDistance = 2
+const val renderDistance = 8
 
 class ClientDimension(private val material: Material) : Dimension(), RenderableProvider {
   val chunks: LongMap<ClientChunk> = LongMap()
   val chunksToLoad = GdxArray<Pair<GridPoint3, Long>>()
 
   override fun get(x: Int, y: Int, z: Int): Block {
-    return chunks.get(location(x, y, z))?.get(x.mod(SIZE), y.mod(SIZE), z.mod(SIZE)) ?: Blocks.air
+    return chunks.get(location(x.floorDiv(SIZE), y.floorDiv(SIZE), z.floorDiv(SIZE)))
+      ?.get(x.mod(SIZE), y.mod(SIZE), z.mod(SIZE)) ?: Blocks.air
   }
 
   override fun set(x: Int, y: Int, z: Int, block: Block, flags: BlockFlags) {
-    chunks.get(location(x, y, z))?.set(x % SIZE, y % SIZE, z % SIZE, block, flags)
+    chunks.get(location(x.floorDiv(SIZE), y.floorDiv(SIZE), z.floorDiv(SIZE)))
+      ?.set(x % SIZE, y % SIZE, z % SIZE, block, flags)
   }
 
   fun location(x: Int, y: Int, z: Int): Long {
     return (x.toLong() and 0xFFFFFF) or
-            ((y.toLong() and 0xFFFFFF) shl 24) or
-            ((z.toLong() and 0xFFFFFF) shl 48)
+      ((y.toLong() and 0xFFFFFF) shl 24) or
+      ((z.toLong() and 0xFFFFFF) shl 48)
   }
 
   fun chunkAt(x: Int, y: Int, z: Int): ClientChunk? {
@@ -54,7 +56,9 @@ class ClientDimension(private val material: Material) : Dimension(), RenderableP
   }
 
   fun remove(chunk: ClientChunk) {
-    chunks.remove(location(chunk.chunkPos.x, chunk.chunkPos.y, chunk.chunkPos.z))
+    if (chunks.remove(location(chunk.chunkPos.x, chunk.chunkPos.y, chunk.chunkPos.z)) == null) {
+      logger.warn("Tried to remove nonexistent chunk at ${chunk.chunkPos}")
+    }
     chunk.disposeSafely()
 
     forChunksAround(chunk) { rebuild() }
@@ -62,13 +66,18 @@ class ClientDimension(private val material: Material) : Dimension(), RenderableP
     logger.debug("Unloaded chunk: ${chunk.chunkPos}")
   }
 
-  fun loadChunk(cx: Int, cy: Int, cz: Int, build: Boolean = true) = put(ClientChunk(cx, cy, cz, material, this).apply {
-    generate(this)
-    if (build) {
-      rebuild()
-      forChunksAround(this) { rebuild() }
+  fun loadChunk(cx: Int, cy: Int, cz: Int, build: Boolean = true) {
+    val chunk = ClientChunk(cx, cy, cz, material, this)
+    put(chunk.apply {
+      generate(this)
+    })
+    chunk.apply {
+      if (build) {
+        rebuild()
+        forChunksAround(this) { rebuild() }
+      }
     }
-  })
+  }
 
   inline fun forChunksAround(chunk: ClientChunk, crossinline action: ClientChunk.() -> Unit) {
     val position = chunk.chunkPos
@@ -92,10 +101,27 @@ class ClientDimension(private val material: Material) : Dimension(), RenderableP
     }
   }
 
+  val ClientChunk.hasChunksAround: Boolean
+    get() {
+      for (x in -1..1) for (y in -1..1) for (z in -1..1) {
+        if (x == 0 && y == 0 && z == 0) {
+          continue
+        } else {
+          chunks.get(location(chunkPos.x + x, chunkPos.y + y, chunkPos.z + z)) ?: return false
+        }
+      }
+      return true
+    }
+
   fun pollChunkLoad() {
     if (chunksToLoad.isEmpty) return
     val toLoad = chunksToLoad.removeIndex(0)
-    loadChunk(toLoad.first.x, toLoad.first.y, toLoad.first.z)
+    val chunkPos = chunks[toLoad.second]?.chunkPos
+    when (chunkPos) {
+      toLoad.first -> return
+      null -> loadChunk(toLoad.first.x, toLoad.first.y, toLoad.first.z)
+      else -> logger.warn("Attempted override for ${toLoad.first} at already existing location $chunkPos")
+    }
   }
 
   fun pollAllChunks() {
@@ -128,33 +154,42 @@ class ClientDimension(private val material: Material) : Dimension(), RenderableP
 
   fun refreshChunks(position: Vector3D) {
     val requiredChunks = GdxArray<Pair<GridPoint3, Long>>()
+    val cx = position.x.toInt().floorDiv(SIZE)
+    val cy = position.y.toInt().floorDiv(SIZE)
+    val cz = position.z.toInt().floorDiv(SIZE)
     for (x in -renderDistance..renderDistance) {
       for (y in -renderDistance..renderDistance) {
         for (z in -renderDistance..renderDistance) {
-          val cy = y + position.y.toInt() * SIZE
-          val cx = x + position.x.toInt() * SIZE
-          val cz = z + position.z.toInt() * SIZE
+          val dcy = y + cy
+          val dcx = x + cx
+          val dcz = z + cz
 
-          val chunk = chunks[location(cx, cy, cz)]
+          val chunk = chunks[location(dcx, dcy, dcz)]
           if (chunk == null) {
-            requiredChunks.add(GridPoint3(cx, cy, cz) to location(cx, cy, cz))
+            requiredChunks.add(GridPoint3(dcx, dcy, dcz) to location(dcx, dcy, dcz))
           }
         }
       }
     }
 
+    val toRemove = GdxArray<ClientChunk>()
     for (chunk in chunks.values()) {
-      if (requiredChunks.none { it.first.x == chunk.chunkPos.x && it.first.y == chunk.chunkPos.y && it.first.z == chunk.chunkPos.z }) {
-        remove(chunk)
+      if (requiredChunks.any { it.first.x == chunk.chunkPos.x && it.first.y == chunk.chunkPos.y && it.first.z == chunk.chunkPos.z }) {
+        toRemove.add(chunk)
         forChunksAround(chunk) { rebuild() }
       }
     }
 
+    for (chunk in toRemove) {
+      remove(chunk)
+      forChunksAround(chunk) { rebuild() }
+    }
+
     requiredChunks.sortBy {
-      it.first.dst2(position.x.toInt(), position.y.toInt(), position.z.toInt())
+      it.first.dst2(cx.toInt(), cy.toInt(), cz.toInt())
     }
     for (chunk in chunksToLoad) {
-      if (chunk.first.dst(position.x.toInt(), position.y.toInt(), position.z.toInt()) > renderDistance * SIZE) {
+      if (chunk.first.dst(cx.toInt(), cy.toInt(), cz.toInt()) > renderDistance) {
         chunksToLoad.removeValue(chunk, true)
       }
     }
@@ -179,14 +214,11 @@ class ClientDimension(private val material: Material) : Dimension(), RenderableP
   }
 
   private fun generateBlock(wx: Int, wy: Int, wz: Int): Block {
-    if (wy > 64) {
-      return Blocks.air
-    } else if (wy == 64) {
-      return Blocks.grass
-    } else if (wy > 60) {
-      return Blocks.soil
-    } else {
-      return Blocks.stone
+    return when {
+      wy > 64 -> Blocks.air
+      wy == 64 -> Blocks.grass
+      wy > 60 -> Blocks.soil
+      else -> Blocks.stone
     }
   }
 

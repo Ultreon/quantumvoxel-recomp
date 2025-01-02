@@ -34,9 +34,13 @@ compileKotlin.kotlinOptions.jvmTarget = "21"
 dependencies {
   implementation "com.badlogicgames.gdx-controllers:gdx-controllers-desktop:$gdxControllersVersion"
   implementation "com.badlogicgames.gdx:gdx-backend-lwjgl3:$gdxVersion"
+  implementation "com.badlogicgames.gdx:gdx-lwjgl3-angle:$gdxVersion"
   implementation "com.badlogicgames.gdx:gdx-box2d-platform:$gdxVersion:natives-desktop"
   implementation "com.badlogicgames.gdx:gdx-freetype-platform:$gdxVersion:natives-desktop"
   implementation "com.badlogicgames.gdx:gdx-platform:$gdxVersion:natives-desktop"
+  implementation "org.lwjgl:lwjgl-opengles:3.3.4:natives-windows"
+  implementation "com.github.Dgzt:gdx-lwjgl3-angle-vulkan:1.1.0"
+  implementation "dev.ultreon:gdx-lwjgl3-metal-angle:6af9274bb1"
   implementation "com.badlogicgames.gdx:gdx:$gdxVersion"
   implementation "de.tomgrill.gdxdialogs:gdx-dialogs-desktop:$dialogsVersion"
   implementation project(':client')
@@ -63,7 +67,7 @@ dependencies {
   // Guava
   implementation "com.google.guava:guava:33.4.0-jre"
 
-  implementation("org.reflections:reflections:0.10.2")
+//  implementation("org.reflections:reflections:0.10.2")
   // JOptSimple
   implementation "net.sf.jopt-simple:jopt-simple:5.0.4"
 
@@ -79,6 +83,7 @@ run {
   workingDir = rootProject.file('assets').path
   setIgnoreExitValue(true)
 
+  jvmArgs += "-agentlib:native-image-agent=config-output-dir=./config."
   if (os.contains('mac')) jvmArgs += "-XstartOnFirstThread"
 }
 
@@ -168,33 +173,33 @@ if (enableGraalNative == 'true') {
   apply from: file("nativeimage.gradle")
 }
 
-task generateBindings(type: JavaExec) {
-  classpath = sourceSets.main.runtimeClasspath
-  mainClass = 'dev.ultreon.langgen.Main'
-  args = ['--js', '--stub', '--output='+file("../modules")]
-
-  inputs.files(sourceSets.main.allSource)
-  outputs.dir(file("../modules"))
-
-  group = 'build'
-  description = 'Generate bindings'
-
-  finalizedBy('compileTypescript')
-}
-
-tasks.register('compileTypescript', Exec) {
-  group = 'build'
-  description = 'Compile typescript'
-
-  inputs.files(fileTree("../modules"))
-  outputs.files(fileTree("../modules"))
-
-  if (System.getProperty('os.name').toLowerCase().contains('windows')) {
-    commandLine 'cmd', '/c', 'npm', 'run', 'build'
-  } else {
-    commandLine 'bash', '-c', 'npm run build'
-  }
-  workingDir rootProject.file('modules')
-}
-
-classes.finalizedBy generateBindings
+//task generateBindings(type: JavaExec) {
+//  classpath = sourceSets.main.runtimeClasspath
+//  mainClass = 'dev.ultreon.langgen.Main'
+//  args = ['--js', '--stub', '--output='+file("../modules")]
+//
+//  inputs.files(sourceSets.main.allSource)
+//  outputs.dir(file("../modules"))
+//
+//  group = 'build'
+//  description = 'Generate bindings'
+//
+//  finalizedBy('compileTypescript')
+//}
+//
+//tasks.register('compileTypescript', Exec) {
+//  group = 'build'
+//  description = 'Compile typescript'
+//
+//  inputs.files(fileTree("../modules"))
+//  outputs.files(fileTree("../modules"))
+//
+//  if (System.getProperty('os.name').toLowerCase().contains('windows')) {
+//    commandLine 'cmd', '/c', 'npm', 'run', 'build'
+//  } else {
+//    commandLine 'bash', '-c', 'npm run build'
+//  }
+//  workingDir rootProject.file('modules')
+//}
+//
+//classes.finalizedBy generateBindings

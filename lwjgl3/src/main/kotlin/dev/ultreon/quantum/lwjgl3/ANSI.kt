@@ -3,6 +3,13 @@ package dev.ultreon.quantum.lwjgl3
 import com.sun.jna.Native
 import com.sun.jna.ptr.IntByReference
 
+/**
+ * Provides ANSI escape code constants and utility functions for styling terminal output.
+ *
+ * This object includes constants for text styles, foreground and background colors,
+ * cursor movement, and screen manipulation. It also provides functions for dynamically
+ * constructing styled text and enabling ANSI support on Windows platforms.
+ */
 object ANSI {
   // ANSI Escape Codes
   private const val ESC = "\u001B"
@@ -68,12 +75,28 @@ object ANSI {
   const val CLEAR_SCREEN = "${ESC}[2J"
   const val CLEAR_LINE = "${ESC}[2K"
 
-  // Utility for styling text
+  /**
+   * Styles the given text using ANSI escape codes for formatting.
+   *
+   * This function allows you to apply one or more text styles (e.g., bold, italic, colored text)
+   * to the input string. It concatenates the provided styles, applies them to the text,
+   * and appends a reset code to ensure subsequent text output is unaffected.
+   *
+   * @param text The text to be styled.
+   * @param styles A variable number of style codes (e.g., colors, font effects) to apply.
+   * @return The styled text as a string with ANSI escape codes applied.
+   */
   fun styleText(text: String, vararg styles: String): String {
     return styles.joinToString("") + text + RESET
   }
 
-  // Enable ANSI support on Windows
+  /**
+   * Enables ANSI escape code support in the Windows command line terminal.
+   *
+   * This function checks if the operating system is Windows and, if so, configures the console mode
+   * to support ANSI escape sequences. This allows for enhanced text formatting features such as colored text
+   * and cursor control within the terminal.
+   */
   fun enableWindowsAnsi() {
     if (!System.getProperty("os.name").lowercase().contains("win")) return
 
@@ -94,7 +117,12 @@ object ANSI {
     }
   }
 
-  // Kernel32 interface for enabling ANSI on Windows
+  /**
+   * Interface for interacting with native Kernel32 library functions used to access and modify console settings on Windows systems.
+   * This interface leverages the JNA (Java Native Access) library to bind Kernel32 DLL functions for enabling ANSI escape codes support.
+   *
+   * The companion object provides constants and an instance of the interface for accessing functionality without explicitly initializing the library.
+   */
   private interface Kernel32 : com.sun.jna.Library {
     companion object {
       val INSTANCE: Kernel32 = Native.load("kernel32", Kernel32::class.java)

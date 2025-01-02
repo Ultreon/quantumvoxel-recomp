@@ -16,6 +16,13 @@ data class Vector3D(
     return this
   }
 
+  fun set(v: Vector3D): Vector3D {
+    this.x = v.x
+    this.y = v.y
+    this.z = v.z
+    return this
+  }
+
   fun cpy() = Vector3D(x, y, z)
 
   fun add(x: Double, y: Double, z: Double): Vector3D {
