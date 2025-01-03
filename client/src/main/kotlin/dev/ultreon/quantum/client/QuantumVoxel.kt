@@ -8,6 +8,7 @@ import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.graphics.GL20
 import com.badlogic.gdx.graphics.g2d.BitmapFont
 import com.badlogic.gdx.graphics.g2d.SpriteBatch
+import com.badlogic.gdx.graphics.g2d.freetype.FreeType.Bitmap
 import com.badlogic.gdx.utils.Os
 import com.badlogic.gdx.utils.SharedLibraryLoader
 import dev.ultreon.quantum.blocks.Blocks
@@ -17,6 +18,7 @@ import dev.ultreon.quantum.client.resource.TexturesCategory
 import dev.ultreon.quantum.client.texture.TextureManager
 import dev.ultreon.quantum.logger
 import dev.ultreon.quantum.resource.ResourceManager
+import dev.ultreon.quantum.util.NamespaceID
 import ktx.app.KtxGame
 import ktx.app.KtxScreen
 import ktx.app.clearScreen
@@ -24,6 +26,8 @@ import java.io.FileNotFoundException
 import java.nio.file.Files
 import java.nio.file.Paths
 import java.util.*
+import java.util.concurrent.CompletableFuture
+import java.util.concurrent.Executors
 import java.util.zip.ZipInputStream
 import kotlin.io.path.toPath
 
@@ -55,6 +59,8 @@ object QuantumVoxel : KtxGame<KtxScreen>() {
   private lateinit var crashSpriteBatch: SpriteBatch
   private var crash: Exception? = null
 
+  val executorService = Executors.newFixedThreadPool((Runtime.getRuntime().availableProcessors() / 2).coerceAtLeast(1))!!
+
   /**
    * Manages and organizes resources such as textures, models, and shaders.
    * Provides a centralized framework for accessing and registering resource categories.
@@ -62,6 +68,19 @@ object QuantumVoxel : KtxGame<KtxScreen>() {
    * Integrally involved in the application lifecycle to ensure all necessary assets are available.
    */
   val resourceManager: ResourceManager = ResourceManager("client")
+
+  val font by lazy {
+    try {
+      BitmapFont(
+        ResourceVfsFileHandle(NamespaceID.of(path = "fonts/luna_pixel.fnt")),
+        ResourceVfsFileHandle(NamespaceID.of(path = "textures/font/luna_pixel.png")),
+        false
+      )
+    } catch (e: FileNotFoundException) {
+      logger.error("Failed to load font:\n${e.stackTraceToString()}")
+      BitmapFont()
+    }
+  }
 
   /**
    * A loader specifically designed to manage the parsing and loading of models from JSON files.
@@ -77,12 +96,14 @@ object QuantumVoxel : KtxGame<KtxScreen>() {
    * Plays a crucial role in maintaining texture data during the application's lifecycle.
    */
   val textureManager: TextureManager = TextureManager(resourceManager)
+
   @JvmField
   val world = World()
 
   init {
     resourceManager.register("textures", TexturesCategory(textureManager))
     resourceManager.register("shaders", SimpleCategory("shaders", null))
+    resourceManager.register("fonts", SimpleCategory("fonts", null))
     resourceManager.register("models", ModelsCategory().apply {
       register("blocks", SimpleCategory("blocks", this))
       register("items", SimpleCategory("items", this))
@@ -103,8 +124,11 @@ object QuantumVoxel : KtxGame<KtxScreen>() {
 
       textureManager.init()
       textureManager.registerAtlas("block")
+      textureManager.registerAtlas("font")
 
-      if (!Gdx.files.isLocalStorageAvailable || Gdx.files.internal("quantum.zip").exists() || System.getProperty("quantum.nativeimage")?.toBoolean() == true) {
+      if (!Gdx.files.isLocalStorageAvailable || Gdx.files.internal("quantum.zip")
+          .exists() || System.getProperty("quantum.nativeimage")?.toBoolean() == true
+      ) {
         resourceManager.load(Gdx.files.internal("quantum.zip"))
       } else {
         gamePlatform.loadResources(resourceManager)
@@ -161,6 +185,19 @@ object QuantumVoxel : KtxGame<KtxScreen>() {
       return
     }
     super.render()
+  }
+
+  operator fun <T> invoke(block: (QuantumVoxel) -> T): CompletableFuture<T> {
+    val completableFuture = CompletableFuture<T>()
+    Gdx.app.postRunnable {
+      try {
+        completableFuture.complete(block(this))
+      } catch (e: Exception) {
+        completableFuture.completeExceptionally(e)
+      }
+    }
+
+    return completableFuture
   }
 }
 

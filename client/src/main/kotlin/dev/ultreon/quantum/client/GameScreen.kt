@@ -10,6 +10,7 @@ import com.badlogic.gdx.graphics.g2d.SpriteBatch
 import com.badlogic.gdx.graphics.g3d.Environment
 import com.badlogic.gdx.graphics.g3d.ModelBatch
 import com.badlogic.gdx.graphics.g3d.attributes.ColorAttribute
+import com.badlogic.gdx.math.Matrix4
 import com.badlogic.gdx.math.Vector3
 import dev.ultreon.quantum.blocks.Blocks
 import dev.ultreon.quantum.entity.PlayerComponent
@@ -46,6 +47,7 @@ import ktx.math.vec3
  *              for managing entities and components.
  */
 class GameScreen(world: World) : KtxScreen {
+  private val backupMatrix: Matrix4 = Matrix4()
   private var lastRefreshPosition: Vector3D = vec3d()
   private var lastRefreshTime: Long = 0
   private var lastPollTime: Long = 0
@@ -54,12 +56,14 @@ class GameScreen(world: World) : KtxScreen {
     QuantumVoxel.resourceManager[NamespaceID.of(path = "shaders/default.vsh")].text,
     QuantumVoxel.resourceManager[NamespaceID.of(path = "shaders/default.fsh")].text
   )
-  private val font = BitmapFont()
+  private val font = QuantumVoxel.font
   private val spriteBatch = SpriteBatch()
   private val texture = texture(NamespaceID.of(path = "textures/block/soil.png"))
   val material = material {
     diffuse(texture.texture)
     cullFace(GL20.GL_BACK)
+    blendMode(GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA)
+    depthTest(true, GL20.GL_LESS, 0.01f, 1000f)
   }
   private val dimension: ClientDimension = ClientDimension(material)
 
@@ -122,8 +126,7 @@ class GameScreen(world: World) : KtxScreen {
 
     Gdx.gl.glDepthMask(true)
     modelBatch.begin(camera)
-    modelBatch.renderContext.setBlending(false, GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA)
-    modelBatch.render(dimension)
+    dimension.render(modelBatch)
     modelBatch.end()
 
     vel.set(0f, 0f, 0f)
@@ -146,12 +149,12 @@ class GameScreen(world: World) : KtxScreen {
 
     move(position, delta)
 
-    if (lastPollTime + 100 < System.currentTimeMillis()) {
+    if (lastPollTime + 10 < System.currentTimeMillis()) {
       dimension.pollChunkLoad()
       lastPollTime = System.currentTimeMillis()
     }
 
-    if (lastRefreshTime + 1000 < System.currentTimeMillis()) {
+    if (lastRefreshTime + 100 < System.currentTimeMillis()) {
       if (position.position != lastRefreshPosition) {
         dimension.refreshChunks(player.getComponent(PositionComponent::class.java).position)
         lastRefreshTime = System.currentTimeMillis()
@@ -248,45 +251,52 @@ class GameScreen(world: World) : KtxScreen {
    * @param position The player's current position and rotation, represented by a `PositionComponent` instance.
    */
   private fun drawInfo(position: PositionComponent) {
-    font.draw(spriteBatch, "X: ${player.getComponent(PositionComponent::class.java).position.x}", 10f, 10f)
-    font.draw(spriteBatch, "Y: ${player.getComponent(PositionComponent::class.java).position.y}", 10f, 20f)
-    font.draw(spriteBatch, "Z: ${player.getComponent(PositionComponent::class.java).position.z}", 10f, 30f)
+    backupMatrix.set(spriteBatch.transformMatrix)
+    spriteBatch.transformMatrix = spriteBatch.transformMatrix.scale(2F, 2F, 2F)
 
-    font.draw(spriteBatch, "Forward: $forward", 10f, 40f)
-    font.draw(spriteBatch, "Backward: $backward", 10f, 50f)
-    font.draw(spriteBatch, "Strafe Left: $strafeLeft", 10f, 60f)
-    font.draw(spriteBatch, "Strafe Right: $strafeRight", 10f, 70f)
+    try {
+      font.draw(spriteBatch, "X: ${player.getComponent(PositionComponent::class.java).position.x}", 10f, 10f)
+      font.draw(spriteBatch, "Y: ${player.getComponent(PositionComponent::class.java).position.y}", 10f, 20f)
+      font.draw(spriteBatch, "Z: ${player.getComponent(PositionComponent::class.java).position.z}", 10f, 30f)
 
-    font.draw(spriteBatch, "Real X: ${this.position.x}", 10f, 80f)
-    font.draw(spriteBatch, "Real Y: ${this.position.y}", 10f, 90f)
-    font.draw(spriteBatch, "Real Z: ${this.position.z}", 10f, 100f)
+      font.draw(spriteBatch, "Forward: $forward", 10f, 40f)
+      font.draw(spriteBatch, "Backward: $backward", 10f, 50f)
+      font.draw(spriteBatch, "Strafe Left: $strafeLeft", 10f, 60f)
+      font.draw(spriteBatch, "Strafe Right: $strafeRight", 10f, 70f)
 
-    font.draw(spriteBatch, "X Rotation: ${player.getComponent(PositionComponent::class.java).xRot}", 10f, 110f)
-    font.draw(spriteBatch, "Y Rotation: ${player.getComponent(PositionComponent::class.java).yRot}", 10f, 120f)
-    font.draw(spriteBatch, "X Head Rotation: ${player.getComponent(PositionComponent::class.java).xHeadRot}", 10f, 130f)
+      font.draw(spriteBatch, "Real X: ${this.position.x}", 10f, 80f)
+      font.draw(spriteBatch, "Real Y: ${this.position.y}", 10f, 90f)
+      font.draw(spriteBatch, "Real Z: ${this.position.z}", 10f, 100f)
 
-    font.draw(spriteBatch, "Running: ${player.getComponent(RunningComponent::class.java).running}", 10f, 140f)
+      font.draw(spriteBatch, "X Rotation: ${player.getComponent(PositionComponent::class.java).xRot}", 10f, 110f)
+      font.draw(spriteBatch, "Y Rotation: ${player.getComponent(PositionComponent::class.java).yRot}", 10f, 120f)
+      font.draw(spriteBatch, "X Head Rotation: ${player.getComponent(PositionComponent::class.java).xHeadRot}", 10f, 130f)
 
-    font.draw(spriteBatch, "FPS: ${Gdx.graphics.framesPerSecond}", 10f, 150f)
+      font.draw(spriteBatch, "Running: ${player.getComponent(RunningComponent::class.java).running}", 10f, 140f)
 
-    font.draw(spriteBatch, "Camera Position: ${camera.position}", 10f, 160f)
-    font.draw(spriteBatch, "Camera Direction: ${camera.direction}", 10f, 170f)
-    font.draw(spriteBatch, "Camera Up: ${camera.up}", 10f, 180f)
-    font.draw(
-      spriteBatch, "Direction: " + when {
-        position.yRot < -45 -> "Up"
-        position.yRot > 45 -> "Down"
-        position.xRot < -45 && position.xRot > -135 -> "Left"
-        position.xRot > 45 && position.xRot < 135 -> "Right"
-        position.xRot > 135 || position.xRot < -135 -> "Backward"
-        else -> "Forward"
-      }, 10f, 190f
-    )
+      font.draw(spriteBatch, "FPS: ${Gdx.graphics.framesPerSecond}", 10f, 150f)
 
-    font.draw(spriteBatch, "Velocity: $vel", 10f, 200f)
-    font.draw(spriteBatch, "Chunk Position: ${position.chunkPosition}", 10f, 210f)
+      font.draw(spriteBatch, "Camera Position: ${camera.position}", 10f, 160f)
+      font.draw(spriteBatch, "Camera Direction: ${camera.direction}", 10f, 170f)
+      font.draw(spriteBatch, "Camera Up: ${camera.up}", 10f, 180f)
+      font.draw(
+        spriteBatch, "Direction: " + when {
+          position.yRot < -45 -> "Up"
+          position.yRot > 45 -> "Down"
+          position.xRot < -45 && position.xRot > -135 -> "Left"
+          position.xRot > 45 && position.xRot < 135 -> "Right"
+          position.xRot > 135 || position.xRot < -135 -> "Backward"
+          else -> "Forward"
+                                          }, 10f, 190f
+      )
 
-    font.draw(spriteBatch, "Is Mobile: ${gamePlatform.isMobile}", 10f, 220f)
+      font.draw(spriteBatch, "Velocity: $vel", 10f, 200f)
+      font.draw(spriteBatch, "Chunk Position: ${position.chunkPosition}", 10f, 210f)
+
+      font.draw(spriteBatch, "Is Mobile: ${gamePlatform.isMobile}", 10f, 220f)
+    } finally {
+      spriteBatch.transformMatrix.set(backupMatrix)
+    }
   }
 
   fun move() {

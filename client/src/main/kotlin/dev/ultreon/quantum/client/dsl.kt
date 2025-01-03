@@ -1,10 +1,13 @@
 package dev.ultreon.quantum.client
 
 import com.badlogic.gdx.graphics.Color
+import com.badlogic.gdx.graphics.GL20
 import com.badlogic.gdx.graphics.Texture
 import com.badlogic.gdx.graphics.g2d.TextureRegion
 import com.badlogic.gdx.graphics.g3d.Material
+import com.badlogic.gdx.graphics.g3d.attributes.BlendingAttribute
 import com.badlogic.gdx.graphics.g3d.attributes.ColorAttribute
+import com.badlogic.gdx.graphics.g3d.attributes.DepthTestAttribute
 import com.badlogic.gdx.graphics.g3d.attributes.IntAttribute
 import com.badlogic.gdx.graphics.g3d.attributes.TextureAttribute
 import dev.ultreon.quantum.InternalApi
@@ -214,6 +217,38 @@ interface MaterialBuilder {
    *                 may include constants for front-face, back-face, or both-face culling.
    */
   fun cullFace(cullFace: Int)
+
+  /**
+   * Configures the blending mode for the material.
+   *
+   * The blending mode determines how the material's colors are combined with those
+   * of the background when rendered. It uses source and destination factors to define
+   * the blending behavior, enabling effects such as transparency or additive blending.
+   *
+   * @param srcFactor The source blending factor, which influences how the material's color is computed.
+   * @param dstFactor The destination blending factor, which influences how the background color is computed.
+   */
+  fun blendMode(srcFactor: Int, dstFactor: Int)
+
+  /**
+   * Configures depth testing for rendering operations.
+   * 
+   * Depth testing determines how fragments are processed based on their depth values 
+   * to decide visibility in the final rendered scene. This helps create a sense of 
+   * depth and occlusion between objects.
+   * 
+   * @param depthMask Specifies whether the depth buffer is writable. If set to `true`, 
+   *                  the depth buffer is updated during rendering; otherwise, it remains 
+   *                  unchanged.
+   * @param depthFunc Specifies the depth comparison function used to compare incoming 
+   *                  depth values with those already in the depth buffer. Common values 
+   *                  may include constants for less-than, equal, or greater-than comparisons.
+   * @param depthRangeNear The minimum depth value in the depth range, typically normalized 
+   *                       to a [0, 1] range. This value represents the near clipping plane.
+   * @param depthRangeFar The maximum depth value in the depth range, typically normalized 
+   *                      to a [0, 1] range. This value represents the far clipping plane.
+   */
+  fun depthTest(depthMask: Boolean, depthFunc: Int, depthRangeNear: Float, depthRangeFar: Float)
 }
 
 /**
@@ -300,6 +335,14 @@ class MaterialBuilderImpl : MaterialBuilder {
 
   override fun cullFace(cullFace: Int) {
     material.set(IntAttribute.createCullFace(cullFace))
+  }
+
+  override fun blendMode(srcFactor: Int, dstFactor: Int) {
+    material.set(BlendingAttribute(srcFactor, dstFactor))
+  }
+
+  override fun depthTest(depthMask: Boolean, depthFunc: Int, depthRangeNear: Float, depthRangeFar: Float) {
+    material.set(DepthTestAttribute(depthFunc, depthRangeNear, depthRangeFar, depthMask))
   }
 
   fun build(): Material = material

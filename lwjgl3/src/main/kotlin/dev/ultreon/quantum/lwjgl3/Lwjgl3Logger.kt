@@ -15,6 +15,7 @@ import dev.ultreon.quantum.lwjgl3.ANSI.FG_RED
 import dev.ultreon.quantum.lwjgl3.ANSI.FG_WHITE
 import dev.ultreon.quantum.lwjgl3.ANSI.FG_YELLOW
 import dev.ultreon.quantum.lwjgl3.ANSI.RESET
+import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 import kotlin.math.max
 
@@ -27,7 +28,7 @@ class Lwjgl3Logger(inName: String) : Logger {
     name.padEnd(max(name.length, 15), ' ') // Pad left and right with spaces to make the output look nice and centered
 
   val time: String
-    get() = formatter.format(java.time.LocalTime.now()).padEnd(8, ' ')
+    get() = formatter.format(LocalTime.now()).padEnd(8, ' ')
 
   override fun info(message: String) {
     for (message in message.lines())

@@ -60,8 +60,44 @@ class ResourceManager(
       val resourceNode = category[path[i]]
       category = resourceNode ?: throw NoSuchResourceException(location)
     }
-    
-    return category[location.domain, path.subList(0, path.size).joinToString("/")] ?: throw NoSuchResourceException(location)
+
+    return category[location.domain, path.subList(0, path.size).joinToString("/")] ?: throw NoSuchResourceException(
+      location
+    )
+  }
+
+
+  operator fun contains(location: NamespaceID): Boolean {
+    val path = location.path.split('/')
+    var category = categories[path[0]] ?: throw NoSuchResourceCategoryException(path[0])
+
+    for (i in 1 until path.size - 1) {
+      val resourceNode = category[path[i]]
+      category = resourceNode ?: return false
+    }
+
+    category[location.domain, path.subList(0, path.size).joinToString("/")] ?: return false
+    return true
+  }
+
+  fun getNode(location: NamespaceID): ResourceNode {
+    return getNodeOrNull(location) ?: throw NoSuchResourceException(location)
+  }
+
+  fun getNodeOrNull(location: NamespaceID): ResourceNode? {
+    val path = location.path.split('/')
+    var category = categories[path[0]] ?: throw NoSuchResourceCategoryException(path[0])
+
+
+    for (i in 1 until path.size - 1) {
+      val resourceNode = category[path[i]]
+      category = resourceNode ?: throw NoSuchResourceCategoryException(path[i])
+    }
+
+    return category[location.domain, path.subList(0, path.size).joinToString("/")]
+      ?: category[path.subList(0, path.size - 1).joinToString("/")]?.let {
+        ResourceLocation(location, it)
+      } ?: null
   }
 
   /**
@@ -80,16 +116,16 @@ class ResourceManager(
   /**
    * Loads and processes resources from the provided `ZipInputStream`. The method iterates through
    * all entries in the zip stream, extracting and categorizing resources based on their file paths.
-   * 
-   * Only files within a designated asset root are loaded. Files are categorized based on their 
-   * hierarchical paths and associated with specific resource domains. Resource categories and 
+   *
+   * Only files within a designated asset root are loaded. Files are categorized based on their
+   * hierarchical paths and associated with specific resource domains. Resource categories and
    * filenames are processed to organize resources appropriately.
-   * 
-   * If an entry represents a directory, it is skipped. For valid file entries, the method determines 
+   *
+   * If an entry represents a directory, it is skipped. For valid file entries, the method determines
    * the domain, category path, and filename to load the resource correctly.
-   * 
+   *
    * Resource categories referenced in the hierarchy must exist; otherwise, an error is logged.
-   * 
+   *
    * @param zip The `ZipInputStream` to read and extract resources from.
    * @throws NoSuchResourceCategoryException If an unknown resource category is encountered.
    */
@@ -115,7 +151,14 @@ class ResourceManager(
     }
   }
 
-  private fun loadCategory(zip: ZipInputStream, categories: MutableList<String>, category: ResourceCategory? = null, filename: String, domain: String, parent: String = "") {
+  private fun loadCategory(
+    zip: ZipInputStream,
+    categories: MutableList<String>,
+    category: ResourceCategory? = null,
+    filename: String,
+    domain: String,
+    parent: String = ""
+  ) {
     val path = if (parent == "") "" else parent
     logger.debug("Loading resource category: $domain:$path")
     logger.debug("Remaining path: ${categories.joinToString("/")}")
@@ -126,7 +169,8 @@ class ResourceManager(
       logger.debug("Going to load resource: $domain:$path/$filename")
       val resourceCategory = category ?: error("Invalid resource: $filename, not in a category!")
       resourceCategory ?: throw NoSuchResourceCategoryException(path)
-      resourceCategory[domain, "$path/$filename"] = StaticResource(NamespaceID.of(domain, "$path/$filename"), zip.readBytes())
+      resourceCategory[domain, "$path/$filename"] =
+        StaticResource(NamespaceID.of(domain, "$path/$filename"), zip.readBytes())
     } else {
       val categoryName = categories.removeAt(0)
       logger.debug("Category Name: $categoryName")
@@ -152,7 +196,7 @@ class ResourceManager(
             val categoryPath = "$assetRoot/$domain/${category.name()}"
             val category1 = categories[category.name()]
             if (category1 == null) {
-              logger.warn("Unknown category: $categoryPath" )
+              logger.warn("Unknown category: $categoryPath")
               return@last
             }
             loadCategory(category, domain, category1, category.name())
@@ -165,7 +209,13 @@ class ResourceManager(
   private fun loadCategory(file: FileHandle, domain: String, category: ResourceCategory? = null, path: String) {
     file.list().forEach {
       when {
-        it.isDirectory -> loadCategory(it, domain, category!![it.name()] ?: throw NoSuchResourceCategoryException(it.name()), path + it.name() + "/")
+        it.isDirectory -> loadCategory(
+          it,
+          domain,
+          category!![it.name()] ?: throw NoSuchResourceCategoryException(it.name()),
+          path + it.name() + "/"
+        )
+
         category != null -> loadResource(it, category, domain, path + it.name())
         else -> logger.warn("No category for file: $it")
       }

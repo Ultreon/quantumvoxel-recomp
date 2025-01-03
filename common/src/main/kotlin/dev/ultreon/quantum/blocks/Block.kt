@@ -9,6 +9,7 @@ import ktx.collections.toGdxArray
 import ktx.math.vec3
 
 class Block {
+  var renderType: String = "default"
   val bounds: GdxArray<BoundingBox> = gdxArrayOf(
     BoundingBox(
       vec3(0f, 0f, 0f),

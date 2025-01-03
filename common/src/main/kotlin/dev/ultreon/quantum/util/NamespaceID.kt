@@ -1,5 +1,7 @@
 package dev.ultreon.quantum.util
 
+import com.badlogic.gdx.utils.GdxRuntimeException
+
 class NamespaceID private constructor(
   val domain: String,
   val path: String
@@ -83,4 +85,10 @@ class NamespaceID private constructor(
   }
 
   override fun toString(): String = "$domain:$path"
+  fun parent(): NamespaceID {
+    return mapPath {
+      val index = it.lastIndexOf('/')
+      if (index == -1) throw GdxRuntimeException("Already at root!") else it.substring(0, index)
+    }
+  }
 }

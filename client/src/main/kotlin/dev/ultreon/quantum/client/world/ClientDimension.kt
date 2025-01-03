@@ -7,19 +7,25 @@ import com.badlogic.gdx.utils.LongMap
 import com.badlogic.gdx.utils.Pool
 import dev.ultreon.quantum.blocks.Block
 import dev.ultreon.quantum.blocks.Blocks
+import dev.ultreon.quantum.client.GameScreen
+import dev.ultreon.quantum.client.QuantumVoxel
+import dev.ultreon.quantum.entity.PositionComponent
 import dev.ultreon.quantum.logger
 import dev.ultreon.quantum.math.Vector3D
+import dev.ultreon.quantum.vec3d
 import dev.ultreon.quantum.world.BlockFlags
 import dev.ultreon.quantum.world.Dimension
 import dev.ultreon.quantum.world.SIZE
 import ktx.assets.disposeSafely
 import ktx.collections.GdxArray
 import ktx.collections.sortBy
+import kotlin.math.pow
+import kotlin.math.sqrt
 import kotlin.system.measureTimeMillis
 
 const val renderDistance = 8
 
-class ClientDimension(private val material: Material) : Dimension(), RenderableProvider {
+class ClientDimension(private val material: Material) : Dimension() {
   val chunks: LongMap<ClientChunk> = LongMap()
   val chunksToLoad = GdxArray<Pair<GridPoint3, Long>>()
   val generator = Generator()
@@ -226,9 +232,13 @@ class ClientDimension(private val material: Material) : Dimension(), RenderableP
     }
   }
 
-  override fun getRenderables(array: GdxArray<Renderable>, pool: Pool<Renderable>) {
-    for (chunk in chunks.values()) {
-      chunk.getRenderables(array, pool)
+  fun render(modelBatch: ModelBatch) {
+    val (x, y, z) = (QuantumVoxel.shownScreen as GameScreen).player.getComponent(PositionComponent::class.java).position
+    for (chunk in chunks.values().sortedBy {
+      val chunkPos = it.chunkPos
+      vec3d(chunkPos.x * SIZE.toDouble(), chunkPos.y * SIZE.toDouble(), chunkPos.z * SIZE.toDouble()).dst2(vec3d(x, y, z))
+    }) {
+      modelBatch.render(chunk)
     }
   }
 

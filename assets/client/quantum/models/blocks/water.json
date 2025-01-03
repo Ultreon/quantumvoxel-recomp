@@ -1,12 +1,12 @@
 {
   "parent": "block/cube_all",
   "textures": {
-    "up": "block/grass_top",
-    "down": "block/soil",
-    "north": "block/grass_side",
-    "south": "block/grass_side",
-    "west": "block/grass_side",
-    "east": "block/grass_side"
+    "up": "block/water",
+    "down": "block/water",
+    "north": "block/water",
+    "south": "block/water",
+    "west": "block/water",
+    "east": "block/water"
   },
   "elements": [
     {

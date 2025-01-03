@@ -15,4 +15,7 @@ interface Resource : ResourceNode {
   fun inputStream(): InputStream
 
   override fun isCategory(): Boolean = false
+  fun length(): Long {
+    return data.size.toLong()
+  }
 }

@@ -230,7 +230,7 @@ class Generator {
             seed - 200
           random.setSeed(blockSeed)
 
-          if (height < 160) {
+          if (height in 65.5..160.0) {
             if (random.nextInt(2) == 0 && height > 64.5) {
 //              chunk.set(x, height.toInt() + 1, z, Blocks.SHORT_GRASS)
             } else if (random.nextInt(50) == 0 && height > 64.5) {
@@ -240,7 +240,7 @@ class Generator {
             } else if (random.nextInt(50) == 0 && height > 64.5) {
 //              generateTree(unit, x, height.toInt() + 1, z, random)
             }
-          } else {
+          } else if (height in 160.0..192.0) {
             for (y in (height - 6).toInt()..height.toInt()) {
               val i = random.nextInt(4)
               when (i) {
@@ -255,7 +255,7 @@ class Generator {
 //                else -> chunk.set(x, y, z, Block.COBBLESTONE)
               }
             }
-            if (height > 192) {
+            if (height.toInt() in 192..1500) {
 //              chunk.set(x, height.toInt() - 1, z, Block.SNOW_BLOCK)
               chunk[x, height.toInt(), z] = Blocks.snowyGrass
 //              chunk.set(x, height.toInt() + 1, z, Block.)

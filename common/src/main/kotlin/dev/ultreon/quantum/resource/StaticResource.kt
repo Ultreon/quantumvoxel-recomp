@@ -11,4 +11,15 @@ class StaticResource(override val location: NamespaceID, byteArray: ByteArray) :
 
   override fun inputStream(): InputStream = data.inputStream()
   override fun reader(): Reader = data.inputStream().reader()
+  override fun toString(): String {
+    return location.toString()
+  }
+
+  override fun hashCode(): Int {
+    return location.hashCode()
+  }
+
+  override fun equals(other: Any?): Boolean {
+    return other is StaticResource && other.location == location
+  }
 }
