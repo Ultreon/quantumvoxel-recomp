@@ -170,9 +170,8 @@ class ClientChunk(x: Int, y: Int, z: Int, private val material: Material, val di
     worldModel.disposeSafely()
   }
 
-  fun reposition(camera: Camera, position: Vector3D) {
+  fun reposition(position: Vector3D) {
     worldModelInstance?.relative(
-      camera,
       position.cpy()
         .sub(this.chunkPos.x * SIZE.toFloat(), this.chunkPos.y * SIZE.toFloat(), this.chunkPos.z * SIZE.toFloat())
     )

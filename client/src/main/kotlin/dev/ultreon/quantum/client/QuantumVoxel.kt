@@ -1,10 +1,14 @@
-@file:Suppress("t")
+@file:Suppress("t", "GDXKotlinStaticResource")
 
 package dev.ultreon.quantum.client
 
+import com.artemis.Component
+import com.artemis.Entity
 import com.artemis.World
+import com.artemis.utils.Bag
 import com.badlogic.gdx.Gdx
 import com.badlogic.gdx.graphics.Color
+import com.badlogic.gdx.graphics.GL20
 import com.badlogic.gdx.graphics.g2d.BitmapFont
 import com.badlogic.gdx.graphics.g2d.SpriteBatch
 import com.badlogic.gdx.utils.async.AsyncExecutor
@@ -17,20 +21,28 @@ import dev.ultreon.quantum.client.model.JsonModelLoader
 import dev.ultreon.quantum.client.model.ModelRegistry
 import dev.ultreon.quantum.client.resource.TexturesCategory
 import dev.ultreon.quantum.client.texture.TextureManager
+import dev.ultreon.quantum.client.world.ClientDimension
+import dev.ultreon.quantum.entity.CollisionComponent
+import dev.ultreon.quantum.entity.PlayerComponent
+import dev.ultreon.quantum.entity.PositionComponent
+import dev.ultreon.quantum.entity.RunningComponent
 import dev.ultreon.quantum.logger
 import dev.ultreon.quantum.resource.ResourceManager
 import dev.ultreon.quantum.util.NamespaceID
+import dev.ultreon.quantum.util.Tickable
+import dev.ultreon.quantum.vec3d
 import ktx.app.KtxGame
 import ktx.app.KtxScreen
 import ktx.app.clearScreen
 import java.io.FileNotFoundException
-import java.util.*
 import java.util.concurrent.CompletableFuture
 import kotlin.math.min
 
-val timer = Timer()
 const val MINIMUM_WIDTH = 550
 const val MINIMUM_HEIGHT = 300
+
+const val TPS = 20
+const val SPT = 1F / TPS
 
 lateinit var gamePlatform: GamePlatform
 
@@ -52,7 +64,11 @@ lateinit var gamePlatform: GamePlatform
  * - The `render` method manages the drawing lifecycle, including handling and rendering crash details if any exception occurs.
  * - The `dispose` method cleans up resources and disposes of components safely when the game is terminated.
  */
-object QuantumVoxel : KtxGame<KtxScreen>() {
+object QuantumVoxel : KtxGame<KtxScreen>(clearScreen = false) {
+  private val bag: Bag<Component> = Bag()
+  var environmentRenderer: EnvironmentRenderer? = null
+  var player: Entity? = null
+  var dimension: ClientDimension? = null
   private lateinit var crashFont: BitmapFont
   private lateinit var crashSpriteBatch: SpriteBatch
   private var crash: Exception? = null
@@ -60,9 +76,20 @@ object QuantumVoxel : KtxGame<KtxScreen>() {
     set(value) {
       field = value.coerceAtLeast(0)
     }
+  private val texture by lazy { texture(NamespaceID.of(path = "textures/block/soil.png")) }
+  val material by lazy {
+    material {
+      diffuse(texture.texture)
+      cullFace(GL20.GL_BACK)
+      blendMode(GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA)
+      depthTest(true, GL20.GL_LESS, 0.01f, 1000f)
+    }
+  }
 
   private var width = 1
   private var height = 1
+
+  var frameTick = 0F
 
   val executor: AsyncExecutor = AsyncExecutor(Runtime.getRuntime().availableProcessors(), "QV:Async Worker")
 
@@ -145,8 +172,10 @@ object QuantumVoxel : KtxGame<KtxScreen>() {
       textureManager.pack()
       ModelRegistry.loadModels()
 
-      addScreen(GameScreen(world))
-      setScreen<GameScreen>()
+      startWorld()
+
+//      addScreen(GameRenderer())
+//      setScreen<GameRenderer>()
 
       logger.debug("Quantum Voxel started!", this)
     } catch (e: Exception) {
@@ -155,6 +184,25 @@ object QuantumVoxel : KtxGame<KtxScreen>() {
       this.crashSpriteBatch = SpriteBatch()
       this.crashFont = BitmapFont()
     }
+  }
+
+  private fun startWorld() {
+    dimension = ClientDimension(material)
+    player = world.createEntity().also { entity ->
+      val positionComponent = PositionComponent(vec3d(0, 128, 0))
+      entity.edit()
+        .add(PlayerComponent("Player"))
+        .add(RunningComponent(1.6F))
+        .add(positionComponent)
+        .add(CollisionComponent().also {
+          it.positionComponent = positionComponent
+          it.dimension = dimension!!
+        })
+
+      environmentRenderer?.lastRefreshPosition?.set(entity.getComponent(PositionComponent::class.java).position)
+    }
+
+    environmentRenderer = EnvironmentRenderer()
   }
 
   /**
@@ -181,6 +229,15 @@ object QuantumVoxel : KtxGame<KtxScreen>() {
    */
   override fun render() {
     val crash = crash
+
+    if (frameTick > SPT) {
+      frameTick -= SPT
+
+      doTick()
+    }
+
+    frameTick += Gdx.graphics.deltaTime
+
     if (crash != null) {
       clearScreen(0f, 0f, 0f, 1f)
       crashSpriteBatch.begin()
@@ -192,7 +249,24 @@ object QuantumVoxel : KtxGame<KtxScreen>() {
       crashSpriteBatch.end()
       return
     }
-    super.render()
+
+    this.environmentRenderer?.render(Gdx.graphics.deltaTime) ?: {
+      clearScreen(0f, 1f, 0f, 1f)
+    }
+
+//    super.render()
+  }
+
+  private fun doTick() {
+    dimension?.tick()
+    bag.clear()
+    player?.let {
+      world.componentManager.getComponentsFor(it.id, bag).forEach { component ->
+        if (component is Tickable) {
+          component.tick()
+        }
+      }
+    }
   }
 
   /**
@@ -221,7 +295,8 @@ object QuantumVoxel : KtxGame<KtxScreen>() {
     return min.coerceAtLeast(1)
   }
 
-  var guiScale: Float = (if (setGuiScale <= 0) calcMaxGuiScale() else setGuiScale.coerceAtMost(calcMaxGuiScale())).toFloat()
+  var guiScale: Float =
+    (if (setGuiScale <= 0) calcMaxGuiScale() else setGuiScale.coerceAtMost(calcMaxGuiScale())).toFloat()
     private set
 
   override fun resize(width: Int, height: Int) {
@@ -231,6 +306,8 @@ object QuantumVoxel : KtxGame<KtxScreen>() {
     this.height = height
 
     guiScale = (if (setGuiScale <= 0) calcMaxGuiScale() else setGuiScale.coerceAtMost(calcMaxGuiScale())).toFloat()
+
+    environmentRenderer?.resize(width, height)
   }
 
   operator fun <T> invoke(block: (QuantumVoxel) -> T): CompletableFuture<T> {

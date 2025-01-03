@@ -1,13 +1,11 @@
 package dev.ultreon.quantum.client.world
 
-import com.badlogic.gdx.graphics.Camera
 import com.badlogic.gdx.graphics.g3d.*
 import com.badlogic.gdx.math.GridPoint3
 import com.badlogic.gdx.utils.LongMap
-import com.badlogic.gdx.utils.Pool
 import dev.ultreon.quantum.blocks.Block
 import dev.ultreon.quantum.blocks.Blocks
-import dev.ultreon.quantum.client.GameScreen
+import dev.ultreon.quantum.client.EnvironmentRenderer
 import dev.ultreon.quantum.client.QuantumVoxel
 import dev.ultreon.quantum.entity.PositionComponent
 import dev.ultreon.quantum.logger
@@ -20,8 +18,6 @@ import ktx.assets.disposeSafely
 import ktx.collections.GdxArray
 import ktx.collections.GdxSet
 import ktx.collections.sortBy
-import kotlin.math.pow
-import kotlin.math.sqrt
 import kotlin.system.measureTimeMillis
 
 const val renderDistance = 8
@@ -235,7 +231,7 @@ class ClientDimension(private val material: Material) : Dimension() {
   }
 
   fun render(modelBatch: ModelBatch) {
-    val (x, y, z) = (QuantumVoxel.shownScreen as GameScreen).player.getComponent(PositionComponent::class.java).position
+    val (x, y, z) = QuantumVoxel.player!!.getComponent(PositionComponent::class.java).position
     for (chunk in chunks.values().sortedBy {
       val chunkPos = it.chunkPos
       vec3d(chunkPos.x * SIZE.toDouble(), chunkPos.y * SIZE.toDouble(), chunkPos.z * SIZE.toDouble()).dst2(vec3d(x, y, z))
@@ -251,9 +247,9 @@ class ClientDimension(private val material: Material) : Dimension() {
     chunks.clear()
   }
 
-  fun updateLocations(camera: Camera, position: Vector3D) {
+  fun updateLocations(position: Vector3D) {
     for (chunk in chunks.values()) {
-      chunk.reposition(camera, position)
+      chunk.reposition(position)
     }
   }
 }

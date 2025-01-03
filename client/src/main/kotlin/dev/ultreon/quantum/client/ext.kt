@@ -600,8 +600,8 @@ internal var tmpVec = vec3(0F, 0F, 0F)
  * @param position The target `Vector3D` position used to compute the relative position.
  * @return The updated `ModelInstance` with adjusted transformation.
  */
-fun ModelInstance.relative(camera: Camera, position: Vector3D): ModelInstance {
-  this.transform.setTranslation(-(tmpVecD.set(position.x, position.y, position.z).sub(camera.position).let {
+fun ModelInstance.relative(position: Vector3D): ModelInstance {
+  this.transform.setTranslation(-(tmpVecD.set(position.x, position.y, position.z).sub(vec3d()).let {
     return@let tmpVec.set(it.x.toFloat(), it.y.toFloat(), it.z.toFloat())
   }))
   return this

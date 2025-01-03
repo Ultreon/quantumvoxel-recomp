@@ -1,29 +1,22 @@
 package dev.ultreon.quantum.client
 
-import com.artemis.Entity
-import com.artemis.World
 import com.badlogic.gdx.Gdx
 import com.badlogic.gdx.Input
-import com.badlogic.gdx.graphics.GL20
-import com.badlogic.gdx.graphics.g2d.BitmapFont
 import com.badlogic.gdx.graphics.g2d.SpriteBatch
 import com.badlogic.gdx.graphics.g3d.Environment
 import com.badlogic.gdx.graphics.g3d.ModelBatch
 import com.badlogic.gdx.graphics.g3d.attributes.ColorAttribute
 import com.badlogic.gdx.math.Matrix4
 import com.badlogic.gdx.math.Vector3
-import dev.ultreon.quantum.blocks.Blocks
-import dev.ultreon.quantum.entity.PlayerComponent
+import dev.ultreon.quantum.client.input.KeyBinds
+import dev.ultreon.quantum.client.world.Skybox
+import dev.ultreon.quantum.entity.CollisionComponent
 import dev.ultreon.quantum.entity.PositionComponent
 import dev.ultreon.quantum.entity.RunningComponent
-import dev.ultreon.quantum.client.input.KeyBinds
-import dev.ultreon.quantum.client.world.ClientDimension
-import dev.ultreon.quantum.client.world.Skybox
+import dev.ultreon.quantum.logger
 import dev.ultreon.quantum.math.Vector3D
 import dev.ultreon.quantum.util.NamespaceID
 import dev.ultreon.quantum.vec3d
-import dev.ultreon.quantum.world.BlockFlags
-import ktx.app.KtxScreen
 import ktx.app.clearScreen
 import ktx.assets.disposeSafely
 import ktx.graphics.use
@@ -43,38 +36,25 @@ import ktx.math.vec3
  *
  * @constructor Creates a `GameScreen` instance that initializes the game world, rendering environment,
  *              camera, player entity, and necessary assets.
- * @param world Represents the Artemis `World` instance holding the ECS (Entity Component System) structure
- *              for managing entities and components.
  */
-class GameScreen(world: World) : KtxScreen {
+class EnvironmentRenderer {
   private val backupMatrix: Matrix4 = Matrix4()
-  private var lastRefreshPosition: Vector3D = vec3d()
+  internal var lastRefreshPosition: Vector3D = vec3d()
   private var lastRefreshTime: Long = 0
   private var lastPollTime: Long = 0
-  private val speed: Float = 1f
+  private val speed: Float = 6f
   private val modelBatch = ModelBatch(
     QuantumVoxel.resourceManager[NamespaceID.of(path = "shaders/default.vsh")].text,
     QuantumVoxel.resourceManager[NamespaceID.of(path = "shaders/default.fsh")].text
   )
   private val font = QuantumVoxel.font
   private val spriteBatch = SpriteBatch()
-  private val texture = texture(NamespaceID.of(path = "textures/block/soil.png"))
-  val material = material {
-    diffuse(texture.texture)
-    cullFace(GL20.GL_BACK)
-    blendMode(GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA)
-    depthTest(true, GL20.GL_LESS, 0.01f, 1000f)
-  }
-  private val dimension: ClientDimension = ClientDimension(material)
-
   val camera = perspectiveCamera {
-    position.set(0f, 0f, 0f)
+    position.set(0f, 1.6f, 0f)
     near = 0.01f
     far = 500f
     update()
   }
-
-  val position = vec3d(0.0, 65.0, 0.0)
 
   val vel = vec3(0f, 0f, 0f)
 
@@ -88,15 +68,6 @@ class GameScreen(world: World) : KtxScreen {
   var up = false
   var down = false
 
-  val player: Entity = world.createEntity().also {
-    it.edit()
-      .add(PlayerComponent("Player"))
-      .add(RunningComponent(1.6F))
-      .add(PositionComponent(vec3d(0, 65, 0)))
-
-    lastRefreshPosition.set(it.getComponent(PositionComponent::class.java).position)
-  }
-
   val environment = Environment().apply {
     set(ColorAttribute.createAmbientLight(1F, 1F, 1F, 1F))
   }
@@ -106,7 +77,7 @@ class GameScreen(world: World) : KtxScreen {
   init {
 //    world.inject(player)
 
-    dimension.refreshChunks(player.getComponent(PositionComponent::class.java).position)
+    QuantumVoxel.dimension!!.refreshChunks(QuantumVoxel.player!!.getComponent(PositionComponent::class.java).position)
   }
 
   /**
@@ -115,14 +86,20 @@ class GameScreen(world: World) : KtxScreen {
    *
    * @param delta A `Float` value representing the time elapsed since the last frame, used to scale time-dependent calculations.
    */
-  override fun render(delta: Float) {
+  fun render(delta: Float) {
+    val player = QuantumVoxel.player
+    val dimension = QuantumVoxel.dimension
+    if (player == null || dimension == null) {
+      logger.warn("Player or dimension is null")
+      return
+    }
     val position: PositionComponent = player.getComponent(PositionComponent::class.java)
 
     clearScreen(red = 0F, green = 0F, blue = 0F)
     Gdx.gl.glDepthMask(false)
     skybox.render(camera, position.xRot)
 
-    dimension.updateLocations(camera, position.position)
+    dimension.updateLocations(position.position)
 
     Gdx.gl.glDepthMask(true)
     modelBatch.begin(camera)
@@ -186,18 +163,12 @@ class GameScreen(world: World) : KtxScreen {
 
     var flight = 0F
 
-    if (up) {
-      flight -= 1f
-    }
-    if (down) {
-      flight += 1f
-    }
-    vel.set(tmpVec).add(0F, -flight, 0F).scl(delta * 10)
+    vel.set(tmpVec).add(0F, -flight, 0F)
 
-    if (!vel.isZero) {
-      position.position.add(vel)
-      this.position.set(position.position.x, position.position.y, position.position.z)
-    }
+    val collision = QuantumVoxel.player!!.getComponent(CollisionComponent::class.java) ?: return
+    if (vel.x != 0F) collision.velocityX = vel.x.toDouble() / TPS
+    if (up && collision.onGround) collision.velocityY = 0.4
+    if (vel.z != 0F) collision.velocityZ = vel.z.toDouble() / TPS
   }
 
   /**
@@ -234,11 +205,11 @@ class GameScreen(world: World) : KtxScreen {
     if (Gdx.input.isButtonJustPressed(Input.Buttons.LEFT) && !gamePlatform.isMobile) {
       Gdx.input.isCursorCatched = true
     }
-    player.getComponent(RunningComponent::class.java).running =
+    QuantumVoxel.player!!.getComponent(RunningComponent::class.java).running =
       KeyBinds.runningKey.isPressed() && (Gdx.input.isCursorCatched || gamePlatform.isMobile)
 
     if (Gdx.input.isKeyJustPressed(Input.Keys.F1)) {
-      dimension.rebuildAll()
+      QuantumVoxel.dimension!!.rebuildAll()
     }
   }
 
@@ -255,24 +226,20 @@ class GameScreen(world: World) : KtxScreen {
     spriteBatch.transformMatrix = spriteBatch.transformMatrix.scale(QuantumVoxel.guiScale, QuantumVoxel.guiScale, QuantumVoxel.guiScale)
 
     try {
-      font.draw(spriteBatch, "X: ${player.getComponent(PositionComponent::class.java).position.x}", 10f, 10f)
-      font.draw(spriteBatch, "Y: ${player.getComponent(PositionComponent::class.java).position.y}", 10f, 20f)
-      font.draw(spriteBatch, "Z: ${player.getComponent(PositionComponent::class.java).position.z}", 10f, 30f)
+      font.draw(spriteBatch, "X: ${QuantumVoxel.player!!.getComponent(PositionComponent::class.java).position.x}", 10f, 10f)
+      font.draw(spriteBatch, "Y: ${QuantumVoxel.player!!.getComponent(PositionComponent::class.java).position.y}", 10f, 20f)
+      font.draw(spriteBatch, "Z: ${QuantumVoxel.player!!.getComponent(PositionComponent::class.java).position.z}", 10f, 30f)
 
       font.draw(spriteBatch, "Forward: $forward", 10f, 40f)
       font.draw(spriteBatch, "Backward: $backward", 10f, 50f)
       font.draw(spriteBatch, "Strafe Left: $strafeLeft", 10f, 60f)
       font.draw(spriteBatch, "Strafe Right: $strafeRight", 10f, 70f)
 
-      font.draw(spriteBatch, "Real X: ${this.position.x}", 10f, 80f)
-      font.draw(spriteBatch, "Real Y: ${this.position.y}", 10f, 90f)
-      font.draw(spriteBatch, "Real Z: ${this.position.z}", 10f, 100f)
+      font.draw(spriteBatch, "X Rotation: ${QuantumVoxel.player!!.getComponent(PositionComponent::class.java).xRot}", 10f, 110f)
+      font.draw(spriteBatch, "Y Rotation: ${QuantumVoxel.player!!.getComponent(PositionComponent::class.java).yRot}", 10f, 120f)
+      font.draw(spriteBatch, "X Head Rotation: ${QuantumVoxel.player!!.getComponent(PositionComponent::class.java).xHeadRot}", 10f, 130f)
 
-      font.draw(spriteBatch, "X Rotation: ${player.getComponent(PositionComponent::class.java).xRot}", 10f, 110f)
-      font.draw(spriteBatch, "Y Rotation: ${player.getComponent(PositionComponent::class.java).yRot}", 10f, 120f)
-      font.draw(spriteBatch, "X Head Rotation: ${player.getComponent(PositionComponent::class.java).xHeadRot}", 10f, 130f)
-
-      font.draw(spriteBatch, "Running: ${player.getComponent(RunningComponent::class.java).running}", 10f, 140f)
+      font.draw(spriteBatch, "Running: ${QuantumVoxel.player!!.getComponent(RunningComponent::class.java).running}", 10f, 140f)
 
       font.draw(spriteBatch, "FPS: ${Gdx.graphics.framesPerSecond}", 10f, 150f)
 
@@ -313,11 +280,10 @@ class GameScreen(world: World) : KtxScreen {
     // TODO
   }
 
-  override fun dispose() {
+  fun dispose() {
     modelBatch.disposeSafely()
     skybox.disposeSafely()
     spriteBatch.disposeSafely()
-    super.dispose()
   }
 
   /**
@@ -330,9 +296,7 @@ class GameScreen(world: World) : KtxScreen {
    * @param width The new width of the game window in pixels.
    * @param height The new height of the game window in pixels.
    */
-  override fun resize(width: Int, height: Int) {
-    super.resize(width, height)
-
+  fun resize(width: Int, height: Int) {
     camera.viewportWidth = width.toFloat()
     camera.viewportHeight = height.toFloat()
     camera.update()

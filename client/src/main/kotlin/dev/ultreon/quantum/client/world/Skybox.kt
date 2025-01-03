@@ -36,7 +36,7 @@ class Skybox : Disposable {
   }
 
   fun render(camera: Camera, xRot: Float) {
-    if (!shaderProgram.isCompiled) return
+    if (!shaderProgram.isCompiled) throw RuntimeException("Skybox shader is not compiled")
 
     shaderProgram.bind()
     transform.setToTranslation(camera.position).rotate(Vector3.Y, xRot)

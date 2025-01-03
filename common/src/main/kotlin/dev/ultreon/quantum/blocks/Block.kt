@@ -9,6 +9,7 @@ import ktx.collections.toGdxArray
 import ktx.math.vec3
 
 class Block {
+  var isFluid: Boolean = false
   var renderType: String = "default"
   val bounds: GdxArray<BoundingBox> = gdxArrayOf(
     BoundingBox(
@@ -30,6 +31,8 @@ class Block {
       )
     }.toGdxArray()
   }
+
+  var hasCollider: Boolean = true
 }
 
 fun block(func: Block.() -> Unit): Block {
