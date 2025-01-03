@@ -5,14 +5,14 @@ package dev.ultreon.quantum.client
 import com.artemis.World
 import com.badlogic.gdx.Gdx
 import com.badlogic.gdx.graphics.Color
-import com.badlogic.gdx.graphics.GL20
 import com.badlogic.gdx.graphics.g2d.BitmapFont
 import com.badlogic.gdx.graphics.g2d.SpriteBatch
-import com.badlogic.gdx.graphics.g2d.freetype.FreeType.Bitmap
-import com.badlogic.gdx.utils.Os
-import com.badlogic.gdx.utils.SharedLibraryLoader
 import com.badlogic.gdx.utils.async.AsyncExecutor
 import dev.ultreon.quantum.blocks.Blocks
+import dev.ultreon.quantum.client.QuantumVoxel.jsonModelLoader
+import dev.ultreon.quantum.client.QuantumVoxel.resourceManager
+import dev.ultreon.quantum.client.QuantumVoxel.textureManager
+import dev.ultreon.quantum.client.QuantumVoxel.world
 import dev.ultreon.quantum.client.model.JsonModelLoader
 import dev.ultreon.quantum.client.model.ModelRegistry
 import dev.ultreon.quantum.client.resource.TexturesCategory
@@ -24,16 +24,13 @@ import ktx.app.KtxGame
 import ktx.app.KtxScreen
 import ktx.app.clearScreen
 import java.io.FileNotFoundException
-import java.nio.file.Files
-import java.nio.file.Paths
 import java.util.*
 import java.util.concurrent.CompletableFuture
-import java.util.concurrent.Executors
-import java.util.zip.ZipInputStream
-import kotlin.io.path.toPath
+import kotlin.math.min
 
 val timer = Timer()
-
+const val MINIMUM_WIDTH = 550
+const val MINIMUM_HEIGHT = 300
 
 lateinit var gamePlatform: GamePlatform
 
@@ -59,6 +56,13 @@ object QuantumVoxel : KtxGame<KtxScreen>() {
   private lateinit var crashFont: BitmapFont
   private lateinit var crashSpriteBatch: SpriteBatch
   private var crash: Exception? = null
+  var setGuiScale = 0
+    set(value) {
+      field = value.coerceAtLeast(0)
+    }
+
+  private var width = 1
+  private var height = 1
 
   val executor: AsyncExecutor = AsyncExecutor(Runtime.getRuntime().availableProcessors(), "QV:Async Worker")
 
@@ -120,6 +124,9 @@ object QuantumVoxel : KtxGame<KtxScreen>() {
 
     try {
       Gdx.graphics.setVSync(false)
+
+      width = Gdx.graphics.width.coerceAtLeast(MINIMUM_WIDTH)
+      height = Gdx.graphics.height.coerceAtLeast(MINIMUM_HEIGHT)
 
       Blocks.init()
 
@@ -186,6 +193,44 @@ object QuantumVoxel : KtxGame<KtxScreen>() {
       return
     }
     super.render()
+  }
+
+  /**
+   * Calculates the maximum GUI scale that can be applied based on the current window dimensions
+   * and predefined minimum width and height constraints.
+   *
+   * The method determines the scale by comparing the ratios of the window's width and height
+   * to the defined minimum dimensions `MINIMUM_WIDTH` and `MINIMUM_HEIGHT`. It ensures that
+   * the resulting scale is at least 1 to maintain usability.
+   *
+   * @return The maximum allowable GUI scale as an integer value.
+   */
+  fun calcMaxGuiScale(): Int {
+    var windowWidth = width
+    var windowHeight = height
+
+    if (windowWidth / MINIMUM_WIDTH < windowHeight / MINIMUM_HEIGHT) {
+      return (windowWidth / MINIMUM_WIDTH).coerceAtLeast(1)
+    }
+
+    if (windowHeight / MINIMUM_HEIGHT < windowWidth / MINIMUM_WIDTH) {
+      return (windowHeight / MINIMUM_HEIGHT).coerceAtLeast(1)
+    }
+
+    val min = min(windowWidth / MINIMUM_WIDTH, windowHeight / MINIMUM_HEIGHT)
+    return min.coerceAtLeast(1)
+  }
+
+  var guiScale: Float = (if (setGuiScale <= 0) calcMaxGuiScale() else setGuiScale.coerceAtMost(calcMaxGuiScale())).toFloat()
+    private set
+
+  override fun resize(width: Int, height: Int) {
+    super.resize(width, height)
+
+    this.width = width
+    this.height = height
+
+    guiScale = (if (setGuiScale <= 0) calcMaxGuiScale() else setGuiScale.coerceAtMost(calcMaxGuiScale())).toFloat()
   }
 
   operator fun <T> invoke(block: (QuantumVoxel) -> T): CompletableFuture<T> {

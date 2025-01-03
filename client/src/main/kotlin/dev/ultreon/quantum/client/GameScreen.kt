@@ -252,7 +252,7 @@ class GameScreen(world: World) : KtxScreen {
    */
   private fun drawInfo(position: PositionComponent) {
     backupMatrix.set(spriteBatch.transformMatrix)
-    spriteBatch.transformMatrix = spriteBatch.transformMatrix.scale(2F, 2F, 2F)
+    spriteBatch.transformMatrix = spriteBatch.transformMatrix.scale(QuantumVoxel.guiScale, QuantumVoxel.guiScale, QuantumVoxel.guiScale)
 
     try {
       font.draw(spriteBatch, "X: ${player.getComponent(PositionComponent::class.java).position.x}", 10f, 10f)
@@ -294,6 +294,8 @@ class GameScreen(world: World) : KtxScreen {
       font.draw(spriteBatch, "Chunk Position: ${position.chunkPosition}", 10f, 210f)
 
       font.draw(spriteBatch, "Is Mobile: ${gamePlatform.isMobile}", 10f, 220f)
+
+      font.draw(spriteBatch, "Gui Scale: ${QuantumVoxel.guiScale}", 10f, 230f)
     } finally {
       spriteBatch.transformMatrix.set(backupMatrix)
     }
