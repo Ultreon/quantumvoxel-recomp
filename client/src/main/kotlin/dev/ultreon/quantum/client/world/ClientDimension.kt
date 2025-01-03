@@ -18,6 +18,7 @@ import dev.ultreon.quantum.world.Dimension
 import dev.ultreon.quantum.world.SIZE
 import ktx.assets.disposeSafely
 import ktx.collections.GdxArray
+import ktx.collections.GdxSet
 import ktx.collections.sortBy
 import kotlin.math.pow
 import kotlin.math.sqrt
@@ -181,26 +182,27 @@ class ClientDimension(private val material: Material) : Dimension() {
     }
 
     val toRemove = GdxArray<ClientChunk>()
+    val toRebuild = GdxSet<ClientChunk>()
     for (chunk in chunks.values()) {
-      if (requiredChunks.any { it.first.x == chunk.chunkPos.x && it.first.y == chunk.chunkPos.y && it.first.z == chunk.chunkPos.z }) {
+      if (chunk.chunkPos.dst(cx, cy, cz) > renderDistance) {
         toRemove.add(chunk)
-        forChunksAround(chunk) { rebuild() }
+        toRebuild.remove(chunk)
+        forChunksAround(chunk) { toRebuild.add(this) }
       }
     }
 
     for (chunk in toRemove) {
       remove(chunk)
-      forChunksAround(chunk) { rebuild() }
+    }
+
+    for (chunk in toRebuild) {
+      chunk.rebuild()
     }
 
     requiredChunks.sortBy {
       it.first.dst2(cx.toInt(), cy.toInt(), cz.toInt())
     }
-    for (chunk in chunksToLoad) {
-      if (chunk.first.dst(cx.toInt(), cy.toInt(), cz.toInt()) > renderDistance) {
-        chunksToLoad.removeValue(chunk, true)
-      }
-    }
+    chunksToLoad.clear()
     for (chunk in requiredChunks) {
       this.chunksToLoad.add(chunk)
     }

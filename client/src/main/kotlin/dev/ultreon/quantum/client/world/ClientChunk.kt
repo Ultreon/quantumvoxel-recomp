@@ -9,24 +9,17 @@ import com.badlogic.gdx.graphics.g3d.utils.MeshPartBuilder
 import com.badlogic.gdx.graphics.g3d.utils.ModelBuilder
 import com.badlogic.gdx.math.GridPoint3
 import com.badlogic.gdx.utils.Pool
-import com.badlogic.gdx.utils.async.AsyncResult
 import dev.ultreon.quantum.blocks.Block
 import dev.ultreon.quantum.blocks.Blocks
-import dev.ultreon.quantum.client.QuantumVoxel
 import dev.ultreon.quantum.client.model.FaceCull
 import dev.ultreon.quantum.client.model.ModelRegistry
-import dev.ultreon.quantum.client.part
 import dev.ultreon.quantum.client.relative
-import dev.ultreon.quantum.logger
 import dev.ultreon.quantum.math.Vector3D
 import dev.ultreon.quantum.world.BlockFlags
 import dev.ultreon.quantum.world.Dimension
 import dev.ultreon.quantum.world.SIZE
 import ktx.assets.disposeSafely
 import ktx.collections.GdxArray
-import java.util.concurrent.CompletableFuture
-import java.util.concurrent.Executors
-import java.util.concurrent.Future
 
 class ClientChunk(x: Int, y: Int, z: Int, private val material: Material, val dimension: ClientDimension) : Dimension(),
   RenderableProvider {
