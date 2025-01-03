@@ -9,6 +9,7 @@ import com.badlogic.gdx.graphics.g3d.utils.MeshPartBuilder
 import com.badlogic.gdx.graphics.g3d.utils.ModelBuilder
 import com.badlogic.gdx.math.GridPoint3
 import com.badlogic.gdx.utils.Pool
+import com.badlogic.gdx.utils.async.AsyncResult
 import dev.ultreon.quantum.blocks.Block
 import dev.ultreon.quantum.blocks.Blocks
 import dev.ultreon.quantum.client.QuantumVoxel
@@ -93,50 +94,47 @@ class ClientChunk(x: Int, y: Int, z: Int, private val material: Material, val di
     buildModel()
   }
 
-  private fun buildModel(): Future<Model?> {
-    if (!hasBlocks) return CompletableFuture.completedFuture(null)
+  private fun buildModel(): Model? {
+    if (!hasBlocks) return null
 
-    return QuantumVoxel.executorService.submit<Model?> {
-      val builder = ModelBuilder()
-      builder.begin()
-      val part1 = builder.part(
-        "world#default", GL20.GL_TRIANGLES, VertexAttributes(
-          VertexAttribute.Position(),
-          VertexAttribute.Normal(),
-          VertexAttribute.ColorPacked(),
-          VertexAttribute.TexCoords(0)
-        ), this.material
-      )
-      for (x in 0..<SIZE) {
-        for (y in 0..<SIZE) {
-          for (z in 0..<SIZE) {
-            loadBlockInto(part1, x, y, z)
-          }
+    val builder = ModelBuilder()
+    builder.begin()
+    val part1 = builder.part(
+      "world#default", GL20.GL_TRIANGLES, VertexAttributes(
+        VertexAttribute.Position(),
+        VertexAttribute.Normal(),
+        VertexAttribute.ColorPacked(),
+        VertexAttribute.TexCoords(0)
+      ), this.material
+    )
+    for (x in 0..<SIZE) {
+      for (y in 0..<SIZE) {
+        for (z in 0..<SIZE) {
+          loadBlockInto(part1, x, y, z)
         }
       }
-      val part2 = builder.part(
-        "world#water", GL20.GL_TRIANGLES, VertexAttributes(
-          VertexAttribute.Position(),
-          VertexAttribute.Normal(),
-          VertexAttribute.ColorPacked(),
-          VertexAttribute.TexCoords(0)
-        ), this.material
-      )
-      for (x in 0..<SIZE) {
-        for (y in 0..<SIZE) {
-          for (z in 0..<SIZE) {
-            loadBlockInto(part2, x, y, z, renderType = "water")
-          }
-        }
-      }
-
-      return@submit QuantumVoxel.invoke {
-        val model = builder.end()
-        worldModel = model
-        worldModelInstance = ModelInstance(worldModel)
-        return@invoke model
-      }.join()
     }
+    val part2 = builder.part(
+      "world#water", GL20.GL_TRIANGLES, VertexAttributes(
+        VertexAttribute.Position(),
+        VertexAttribute.Normal(),
+        VertexAttribute.ColorPacked(),
+        VertexAttribute.TexCoords(0)
+      ), this.material
+    )
+    for (x in 0..<SIZE) {
+      for (y in 0..<SIZE) {
+        for (z in 0..<SIZE) {
+          loadBlockInto(part2, x, y, z, renderType = "water")
+        }
+      }
+    }
+
+
+    val model = builder.end()
+    worldModel = model
+    worldModelInstance = ModelInstance(worldModel)
+    return model
   }
 
   private fun loadBlockInto(meshPartBuilder: MeshPartBuilder, x: Int, y: Int, z: Int, renderType: String = "default") {
@@ -146,18 +144,16 @@ class ClientChunk(x: Int, y: Int, z: Int, private val material: Material, val di
       if (renderType != block?.renderType) {
         return
       }
-      QuantumVoxel {
-        model.loadInto(
-          meshPartBuilder, x, y, z, FaceCull(
-            back = getSafe(x, y, z + 1).let { it != Blocks.air && it.renderType == block.renderType },
-            front = getSafe(x, y, z - 1).let { it != Blocks.air && it.renderType == block.renderType },
-            left = getSafe(x - 1, y, z).let { it != Blocks.air && it.renderType == block.renderType },
-            right = getSafe(x + 1, y, z).let { it != Blocks.air && it.renderType == block.renderType },
-            top = getSafe(x, y + 1, z).let { it != Blocks.air && it.renderType == block.renderType },
-            bottom = getSafe(x, y - 1, z).let { it != Blocks.air && it.renderType == block.renderType }
-          )
+      model.loadInto(
+        meshPartBuilder, x, y, z, FaceCull(
+          back = getSafe(x, y, z + 1).let { it != Blocks.air && it.renderType == block.renderType },
+          front = getSafe(x, y, z - 1).let { it != Blocks.air && it.renderType == block.renderType },
+          left = getSafe(x - 1, y, z).let { it != Blocks.air && it.renderType == block.renderType },
+          right = getSafe(x + 1, y, z).let { it != Blocks.air && it.renderType == block.renderType },
+          top = getSafe(x, y + 1, z).let { it != Blocks.air && it.renderType == block.renderType },
+          bottom = getSafe(x, y - 1, z).let { it != Blocks.air && it.renderType == block.renderType }
         )
-      }.join()
+      )
 
       this.hasBlocks = true
     }

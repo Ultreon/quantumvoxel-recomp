@@ -11,6 +11,7 @@ import com.badlogic.gdx.graphics.g2d.SpriteBatch
 import com.badlogic.gdx.graphics.g2d.freetype.FreeType.Bitmap
 import com.badlogic.gdx.utils.Os
 import com.badlogic.gdx.utils.SharedLibraryLoader
+import com.badlogic.gdx.utils.async.AsyncExecutor
 import dev.ultreon.quantum.blocks.Blocks
 import dev.ultreon.quantum.client.model.JsonModelLoader
 import dev.ultreon.quantum.client.model.ModelRegistry
@@ -59,7 +60,7 @@ object QuantumVoxel : KtxGame<KtxScreen>() {
   private lateinit var crashSpriteBatch: SpriteBatch
   private var crash: Exception? = null
 
-  val executorService = Executors.newFixedThreadPool((Runtime.getRuntime().availableProcessors() / 2).coerceAtLeast(1))!!
+  val executor: AsyncExecutor = AsyncExecutor(Runtime.getRuntime().availableProcessors(), "QV:Async Worker")
 
   /**
    * Manages and organizes resources such as textures, models, and shaders.
