@@ -22,6 +22,7 @@ import java.nio.file.StandardCopyOption
 import java.util.zip.ZipInputStream
 import kotlin.io.path.Path
 import kotlin.io.path.toPath
+import kotlin.math.log
 import com.badlogic.gdx.backends.lwjgl3.Lwjgl3Application as OpenGLApp
 import com.badlogic.gdx.backends.lwjgl3.Lwjgl3ApplicationConfiguration as OpenGLConfig
 import com.github.dgzt.gdx.lwjgl3.Lwjgl3ApplicationConfiguration as VulkanConfig
@@ -64,8 +65,9 @@ fun main() {
       logger.info("Exiting...")
 
       // Loop through threads and interrupt them, unless they are the main thread
-      Thread.getAllStackTraces().keys.filter { it != Thread.currentThread() }.forEach {
+      Thread.getAllStackTraces().keys.filter { it != Thread.currentThread() && it.isAlive && !it.isDaemon && it.name != "Finalizer" }.forEach {
         if (it.id == Thread.currentThread().id) return@forEach
+        logger.warn("Interrupting thread ${it.name} due to it being stuck")
         it.interrupt()
         it.join(1000)
         if (it.isAlive) {

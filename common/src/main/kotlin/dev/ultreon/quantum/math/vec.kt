@@ -1,5 +1,6 @@
 package dev.ultreon.quantum.math
 
+import com.badlogic.gdx.math.GridPoint3
 import com.badlogic.gdx.math.Quaternion
 import com.badlogic.gdx.math.Vector3
 import kotlin.math.sqrt
@@ -13,6 +14,20 @@ data class Vector3D(
     this.x = x
     this.y = y
     this.z = z
+    return this
+  }
+
+  fun set(x: Float, y: Float, z: Float): Vector3D {
+    this.x = x.toDouble()
+    this.y = y.toDouble()
+    this.z = z.toDouble()
+    return this
+  }
+
+  fun set(x: Int, y: Int, z: Int): Vector3D {
+    this.x = x.toDouble()
+    this.y = y.toDouble()
+    this.z = z.toDouble()
     return this
   }
 
@@ -57,6 +72,34 @@ data class Vector3D(
     this.x -= x
     this.y -= y
     this.z -= z
+    return this
+  }
+
+  fun sub(x: Int, y: Int, z: Int): Vector3D {
+    this.x -= x.toDouble()
+    this.y -= y.toDouble()
+    this.z -= z.toDouble()
+    return this
+  }
+
+  fun sub(v: Double): Vector3D {
+    this.x -= v
+    this.y -= v
+    this.z -= v
+    return this
+  }
+
+  fun sub(v: Float): Vector3D {
+    this.x -= v
+    this.y -= v
+    this.z -= v
+    return this
+  }
+
+  fun sub(v: Int): Vector3D {
+    this.x -= v.toDouble()
+    this.y -= v.toDouble()
+    this.z -= v.toDouble()
     return this
   }
 
@@ -227,6 +270,12 @@ data class Vector3D(
       2 -> z = value
       else -> throw IllegalArgumentException("Invalid axis: $axis")
     }
+  }
+
+  fun set(v: GridPoint3) {
+    x = v.x.toDouble()
+    y = v.y.toDouble()
+    z = v.z.toDouble()
   }
 
   companion object {

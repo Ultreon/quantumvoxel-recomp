@@ -74,7 +74,7 @@ class TextureManager(val resourceManager: ResourceManager) : Disposable {
    */
   fun registerAtlas(name: String) {
     val skylineStrategy = PixmapPacker.SkylineStrategy()
-    packers[name] = PixmapPacker(4096, 4096, Format.RGBA8888, 0, false, skylineStrategy)
+    packers[name] = PixmapPacker(2048, 2048, Format.RGBA8888, 0, false, skylineStrategy)
 
     texturesCategory.register(name, TextureCategory(texturesCategory, this, name))
   }

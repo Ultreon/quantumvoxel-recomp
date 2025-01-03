@@ -10,6 +10,8 @@ import dev.ultreon.quantum.client.QuantumVoxel
 import dev.ultreon.quantum.entity.PositionComponent
 import dev.ultreon.quantum.logger
 import dev.ultreon.quantum.math.Vector3D
+import dev.ultreon.quantum.util.BlockHit
+import dev.ultreon.quantum.util.RayD
 import dev.ultreon.quantum.vec3d
 import dev.ultreon.quantum.world.BlockFlags
 import dev.ultreon.quantum.world.Dimension
@@ -33,8 +35,13 @@ class ClientDimension(private val material: Material) : Dimension() {
   }
 
   override fun set(x: Int, y: Int, z: Int, block: Block, flags: BlockFlags) {
-    chunks.get(location(x.floorDiv(SIZE), y.floorDiv(SIZE), z.floorDiv(SIZE)))
-      ?.set(x % SIZE, y % SIZE, z % SIZE, block, flags)
+    val get = chunks.get(location(x.floorDiv(SIZE), y.floorDiv(SIZE), z.floorDiv(SIZE)))
+    get?.let {
+      logger.info("Setting block at $x, $y, $z to $block")
+      it.set(x % SIZE, y % SIZE, z % SIZE, block, flags)
+      it.rebuild()
+      forChunksAround(it) { rebuild() }
+    }
   }
 
   fun location(x: Int, y: Int, z: Int): Long {
@@ -43,11 +50,11 @@ class ClientDimension(private val material: Material) : Dimension() {
       ((z.toLong() and 0xFFFFFF) shl 48)
   }
 
-  fun chunkAt(x: Int, y: Int, z: Int): ClientChunk? {
+  override fun chunkAt(x: Int, y: Int, z: Int): ClientChunk? {
     return chunks.get(location(x, y, z))
   }
 
-  fun chunkAtBlock(x: Int, y: Int, z: Int): ClientChunk? {
+  override fun chunkAtBlock(x: Int, y: Int, z: Int): ClientChunk? {
     return chunkAt(x.floorDiv(SIZE), y.floorDiv(SIZE), z.floorDiv(SIZE))
   }
 
@@ -64,11 +71,9 @@ class ClientDimension(private val material: Material) : Dimension() {
     if (chunks.remove(location(chunk.chunkPos.x, chunk.chunkPos.y, chunk.chunkPos.z)) == null) {
       logger.warn("Tried to remove nonexistent chunk at ${chunk.chunkPos}")
     }
-    chunk.disposeSafely()
+    chunk.dispose()
 
     forChunksAround(chunk) { rebuild() }
-
-    logger.debug("Unloaded chunk: ${chunk.chunkPos}")
   }
 
   fun loadChunk(cx: Int, cy: Int, cz: Int, build: Boolean = true) {
@@ -242,7 +247,7 @@ class ClientDimension(private val material: Material) : Dimension() {
 
   override fun dispose() {
     for (chunk in chunks.values()) {
-      chunk.disposeSafely()
+      chunk.dispose()
     }
     chunks.clear()
   }
@@ -251,5 +256,9 @@ class ClientDimension(private val material: Material) : Dimension() {
     for (chunk in chunks.values()) {
       chunk.reposition(position)
     }
+  }
+
+  fun rayCast(position: Vector3D, lookVec: Vector3D): BlockHit {
+    return rayTrace(RayD(position, lookVec))
   }
 }

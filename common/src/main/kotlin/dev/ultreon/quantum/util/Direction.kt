@@ -3,6 +3,7 @@ package dev.ultreon.quantum.util
 import com.badlogic.gdx.math.Vector3
 import dev.ultreon.quantum.ExperimentalQuantumApi
 import dev.ultreon.quantum.math.Axis
+import dev.ultreon.quantum.math.Vector3D
 import dev.ultreon.quantum.math.opposite
 import ktx.math.vec3
 
@@ -64,5 +65,19 @@ enum class Direction(val normal: Vector3) {
   @ExperimentalQuantumApi
   fun counterClockwise(axis: Axis): Direction {
     return clockwise(axis.opposite())
+  }
+
+  companion object {
+    fun fromVec3d(direction: Vector3D): Direction {
+      return when {
+        direction.y > 0 -> UP
+        direction.y < 0 -> DOWN
+        direction.z > 0 -> NORTH
+        direction.z < 0 -> SOUTH
+        direction.x > 0 -> EAST
+        direction.x < 0 -> WEST
+        else -> throw IllegalArgumentException("Direction must not be zero")
+      }
+    }
   }
 }

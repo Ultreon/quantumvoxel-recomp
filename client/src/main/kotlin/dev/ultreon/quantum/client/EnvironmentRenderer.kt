@@ -1,3 +1,5 @@
+@file:Suppress("t")
+
 package dev.ultreon.quantum.client
 
 import com.badlogic.gdx.Gdx
@@ -8,6 +10,7 @@ import com.badlogic.gdx.graphics.g3d.ModelBatch
 import com.badlogic.gdx.graphics.g3d.attributes.ColorAttribute
 import com.badlogic.gdx.math.Matrix4
 import com.badlogic.gdx.math.Vector3
+import dev.ultreon.quantum.blocks.Blocks
 import dev.ultreon.quantum.client.input.KeyBinds
 import dev.ultreon.quantum.client.world.Skybox
 import dev.ultreon.quantum.entity.CollisionComponent
@@ -15,12 +18,15 @@ import dev.ultreon.quantum.entity.PositionComponent
 import dev.ultreon.quantum.entity.RunningComponent
 import dev.ultreon.quantum.logger
 import dev.ultreon.quantum.math.Vector3D
+import dev.ultreon.quantum.util.BlockHit
 import dev.ultreon.quantum.util.NamespaceID
 import dev.ultreon.quantum.vec3d
 import ktx.app.clearScreen
 import ktx.assets.disposeSafely
 import ktx.graphics.use
 import ktx.math.vec3
+
+private val tmp1 = vec3()
 
 /**
  * Represents the main game screen responsible for rendering and managing the player's interaction
@@ -38,6 +44,7 @@ import ktx.math.vec3
  *              camera, player entity, and necessary assets.
  */
 class EnvironmentRenderer {
+  private var lastHit: BlockHit? = null
   private val backupMatrix: Matrix4 = Matrix4()
   internal var lastRefreshPosition: Vector3D = vec3d()
   private var lastRefreshTime: Long = 0
@@ -144,13 +151,24 @@ class EnvironmentRenderer {
     Gdx.app.graphics.setTitle("Quantum Voxel - FPS: ${Gdx.graphics.framesPerSecond}")
   }
 
-  /**
-   * Updates the position and velocity of the player based on the current movement inputs and delta time.
-   *
-   * @param position A `PositionComponent` representing the current position and rotation state of the entity.
-   * @param delta A `Float` representing the time elapsed since the last frame, used for scaling movement.
-   */
-  private fun move(position: PositionComponent, delta: Float) {
+  private fun rayCast(): BlockHit {
+    val position = QuantumVoxel.player!!.getComponent(PositionComponent::class.java)
+    val hit = QuantumVoxel.dimension!!.rayCast(position.position.cpy().add(0.0, 1.6, 0.0), vec3d().also {
+      val vec = tmp1
+      position.lookVec(vec)
+      it.set(vec.x, vec.y, vec.z)
+    })
+    this.lastHit = hit
+    return hit
+  }
+
+    /**
+     * Updates the position and velocity of the player based on the current movement inputs and delta time.
+     *
+     * @param position A `PositionComponent` representing the current position and rotation state of the entity.
+     * @param delta A `Float` representing the time elapsed since the last frame, used for scaling movement.
+     */
+    private fun move(position: PositionComponent, delta: Float) {
 //    when {
 //      moveX > 0 -> position.xRot = max(position.xRot - 45 / (position.xHeadRot - position.xRot + 50), position.xRot - 90)
 //      moveX < -0 -> position.xRot = min(position.xRot + 45 / (position.xRot - position.xHeadRot + 50), position.xRot + 90)
@@ -158,149 +176,201 @@ class EnvironmentRenderer {
 //      moveY != 0F && position.xRot < position.xHeadRot -> position.xRot = min(position.xRot + (45 / (position.xHeadRot - position.xRot)), position.xHeadRot)
 //    }
 
-    tmpVec.set(moveX, 0f, -moveY).nor().scl(speed)/*.rotate(Vector3.X, position.yRot + 90)*/
-      .rotate(Vector3.Y, position.xHeadRot + 90)
+      tmpVec.set(moveX, 0f, -moveY).nor().scl(speed)/*.rotate(Vector3.X, position.yRot + 90)*/
+        .rotate(Vector3.Y, position.xHeadRot + 90)
 
-    var flight = 0F
+      var flight = 0F
 
-    vel.set(tmpVec).add(0F, -flight, 0F)
+      vel.set(tmpVec).add(0F, -flight, 0F)
 
-    val collision = QuantumVoxel.player!!.getComponent(CollisionComponent::class.java) ?: return
-    if (vel.x != 0F) collision.velocityX = vel.x.toDouble() / TPS
-    if (up && collision.onGround) collision.velocityY = 0.4
-    if (vel.z != 0F) collision.velocityZ = vel.z.toDouble() / TPS
-  }
-
-  /**
-   * Updates the player's rotation and camera direction based on mouse movement.
-   *
-   * @param position A `PositionComponent` that represents the current position and rotation state of the player.
-   */
-  private fun look(position: PositionComponent) {
-    val deltaX = Gdx.input.deltaX
-    val deltaY = Gdx.input.deltaY
-
-    position.xRot -= deltaX * 0.5f
-    position.xHeadRot = position.xRot
-    position.yRot += deltaY * 0.5f
-
-    position.xRot = (position.xRot + 180) % 360 - 180
-    position.yRot = position.yRot.coerceIn(-89.99F, 89.99F)
-
-    position.lookVec(camera.direction)
-    camera.update()
-  }
-
-  private fun input() {
-    forward = KeyBinds.walkForwardsKey.isPressed() && (Gdx.input.isCursorCatched || gamePlatform.isMobile)
-    backward = KeyBinds.walkBackwardsKey.isPressed() && (Gdx.input.isCursorCatched || gamePlatform.isMobile)
-    strafeLeft = KeyBinds.walkLeftKey.isPressed() && (Gdx.input.isCursorCatched || gamePlatform.isMobile)
-    strafeRight = KeyBinds.walkRightKey.isPressed() && (Gdx.input.isCursorCatched || gamePlatform.isMobile)
-    up = KeyBinds.jumpKey.isPressed() && (Gdx.input.isCursorCatched || gamePlatform.isMobile)
-    down = KeyBinds.crouchKey.isPressed() && (Gdx.input.isCursorCatched || gamePlatform.isMobile)
-
-    if (Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE) && !gamePlatform.isMobile) {
-      Gdx.input.isCursorCatched = false
+      val collision = QuantumVoxel.player!!.getComponent(CollisionComponent::class.java) ?: return
+      if (vel.x != 0F) collision.velocityX = vel.x.toDouble() / TPS
+      if (up && collision.onGround) collision.velocityY = 0.4
+      if (vel.z != 0F) collision.velocityZ = vel.z.toDouble() / TPS
     }
-    if (Gdx.input.isButtonJustPressed(Input.Buttons.LEFT) && !gamePlatform.isMobile) {
-      Gdx.input.isCursorCatched = true
+
+    /**
+     * Updates the player's rotation and camera direction based on mouse movement.
+     *
+     * @param position A `PositionComponent` that represents the current position and rotation state of the player.
+     */
+    private fun look(position: PositionComponent) {
+      val deltaX = Gdx.input.deltaX
+      val deltaY = Gdx.input.deltaY
+
+      position.xRot -= deltaX * 0.5f
+      position.xHeadRot = position.xRot
+      position.yRot += deltaY * 0.5f
+
+      position.xRot = (position.xRot + 180) % 360 - 180
+      position.yRot = position.yRot.coerceIn(-89.99F, 89.99F)
+
+      position.lookVec(camera.direction)
+      camera.update()
     }
-    QuantumVoxel.player!!.getComponent(RunningComponent::class.java).running =
-      KeyBinds.runningKey.isPressed() && (Gdx.input.isCursorCatched || gamePlatform.isMobile)
 
-    if (Gdx.input.isKeyJustPressed(Input.Keys.F1)) {
-      QuantumVoxel.dimension!!.rebuildAll()
+    private fun input() {
+      forward = KeyBinds.walkForwardsKey.isPressed() && (Gdx.input.isCursorCatched || gamePlatform.isMobile)
+      backward = KeyBinds.walkBackwardsKey.isPressed() && (Gdx.input.isCursorCatched || gamePlatform.isMobile)
+      strafeLeft = KeyBinds.walkLeftKey.isPressed() && (Gdx.input.isCursorCatched || gamePlatform.isMobile)
+      strafeRight = KeyBinds.walkRightKey.isPressed() && (Gdx.input.isCursorCatched || gamePlatform.isMobile)
+      up = KeyBinds.jumpKey.isPressed() && (Gdx.input.isCursorCatched || gamePlatform.isMobile)
+      down = KeyBinds.crouchKey.isPressed() && (Gdx.input.isCursorCatched || gamePlatform.isMobile)
+
+      if (Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE) && !gamePlatform.isMobile) {
+        Gdx.input.isCursorCatched = false
+      }
+      if (Gdx.input.isButtonJustPressed(Input.Buttons.LEFT) && !gamePlatform.isMobile) {
+        if (Gdx.input.isCursorCatched) {
+          logger.debug("Clicked at ${Gdx.input.x}, ${Gdx.input.y}")
+          rayCast().let {
+            val collide = it.isCollide
+            if (collide) {
+              logger.debug("Hit at ${it.point.x}, ${it.point.y}, ${it.point.z}")
+              QuantumVoxel.dimension!!.set(it.point.x, it.point.y, it.point.z, Blocks.air)
+            } else {
+              logger.debug("Missed at ${it.point.x}, ${it.point.y}, ${it.point.z}")
+            }
+          } ?: run {
+            logger.debug("No hits")
+          }
+        }
+        Gdx.input.isCursorCatched = true
+      }
+      QuantumVoxel.player!!.getComponent(RunningComponent::class.java).running =
+        KeyBinds.runningKey.isPressed() && (Gdx.input.isCursorCatched || gamePlatform.isMobile)
+
+      if (Gdx.input.isKeyJustPressed(Input.Keys.F1)) {
+        QuantumVoxel.dimension!!.rebuildAll()
+      }
+    }
+
+    /**
+     * Renders various debugging and informational data as an overlay on the screen.
+     *
+     * This function displays the player's current position, movement states, rotation values,
+     * camera details, and frames per second (FPS). It uses a `SpriteBatch` instance to draw each line of text.
+     *
+     * @param position The player's current position and rotation, represented by a `PositionComponent` instance.
+     */
+    private fun drawInfo(position: PositionComponent) {
+      backupMatrix.set(spriteBatch.transformMatrix)
+      spriteBatch.transformMatrix =
+        spriteBatch.transformMatrix.scale(QuantumVoxel.guiScale, QuantumVoxel.guiScale, QuantumVoxel.guiScale)
+
+      try {
+        font.draw(
+          spriteBatch,
+          "X: ${QuantumVoxel.player!!.getComponent(PositionComponent::class.java).position.x}",
+          10f,
+          10f
+        )
+        font.draw(
+          spriteBatch,
+          "Y: ${QuantumVoxel.player!!.getComponent(PositionComponent::class.java).position.y}",
+          10f,
+          20f
+        )
+        font.draw(
+          spriteBatch,
+          "Z: ${QuantumVoxel.player!!.getComponent(PositionComponent::class.java).position.z}",
+          10f,
+          30f
+        )
+
+        font.draw(spriteBatch, "Forward: $forward", 10f, 40f)
+        font.draw(spriteBatch, "Backward: $backward", 10f, 50f)
+        font.draw(spriteBatch, "Strafe Left: $strafeLeft", 10f, 60f)
+        font.draw(spriteBatch, "Strafe Right: $strafeRight", 10f, 70f)
+
+        font.draw(
+          spriteBatch,
+          "X Rotation: ${QuantumVoxel.player!!.getComponent(PositionComponent::class.java).xRot}",
+          10f,
+          110f
+        )
+        font.draw(
+          spriteBatch,
+          "Y Rotation: ${QuantumVoxel.player!!.getComponent(PositionComponent::class.java).yRot}",
+          10f,
+          120f
+        )
+        font.draw(
+          spriteBatch,
+          "X Head Rotation: ${QuantumVoxel.player!!.getComponent(PositionComponent::class.java).xHeadRot}",
+          10f,
+          130f
+        )
+
+        font.draw(
+          spriteBatch,
+          "Running: ${QuantumVoxel.player!!.getComponent(RunningComponent::class.java).running}",
+          10f,
+          140f
+        )
+
+        font.draw(spriteBatch, "FPS: ${Gdx.graphics.framesPerSecond}", 10f, 150f)
+
+        font.draw(spriteBatch, "Camera Position: ${camera.position}", 10f, 160f)
+        font.draw(spriteBatch, "Camera Direction: ${camera.direction}", 10f, 170f)
+        font.draw(spriteBatch, "Camera Up: ${camera.up}", 10f, 180f)
+        font.draw(
+          spriteBatch, "Direction: " + when {
+            position.yRot < -45 -> "Up"
+            position.yRot > 45 -> "Down"
+            position.xRot < -45 && position.xRot > -135 -> "Left"
+            position.xRot > 45 && position.xRot < 135 -> "Right"
+            position.xRot > 135 || position.xRot < -135 -> "Backward"
+            else -> "Forward"
+          }, 10f, 190f
+        )
+
+        font.draw(spriteBatch, "Velocity: $vel", 10f, 200f)
+        font.draw(spriteBatch, "Chunk Position: ${position.chunkPosition}", 10f, 210f)
+
+        font.draw(spriteBatch, "Is Mobile: ${gamePlatform.isMobile}", 10f, 220f)
+
+        font.draw(spriteBatch, "Gui Scale: ${QuantumVoxel.guiScale}", 10f, 230f)
+        font.draw(spriteBatch, "Intersected at: ${lastHit?.point}", 10f, 240f)
+      } finally {
+        spriteBatch.transformMatrix.set(backupMatrix)
+      }
+    }
+
+    fun move() {
+      if (!this.forward && !this.backward && !this.strafeLeft && !this.strafeRight) return
+      if (this.forward) this.moveY += 1f
+      if (this.backward) this.moveY -= 1f
+      if (this.strafeLeft) this.moveX -= 1f
+      if (this.strafeRight) this.moveX += 1f
+    }
+
+    fun controllerMove() {
+      // TODO
+    }
+
+    fun dispose() {
+      modelBatch.disposeSafely()
+      skybox.disposeSafely()
+      spriteBatch.disposeSafely()
+    }
+
+    /**
+     * Adjusts the camera viewport dimensions to match the new width and height of the window.
+     *
+     * This method ensures that the camera's viewport is updated whenever the game window is resized.
+     * It invokes the parent class's `resize` method, recalculates the camera's viewport width and height
+     * based on the provided dimensions, and updates the camera configuration.
+     *
+     * @param width The new width of the game window in pixels.
+     * @param height The new height of the game window in pixels.
+     */
+    fun resize(width: Int, height: Int) {
+      camera.viewportWidth = width.toFloat()
+      camera.viewportHeight = height.toFloat()
+      camera.update()
+
+      spriteBatch.projectionMatrix =
+        spriteBatch.projectionMatrix.setToOrtho2D(0f, 0f, width.toFloat(), height.toFloat())
     }
   }
-
-  /**
-   * Renders various debugging and informational data as an overlay on the screen.
-   *
-   * This function displays the player's current position, movement states, rotation values,
-   * camera details, and frames per second (FPS). It uses a `SpriteBatch` instance to draw each line of text.
-   *
-   * @param position The player's current position and rotation, represented by a `PositionComponent` instance.
-   */
-  private fun drawInfo(position: PositionComponent) {
-    backupMatrix.set(spriteBatch.transformMatrix)
-    spriteBatch.transformMatrix = spriteBatch.transformMatrix.scale(QuantumVoxel.guiScale, QuantumVoxel.guiScale, QuantumVoxel.guiScale)
-
-    try {
-      font.draw(spriteBatch, "X: ${QuantumVoxel.player!!.getComponent(PositionComponent::class.java).position.x}", 10f, 10f)
-      font.draw(spriteBatch, "Y: ${QuantumVoxel.player!!.getComponent(PositionComponent::class.java).position.y}", 10f, 20f)
-      font.draw(spriteBatch, "Z: ${QuantumVoxel.player!!.getComponent(PositionComponent::class.java).position.z}", 10f, 30f)
-
-      font.draw(spriteBatch, "Forward: $forward", 10f, 40f)
-      font.draw(spriteBatch, "Backward: $backward", 10f, 50f)
-      font.draw(spriteBatch, "Strafe Left: $strafeLeft", 10f, 60f)
-      font.draw(spriteBatch, "Strafe Right: $strafeRight", 10f, 70f)
-
-      font.draw(spriteBatch, "X Rotation: ${QuantumVoxel.player!!.getComponent(PositionComponent::class.java).xRot}", 10f, 110f)
-      font.draw(spriteBatch, "Y Rotation: ${QuantumVoxel.player!!.getComponent(PositionComponent::class.java).yRot}", 10f, 120f)
-      font.draw(spriteBatch, "X Head Rotation: ${QuantumVoxel.player!!.getComponent(PositionComponent::class.java).xHeadRot}", 10f, 130f)
-
-      font.draw(spriteBatch, "Running: ${QuantumVoxel.player!!.getComponent(RunningComponent::class.java).running}", 10f, 140f)
-
-      font.draw(spriteBatch, "FPS: ${Gdx.graphics.framesPerSecond}", 10f, 150f)
-
-      font.draw(spriteBatch, "Camera Position: ${camera.position}", 10f, 160f)
-      font.draw(spriteBatch, "Camera Direction: ${camera.direction}", 10f, 170f)
-      font.draw(spriteBatch, "Camera Up: ${camera.up}", 10f, 180f)
-      font.draw(
-        spriteBatch, "Direction: " + when {
-          position.yRot < -45 -> "Up"
-          position.yRot > 45 -> "Down"
-          position.xRot < -45 && position.xRot > -135 -> "Left"
-          position.xRot > 45 && position.xRot < 135 -> "Right"
-          position.xRot > 135 || position.xRot < -135 -> "Backward"
-          else -> "Forward"
-                                          }, 10f, 190f
-      )
-
-      font.draw(spriteBatch, "Velocity: $vel", 10f, 200f)
-      font.draw(spriteBatch, "Chunk Position: ${position.chunkPosition}", 10f, 210f)
-
-      font.draw(spriteBatch, "Is Mobile: ${gamePlatform.isMobile}", 10f, 220f)
-
-      font.draw(spriteBatch, "Gui Scale: ${QuantumVoxel.guiScale}", 10f, 230f)
-    } finally {
-      spriteBatch.transformMatrix.set(backupMatrix)
-    }
-  }
-
-  fun move() {
-    if (!this.forward && !this.backward && !this.strafeLeft && !this.strafeRight) return
-    if (this.forward) this.moveY += 1f
-    if (this.backward) this.moveY -= 1f
-    if (this.strafeLeft) this.moveX -= 1f
-    if (this.strafeRight) this.moveX += 1f
-  }
-
-  fun controllerMove() {
-    // TODO
-  }
-
-  fun dispose() {
-    modelBatch.disposeSafely()
-    skybox.disposeSafely()
-    spriteBatch.disposeSafely()
-  }
-
-  /**
-   * Adjusts the camera viewport dimensions to match the new width and height of the window.
-   *
-   * This method ensures that the camera's viewport is updated whenever the game window is resized.
-   * It invokes the parent class's `resize` method, recalculates the camera's viewport width and height
-   * based on the provided dimensions, and updates the camera configuration.
-   *
-   * @param width The new width of the game window in pixels.
-   * @param height The new height of the game window in pixels.
-   */
-  fun resize(width: Int, height: Int) {
-    camera.viewportWidth = width.toFloat()
-    camera.viewportHeight = height.toFloat()
-    camera.update()
-
-    spriteBatch.projectionMatrix = spriteBatch.projectionMatrix.setToOrtho2D(0f, 0f, width.toFloat(), height.toFloat())
-  }
-}

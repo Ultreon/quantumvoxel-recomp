@@ -4,6 +4,10 @@ import com.badlogic.gdx.utils.Disposable
 import dev.ultreon.quantum.blocks.Block
 import dev.ultreon.quantum.blocks.BoundingBoxD
 import dev.ultreon.quantum.logger
+import dev.ultreon.quantum.math.Vector3D
+import dev.ultreon.quantum.util.BlockHit
+import dev.ultreon.quantum.util.RayD
+import dev.ultreon.quantum.util.WorldRayCaster
 import dev.ultreon.quantum.vec3d
 import ktx.collections.GdxArray
 import kotlin.math.floor
@@ -76,5 +80,15 @@ abstract class Dimension : Disposable {
 
   fun tick() {
 
+  }
+
+  abstract fun chunkAt(x: Int, y: Int, z: Int): Chunk?
+
+  open fun chunkAtBlock(x: Int, y: Int, z: Int): Chunk? {
+    return chunkAt(x.floorDiv(SIZE), y.floorDiv(SIZE), z.floorDiv(SIZE))
+  }
+
+  fun rayTrace(ray: RayD): BlockHit {
+    return WorldRayCaster.rayCast(BlockHit(ray), this)
   }
 }

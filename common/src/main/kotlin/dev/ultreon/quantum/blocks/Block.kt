@@ -3,12 +3,15 @@ package dev.ultreon.quantum.blocks
 import com.badlogic.gdx.math.collision.BoundingBox
 import dev.ultreon.quantum.id
 import dev.ultreon.quantum.math.Vector3D
+import dev.ultreon.quantum.vec3d
 import ktx.collections.GdxArray
 import ktx.collections.gdxArrayOf
 import ktx.collections.toGdxArray
 import ktx.math.vec3
 
 class Block {
+  val isAir: Boolean
+    get() = this == Blocks.air
   var isFluid: Boolean = false
   var renderType: String = "default"
   val bounds: GdxArray<BoundingBox> = gdxArrayOf(
@@ -30,6 +33,14 @@ class Block {
         Vector3D(it.max.x + vec3d.x, it.max.y + vec3d.y, it.max.z + vec3d.z)
       )
     }.toGdxArray()
+  }
+
+  fun boundsAt(x: Double, y: Double, z: Double): GdxArray<BoundingBoxD> {
+    return boundsAt(vec3d(x, y, z))
+  }
+
+  fun boundsAt(x: Int, y: Int, z: Int): GdxArray<BoundingBoxD> {
+    return boundsAt(vec3d(x.toDouble(), y.toDouble(), z.toDouble()))
   }
 
   var hasCollider: Boolean = true

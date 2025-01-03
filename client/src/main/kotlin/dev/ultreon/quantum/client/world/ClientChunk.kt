@@ -15,13 +15,15 @@ import dev.ultreon.quantum.client.model.FaceCull
 import dev.ultreon.quantum.client.model.ModelRegistry
 import dev.ultreon.quantum.client.relative
 import dev.ultreon.quantum.math.Vector3D
+import dev.ultreon.quantum.vec3d
 import dev.ultreon.quantum.world.BlockFlags
+import dev.ultreon.quantum.world.Chunk
 import dev.ultreon.quantum.world.Dimension
 import dev.ultreon.quantum.world.SIZE
 import ktx.assets.disposeSafely
 import ktx.collections.GdxArray
 
-class ClientChunk(x: Int, y: Int, z: Int, private val material: Material, val dimension: ClientDimension) : Dimension(),
+class ClientChunk(x: Int, y: Int, z: Int, private val material: Material, val dimension: ClientDimension) : Chunk(),
   RenderableProvider {
   val start: GridPoint3
     get() = chunkPos.cpy().also {
@@ -38,9 +40,19 @@ class ClientChunk(x: Int, y: Int, z: Int, private val material: Material, val di
   private var worldModel: Model? = null
   var worldModelInstance: ModelInstance? = null
     private set
+  override val offset: Vector3D
+    get() = vec3d(chunkPos.x * SIZE, chunkPos.y * SIZE, chunkPos.z * SIZE)
 
   override fun get(x: Int, y: Int, z: Int): Block {
     return blocks[x][y][z]
+  }
+
+  override fun set(x: Int, y: Int, z: Int, block: Block) {
+    set(x, y, z, block, BlockFlags.SYNC)
+  }
+
+  override fun isDisposed(): Boolean {
+    return worldModelInstance == null
   }
 
   override fun set(x: Int, y: Int, z: Int, block: Block, flags: BlockFlags) {
