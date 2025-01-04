@@ -9,4 +9,7 @@ interface GamePlatform {
   }
 
   val isMobile: Boolean get() = false
+  fun nextFrame() {
+    
+  }
 }

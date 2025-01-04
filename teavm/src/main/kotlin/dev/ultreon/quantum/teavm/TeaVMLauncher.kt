@@ -5,6 +5,7 @@ package dev.ultreon.quantum.teavm
 import com.badlogic.gdx.Gdx
 import com.github.xpenatan.gdx.backends.teavm.TeaApplication
 import com.github.xpenatan.gdx.backends.teavm.TeaApplicationConfiguration
+import com.github.xpenatan.gdx.backends.teavm.TeaInput
 import dev.ultreon.quantum.Logger
 import dev.ultreon.quantum.LoggerFactory
 import dev.ultreon.quantum.client.GamePlatform
@@ -41,6 +42,13 @@ fun main() {
 
     override val isMobile: Boolean
       get() = TeaApplication.isMobileDevice()
+
+    override fun nextFrame() {
+      // Workaround for mouse drifting
+      for (i in 0 until 16) {
+        (TeaApplication.get().input as TeaInput).setDelta(i, 0, 0)
+      }
+    }
   }
   TeaApplication(QuantumVoxel, config)
 }

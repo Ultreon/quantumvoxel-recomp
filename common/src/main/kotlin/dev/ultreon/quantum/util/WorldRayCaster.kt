@@ -3,12 +3,13 @@ package dev.ultreon.quantum.util
 import com.badlogic.gdx.math.GridPoint3
 import dev.ultreon.quantum.blocks.Block
 import dev.ultreon.quantum.blocks.BoundingBoxD
-import dev.ultreon.quantum.logger
 import dev.ultreon.quantum.math.Vector3D
 import dev.ultreon.quantum.vec3d
-import dev.ultreon.quantum.world.Dimension
 import dev.ultreon.quantum.world.Chunk
+import dev.ultreon.quantum.world.Dimension
 import dev.ultreon.quantum.world.SIZE
+import kotlin.math.abs
+import kotlin.math.roundToInt
 
 object WorldRayCaster {
   private val abs: GridPoint3 = GridPoint3()
@@ -61,22 +62,21 @@ object WorldRayCaster {
     val nextY: Double = abs.y + ext.y
     val nextZ: Double = abs.z + ext.z
 
-    var tMaxX = if (rayD.direction.x === 0.0) Double.MAX_VALUE else (nextX - rayD.origin.x).toDouble() / rayD.direction.x.toDouble()
-    var tMaxY = if (rayD.direction.y === 0.0) Double.MAX_VALUE else (nextY - rayD.origin.y).toDouble() / rayD.direction.y.toDouble()
-    var tMaxZ = if (rayD.direction.z === 0.0) Double.MAX_VALUE else (nextZ - rayD.origin.z).toDouble() / rayD.direction.z.toDouble()
+    var tMaxX = if (rayD.direction.x == 0.0) Double.MAX_VALUE else (nextX - rayD.origin.x) / rayD.direction.x
+    var tMaxY = if (rayD.direction.y == 0.0) Double.MAX_VALUE else (nextY - rayD.origin.y) / rayD.direction.y
+    var tMaxZ = if (rayD.direction.z == 0.0) Double.MAX_VALUE else (nextZ - rayD.origin.z) / rayD.direction.z
 
 
-    val tDeltaX = if (rayD.direction.x === 0.0) Double.MAX_VALUE else dir.x / rayD.direction.x
-    val tDeltaY = if (rayD.direction.y === 0.0) Double.MAX_VALUE else dir.y / rayD.direction.y
-    val tDeltaZ = if (rayD.direction.z === 0.0) Double.MAX_VALUE else dir.z / rayD.direction.z
-
+    val tDeltaX = if (rayD.direction.x == 0.0) Double.MAX_VALUE else dir.x / rayD.direction.x
+    val tDeltaY = if (rayD.direction.y == 0.0) Double.MAX_VALUE else dir.y / rayD.direction.y
+    val tDeltaZ = if (rayD.direction.z == 0.0) Double.MAX_VALUE else dir.z / rayD.direction.z
 
     while (true) {
       if (abs.dst(origin) > result.distanceMax) return result
 
-      if (chunk == null || chunk!!.isDisposed()) {
+      if (chunk == null || chunk.isDisposed()) {
         chunk = world.chunkAtBlock(abs.x, abs.y, abs.z)
-        if (chunk == null || chunk!!.isDisposed()) return result
+        if (chunk == null || chunk.isDisposed()) return result
       }
 
       loc.set(abs).sub(chunk.offset.x.toInt(), chunk.offset.y.toInt(), chunk.offset.z.toInt())
@@ -86,13 +86,13 @@ object WorldRayCaster {
         continue
       }
 
-      val blockState: Block = chunk.get(loc.x, loc.y, loc.z)
-      if (blockState != null && !blockState.isAir && predicate(blockState)) {
+      val blockState: Block = chunk[loc.x, loc.y, loc.z]
+      if (!blockState.isAir && predicate(blockState)) {
         val block: Block = blockState
         box.set(block.boundsAt(abs.x, abs.y, abs.z)[0])
         box.update()
 
-        doIntersect(result, rayD, blockState)
+        doIntersect(result, rayD, blockState, abs)
 
         return result
       }
@@ -116,18 +116,19 @@ object WorldRayCaster {
     }
   }
 
-  private fun doIntersect(result: BlockHit, rayD: RayD, block: Block) {
+  private fun doIntersect(result: BlockHit, rayD: RayD, block: Block, pos: GridPoint3 = GridPoint3()) {
     if (Intersector.intersectRayBounds(rayD, box, intersection)) {
       val dst: Double = intersection.dst(rayD.origin)
       result.isCollide = true
       result.distance = dst.toFloat()
       result.position.set(intersection)
-      result.point.set(intersection)
       result.getVec().set(abs)
       result.blockMeta = block
       result.block = block
 
       computeFace(result)
+
+      result.point.set(pos)
     } else {
       result.isCollide = false
       result.distance = Float.MAX_VALUE
@@ -145,9 +146,9 @@ object WorldRayCaster {
       .sub(result.getVec().x, result.getVec().y, result.getVec().z)
       .sub(.5f)
 
-    val absX: Double = Math.abs(local.x)
-    val absY: Double = Math.abs(local.y)
-    val absZ: Double = Math.abs(local.z)
+    val absX: Double = abs(local.x)
+    val absY: Double = abs(local.y)
+    val absZ: Double = abs(local.z)
 
     if (absY > absX) {
       if (absZ > absY) {

@@ -255,6 +255,8 @@ object QuantumVoxel : KtxGame<KtxScreen>(clearScreen = false) {
     }
 
 //    super.render()
+
+    gamePlatform.nextFrame()
   }
 
   private fun doTick() {

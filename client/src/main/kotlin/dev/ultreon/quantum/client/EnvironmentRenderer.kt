@@ -11,6 +11,8 @@ import com.badlogic.gdx.graphics.g3d.attributes.ColorAttribute
 import com.badlogic.gdx.math.Matrix4
 import com.badlogic.gdx.math.Vector3
 import dev.ultreon.quantum.blocks.Blocks
+import dev.ultreon.quantum.client.QuantumVoxel.dimension
+import dev.ultreon.quantum.client.QuantumVoxel.player
 import dev.ultreon.quantum.client.input.KeyBinds
 import dev.ultreon.quantum.client.world.Skybox
 import dev.ultreon.quantum.entity.CollisionComponent
@@ -84,7 +86,7 @@ class EnvironmentRenderer {
   init {
 //    world.inject(player)
 
-    QuantumVoxel.dimension!!.refreshChunks(QuantumVoxel.player!!.getComponent(PositionComponent::class.java).position)
+    dimension!!.refreshChunks(player!!.getComponent(PositionComponent::class.java).position)
   }
 
   /**
@@ -94,8 +96,8 @@ class EnvironmentRenderer {
    * @param delta A `Float` value representing the time elapsed since the last frame, used to scale time-dependent calculations.
    */
   fun render(delta: Float) {
-    val player = QuantumVoxel.player
-    val dimension = QuantumVoxel.dimension
+    val player = player
+    val dimension = dimension
     if (player == null || dimension == null) {
       logger.warn("Player or dimension is null")
       return
@@ -152,8 +154,8 @@ class EnvironmentRenderer {
   }
 
   private fun rayCast(): BlockHit {
-    val position = QuantumVoxel.player!!.getComponent(PositionComponent::class.java)
-    val hit = QuantumVoxel.dimension!!.rayCast(position.position.cpy().add(0.0, 1.6, 0.0), vec3d().also {
+    val position = player!!.getComponent(PositionComponent::class.java)
+    val hit = dimension!!.rayCast(position.position.cpy().add(0.0, 1.6, 0.0), vec3d().also {
       val vec = tmp1
       position.lookVec(vec)
       it.set(vec.x, vec.y, vec.z)
@@ -183,7 +185,7 @@ class EnvironmentRenderer {
 
       vel.set(tmpVec).add(0F, -flight, 0F)
 
-      val collision = QuantumVoxel.player!!.getComponent(CollisionComponent::class.java) ?: return
+      val collision = player!!.getComponent(CollisionComponent::class.java) ?: return
       if (vel.x != 0F) collision.velocityX = vel.x.toDouble() / TPS
       if (up && collision.onGround) collision.velocityY = 0.4
       if (vel.z != 0F) collision.velocityZ = vel.z.toDouble() / TPS
@@ -222,26 +224,20 @@ class EnvironmentRenderer {
       }
       if (Gdx.input.isButtonJustPressed(Input.Buttons.LEFT) && !gamePlatform.isMobile) {
         if (Gdx.input.isCursorCatched) {
-          logger.debug("Clicked at ${Gdx.input.x}, ${Gdx.input.y}")
           rayCast().let {
             val collide = it.isCollide
             if (collide) {
-              logger.debug("Hit at ${it.point.x}, ${it.point.y}, ${it.point.z}")
-              QuantumVoxel.dimension!!.set(it.point.x, it.point.y, it.point.z, Blocks.air)
-            } else {
-              logger.debug("Missed at ${it.point.x}, ${it.point.y}, ${it.point.z}")
+              dimension!![it.point.x, it.point.y, it.point.z] = Blocks.air
             }
-          } ?: run {
-            logger.debug("No hits")
           }
         }
         Gdx.input.isCursorCatched = true
       }
-      QuantumVoxel.player!!.getComponent(RunningComponent::class.java).running =
+      player!!.getComponent(RunningComponent::class.java).running =
         KeyBinds.runningKey.isPressed() && (Gdx.input.isCursorCatched || gamePlatform.isMobile)
 
       if (Gdx.input.isKeyJustPressed(Input.Keys.F1)) {
-        QuantumVoxel.dimension!!.rebuildAll()
+        dimension!!.rebuildAll()
       }
     }
 
@@ -261,19 +257,19 @@ class EnvironmentRenderer {
       try {
         font.draw(
           spriteBatch,
-          "X: ${QuantumVoxel.player!!.getComponent(PositionComponent::class.java).position.x}",
+          "X: ${player!!.getComponent(PositionComponent::class.java).position.x}",
           10f,
           10f
         )
         font.draw(
           spriteBatch,
-          "Y: ${QuantumVoxel.player!!.getComponent(PositionComponent::class.java).position.y}",
+          "Y: ${player!!.getComponent(PositionComponent::class.java).position.y}",
           10f,
           20f
         )
         font.draw(
           spriteBatch,
-          "Z: ${QuantumVoxel.player!!.getComponent(PositionComponent::class.java).position.z}",
+          "Z: ${player!!.getComponent(PositionComponent::class.java).position.z}",
           10f,
           30f
         )
@@ -285,26 +281,26 @@ class EnvironmentRenderer {
 
         font.draw(
           spriteBatch,
-          "X Rotation: ${QuantumVoxel.player!!.getComponent(PositionComponent::class.java).xRot}",
+          "X Rotation: ${player!!.getComponent(PositionComponent::class.java).xRot}",
           10f,
           110f
         )
         font.draw(
           spriteBatch,
-          "Y Rotation: ${QuantumVoxel.player!!.getComponent(PositionComponent::class.java).yRot}",
+          "Y Rotation: ${player!!.getComponent(PositionComponent::class.java).yRot}",
           10f,
           120f
         )
         font.draw(
           spriteBatch,
-          "X Head Rotation: ${QuantumVoxel.player!!.getComponent(PositionComponent::class.java).xHeadRot}",
+          "X Head Rotation: ${player!!.getComponent(PositionComponent::class.java).xHeadRot}",
           10f,
           130f
         )
 
         font.draw(
           spriteBatch,
-          "Running: ${QuantumVoxel.player!!.getComponent(RunningComponent::class.java).running}",
+          "Running: ${player!!.getComponent(RunningComponent::class.java).running}",
           10f,
           140f
         )
