@@ -254,7 +254,6 @@ class CollisionComponent : Component(), Tickable {
 
   fun move() {
     if (!this.onGround) velocityY -= 0.04
-    else velocityY = 0.0
     velocityX *= 0.6
     velocityZ *= 0.6
     move(velocityX, velocityY, velocityZ)
