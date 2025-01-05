@@ -87,9 +87,8 @@ open class BlockHit : Hit {
   val blockVec: GridPoint3
     get() = this.point
 
-  val next: GridPoint3
-    get() = point.cpy()
-      .add(normal.x.toInt(), normal.y.toInt(), normal.z.toInt())
+  var next: GridPoint3 = GridPoint3()
+    private set
 
   override fun equals(other: Any?): Boolean {
     if (this === other) return true

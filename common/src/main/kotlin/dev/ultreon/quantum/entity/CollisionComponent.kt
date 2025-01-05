@@ -5,9 +5,13 @@ import dev.ultreon.quantum.blocks.BoundingBoxD
 import dev.ultreon.quantum.logger
 import dev.ultreon.quantum.util.BoundingBoxUtils
 import dev.ultreon.quantum.util.Tickable
+import dev.ultreon.quantum.vec3d
 import dev.ultreon.quantum.world.Dimension
 import kotlin.math.abs
 import kotlin.math.log
+
+private val tmp1 = vec3d()
+private val tmp2 = vec3d()
 
 class CollisionComponent : Component(), Tickable {
   lateinit var positionComponent: PositionComponent
@@ -31,8 +35,8 @@ class CollisionComponent : Component(), Tickable {
     private set
   val boundingBox: BoundingBoxD
     get() = BoundingBoxD(
-      positionComponent.position.cpy().sub(0.3, 0.0, 0.3),
-      positionComponent.position.cpy().add(0.3, 1.8, 0.3)
+      tmp1.set(positionComponent.position).sub(0.3, 0.0, 0.3),
+      tmp2.set(positionComponent.position).add(0.3, 1.8, 0.3)
     )
   var noClip: Boolean = false
   var x: Double

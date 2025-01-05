@@ -129,6 +129,8 @@ object WorldRayCaster {
       computeFace(result)
 
       result.point.set(pos)
+      result.next.set(pos)
+        .add(result.normal.x.toInt(), result.normal.y.toInt(), result.normal.z.toInt())
     } else {
       result.isCollide = false
       result.distance = Float.MAX_VALUE

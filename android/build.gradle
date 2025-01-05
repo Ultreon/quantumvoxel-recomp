@@ -17,7 +17,7 @@ android {
       aidl.setSrcDirs(['src/main/java', 'src/main/kotlin'])
       renderscript.setSrcDirs(['src/main/java', 'src/main/kotlin'])
       res.setSrcDirs(['res'])
-      assets.setSrcDirs(['build/assets'])
+      assets.setSrcDirs(['build/assets', 'src/main/assets'])
       jniLibs.setSrcDirs(['libs'])
     }
   }
