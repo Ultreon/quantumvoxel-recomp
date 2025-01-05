@@ -14,6 +14,7 @@ object TeaVMBuilder {
   fun main(arguments: Array<String>) {
     val teaBuildConfiguration = TeaBuildConfiguration().apply {
       assetsPath.add(AssetFileHandle("build/assets"))
+      assetsPath.add(AssetFileHandle("src/main/res"))
       webappPath = File("build/dist").canonicalPath
       // Register any extra classpath assets here:
       // additionalAssetsClasspathFiles += "dev/ultreon/quantum/asset.extension"

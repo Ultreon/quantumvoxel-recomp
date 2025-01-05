@@ -28,10 +28,11 @@ fun main() {
     //// If width and height are both -1, then the app will fill the canvas size.
 //    width = -1
 //    height = -1
-    this.antialiasing = true
+    this.antialiasing = false
     this.padVertical = 0
     this.padHorizontal = 0
     this.usePhysicalPixels = true
+    this.powerPreference = "high-performance"
   }
 
   factory = TeaVMFactory()
@@ -42,13 +43,6 @@ fun main() {
 
     override val isMobile: Boolean
       get() = TeaApplication.isMobileDevice()
-
-    override fun nextFrame() {
-      // Workaround for mouse drifting
-      for (i in 0 until 16) {
-        (TeaApplication.get().input as TeaInput).setDelta(i, 0, 0)
-      }
-    }
   }
   TeaApplication(QuantumVoxel, config)
 }

@@ -4,6 +4,7 @@ import com.badlogic.gdx.Gdx
 import com.badlogic.gdx.Input.Keys
 import com.badlogic.gdx.files.FileHandle
 import com.badlogic.gdx.graphics.*
+import com.badlogic.gdx.graphics.g2d.SpriteBatch
 import com.badlogic.gdx.graphics.g2d.TextureRegion
 import com.badlogic.gdx.graphics.g3d.Material
 import com.badlogic.gdx.graphics.g3d.Model
@@ -14,6 +15,7 @@ import com.badlogic.gdx.graphics.g3d.utils.MeshPartBuilder.VertexInfo
 import com.badlogic.gdx.graphics.g3d.utils.ModelBuilder
 import com.badlogic.gdx.math.Vector2
 import com.badlogic.gdx.math.Vector3
+import com.github.tommyettinger.textra.Font
 import dev.ultreon.quantum.InternalApi
 import dev.ultreon.quantum.math.Vector3D
 import dev.ultreon.quantum.util.NamespaceID
@@ -605,4 +607,11 @@ fun ModelInstance.relative(position: Vector3D): ModelInstance {
     return@let tmpVec.set(it.x.toFloat(), it.y.toFloat(), it.z.toFloat())
   }))
   return this
+}
+
+fun Font.draw(spriteBatch: SpriteBatch, text: String, x: Float, y: Float) {
+  spriteBatch.color = Color.LIGHT_GRAY
+  this.drawMarkupText(spriteBatch, text, x, y-1)
+  spriteBatch.color = Color.WHITE
+  this.drawMarkupText(spriteBatch, text, x, y)
 }

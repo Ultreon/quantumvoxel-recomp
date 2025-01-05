@@ -7,16 +7,22 @@ import com.artemis.Entity
 import com.artemis.World
 import com.artemis.utils.Bag
 import com.badlogic.gdx.Gdx
+import com.badlogic.gdx.Input
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.graphics.GL20
 import com.badlogic.gdx.graphics.g2d.BitmapFont
 import com.badlogic.gdx.graphics.g2d.SpriteBatch
+import com.badlogic.gdx.math.Matrix4
+import com.badlogic.gdx.scenes.scene2d.ui.Table.Debug
 import com.badlogic.gdx.utils.async.AsyncExecutor
+import com.github.tommyettinger.textra.Font
+import com.github.tommyettinger.textra.KnownFonts
 import dev.ultreon.quantum.blocks.Blocks
 import dev.ultreon.quantum.client.QuantumVoxel.jsonModelLoader
 import dev.ultreon.quantum.client.QuantumVoxel.resourceManager
 import dev.ultreon.quantum.client.QuantumVoxel.textureManager
 import dev.ultreon.quantum.client.QuantumVoxel.world
+import dev.ultreon.quantum.client.debug.DebugRenderer
 import dev.ultreon.quantum.client.model.JsonModelLoader
 import dev.ultreon.quantum.client.model.ModelRegistry
 import dev.ultreon.quantum.client.resource.TexturesCategory
@@ -65,7 +71,12 @@ lateinit var gamePlatform: GamePlatform
  * - The `dispose` method cleans up resources and disposes of components safely when the game is terminated.
  */
 object QuantumVoxel : KtxGame<KtxScreen>(clearScreen = false) {
+  private val debugRenderer: DebugRenderer = DebugRenderer()
   private val bag: Bag<Component> = Bag()
+  private val tmpTransform = Matrix4()
+  lateinit var spriteBatch: SpriteBatch
+    private set
+  var debug = false
   var environmentRenderer: EnvironmentRenderer? = null
   var player: Entity? = null
   var dimension: ClientDimension? = null
@@ -103,14 +114,16 @@ object QuantumVoxel : KtxGame<KtxScreen>(clearScreen = false) {
 
   val font by lazy {
     try {
-      BitmapFont(
+      Font(BitmapFont(
         ResourceVfsFileHandle(NamespaceID.of(path = "fonts/luna_pixel.fnt")),
         ResourceVfsFileHandle(NamespaceID.of(path = "textures/font/luna_pixel.png")),
         false
-      )
+      )).also {
+        KnownFonts.addEmoji(it, -36F, 16F, -4F)
+      }
     } catch (e: FileNotFoundException) {
       logger.error("Failed to load font:\n${e.stackTraceToString()}")
-      BitmapFont()
+      Font(BitmapFont())
     }
   }
 
@@ -148,6 +161,8 @@ object QuantumVoxel : KtxGame<KtxScreen>(clearScreen = false) {
    */
   override fun create() {
     super.create()
+
+    spriteBatch = SpriteBatch()
 
     try {
       Gdx.graphics.setVSync(false)
@@ -236,6 +251,10 @@ object QuantumVoxel : KtxGame<KtxScreen>(clearScreen = false) {
       doTick()
     }
 
+    if (Gdx.input.isKeyJustPressed(Input.Keys.F3)) {
+      debug = !debug
+    }
+
     frameTick += Gdx.graphics.deltaTime
 
     if (crash != null) {
@@ -250,8 +269,16 @@ object QuantumVoxel : KtxGame<KtxScreen>(clearScreen = false) {
       return
     }
 
-    this.environmentRenderer?.render(Gdx.graphics.deltaTime) ?: {
+    environmentRenderer?.render(Gdx.graphics.deltaTime) ?: {
       clearScreen(0f, 1f, 0f, 1f)
+    }
+
+    tmpTransform.set(spriteBatch.transformMatrix)
+    spriteBatch.transformMatrix.scale(guiScale.toFloat(), guiScale.toFloat(), 1f)
+    try {
+      this.debugRenderer.render()
+    } finally {
+        spriteBatch.transformMatrix = tmpTransform.cpy()
     }
 
 //    super.render()
@@ -310,6 +337,8 @@ object QuantumVoxel : KtxGame<KtxScreen>(clearScreen = false) {
     guiScale = (if (setGuiScale <= 0) calcMaxGuiScale() else setGuiScale.coerceAtMost(calcMaxGuiScale())).toFloat()
 
     environmentRenderer?.resize(width, height)
+
+    spriteBatch.projectionMatrix.setToOrtho2D(0f, 0f, width.toFloat(), height.toFloat())
   }
 
   operator fun <T> invoke(block: (QuantumVoxel) -> T): CompletableFuture<T> {
