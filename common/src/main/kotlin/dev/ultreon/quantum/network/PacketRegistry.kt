@@ -9,15 +9,13 @@ class PacketRegistry {
   val handlers = mutableMapOf<Int, PacketHandler<*>>()
   val registry = mutableMapOf<KClass<*>, Int>()
 
-  fun <T : Any> register(id: Int, type: Class<T>, decoder: PacketDecoder<T>, encoder: PacketEncoder<T>, handler: PacketHandler<T>) {
+  fun <T : Any> register(id: Int, type: Class<T>, handler: PacketHandler<T>) {
     registry[type.kotlin] = id
-    decoders[id] = decoder
-    encoders[id] = encoder
     handlers[id] = handler
   }
 
-  inline fun <reified T : Any> register(decoder: PacketDecoder<T>, encoder: PacketEncoder<T>, handler: PacketHandler<T>, id: Int = registry.size) {
-    register(id, T::class.java, decoder, encoder, handler)
+  inline fun <reified T : Any> register(handler: PacketHandler<T>, id: Int = registry.size) {
+    register(id, T::class.java, handler)
   }
 
   fun decode(buffer: PacketIO): Any? {

@@ -7,7 +7,7 @@ import dev.ultreon.quantum.resource.ResourceCategory
 import dev.ultreon.quantum.resource.StaticResource
 import dev.ultreon.quantum.util.NamespaceID
 
-class TextureCategory(override val parent: TexturesCategory, val textureManager: TextureManager, override val name: String) : ResourceCategory {
+open class TextureCategory(override val parent: TexturesCategory, val textureManager: TextureManager, override val name: String) : ResourceCategory {
   private val resources = HashMap<String, Resource>()
 
   override fun get(domain: String, name: String): Resource? {

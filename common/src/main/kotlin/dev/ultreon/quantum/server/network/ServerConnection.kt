@@ -1,17 +1,17 @@
 package dev.ultreon.quantum.server.network
 
-import com.badlogic.gdx.net.Socket
 import dev.ultreon.quantum.network.*
+import io.socket.socketio.server.SocketIoSocket
 import java.util.concurrent.SynchronousQueue
 import java.util.concurrent.TimeUnit
 
-class ServerConnection(socket: Socket) : Connection(socket) {
+class ServerConnection(val socket: SocketIoSocket) : Connection() {
   var player: Player? = null
   private val sendQueue = SynchronousQueue<Pair<Packet, () -> Unit>>()
   private val receiveQueue = SynchronousQueue<Packet>()
 
   var stage = ConnectionStage.HANDSHAKE
-  val id = socket.remoteAddress.toString()
+  val id = socket.id
 
   fun receiverThread() {
     while (socket.isConnected) {
@@ -25,18 +25,17 @@ class ServerConnection(socket: Socket) : Connection(socket) {
   fun senderThread() {
     while (socket.isConnected) {
       val (packet, callback) = sendQueue.poll(30, TimeUnit.SECONDS) ?: continue
-      packet.encode(io)
-      output.flush()
+      socket.emit(packet.id, packet)
       callback()
     }
   }
 
   fun close() {
-    socket.dispose()
+    socket.disconnect(true)
   }
 
   fun send(packet: Packet) {
-    packet.encode(io)
+    socket.emit(packet.id, packet)
   }
 
   fun poll(): Packet? {
@@ -47,19 +46,21 @@ class ServerConnection(socket: Socket) : Connection(socket) {
   }
 
   fun read(): Packet? {
-    return when (val received = stage.readServer(socket, io)) {
-      is Packet -> received
+//    return when (val received = stage.readServer(socket, io)) {
+//      is Packet -> received
+//
+//      is Disconnection -> {
+//        this.onDisconnect(received.reason)
+//        null
+//      }
+//
+//      else -> {
+//        println("Received invalid packet of type ${received?.javaClass?.simpleName}")
+//        null
+//      }
+//    }
 
-      is Disconnection -> {
-        this.onDisconnect(received.reason)
-        null
-      }
-
-      else -> {
-        println("Received invalid packet of type ${received?.javaClass?.simpleName}")
-        null
-      }
-    }
+    return null
   }
 
   override fun sendPacket(packet: Packet, callback: () -> Unit) {
@@ -67,9 +68,9 @@ class ServerConnection(socket: Socket) : Connection(socket) {
   }
 
   fun disconnect(message: String) {
-    output.writeInt(-1)
-    output.writeString(message)
-    output.flush()
+//    output.writeInt(-1)
+//    output.writeString(message)
+//    output.flush()
     close()
   }
 }

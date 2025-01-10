@@ -31,6 +31,8 @@ dependencies {
 
   // ByteBuddy
   implementation "net.bytebuddy:byte-buddy:$byteBuddyVersion"
+
+  implementation 'io.socket:socket.io-server:4.1.2'
 }
 
 jar {

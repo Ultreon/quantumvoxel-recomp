@@ -16,37 +16,29 @@ class PacketCollector(@property:InternalApi val collection: PacketCollection) {
   fun <T : Any> registerClientEndpoint(
     id: Int,
     type: Class<T>,
-    encoder: PacketEncoder<T>,
-    decoder: PacketDecoder<T>,
     handler: PacketHandler<T>
   ) {
-    collection.packetToClient.register(id, type, decoder, encoder, handler)
+    collection.packetToClient.register(id, type, handler)
   }
 
   fun <T : Any> registerServerEndpoint(
     id: Int,
     type: Class<T>,
-    encoder: PacketEncoder<T>,
-    decoder: PacketDecoder<T>,
     handler: PacketHandler<T>
   ) {
-    collection.packetToServer.register(id, type, decoder, encoder, handler)
+    collection.packetToServer.register(id, type, handler)
   }
 
   inline fun <reified T : Any> registerClientEndpoint(
-    encoder: PacketEncoder<T>,
-    decoder: PacketDecoder<T>,
     handler: PacketHandler<T>
   ) {
-    collection.packetToClient.register(decoder, encoder, handler)
+    collection.packetToClient.register(handler)
   }
 
   inline fun <reified T : Any> registerServerEndpoint(
-    encoder: PacketEncoder<T>,
-    decoder: PacketDecoder<T>,
     handler: PacketHandler<T>
   ) {
-    collection.packetToServer.register(decoder, encoder, handler)
+    collection.packetToServer.register(handler)
   }
 }
 

@@ -77,6 +77,7 @@ class TextureManager(val resourceManager: ResourceManager) : Disposable {
     packers[name] = PixmapPacker(2048, 2048, Format.RGBA8888, 0, false, skylineStrategy)
 
     texturesCategory.register(name, TextureCategory(texturesCategory, this, name))
+    texturesCategory.register(name, GuiTextureCategory(texturesCategory, this, name))
   }
 
   /**

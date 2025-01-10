@@ -1,6 +1,5 @@
 package dev.ultreon.quantum.network
 
-abstract class Packet {
-  abstract fun encode(buffer: PacketIO)
+abstract class Packet(val id: String) {
   abstract fun handle(context: PacketContext)
 }
