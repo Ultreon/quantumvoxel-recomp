@@ -10,6 +10,7 @@ if (JavaVersion.current().isJava9Compatible()) {
 }
 kotlin.compilerOptions.jvmTarget.set(JvmTarget.JVM_11)
 compileKotlin.kotlinOptions.jvmTarget = 11
+compileTestKotlin.kotlinOptions.jvmTarget = 11
 
 eclipse.project.name = appName + '-common'
 
@@ -17,23 +18,25 @@ dependencies {
   api "com.badlogicgames.gdx:gdx-ai:$aiVersion"
   api "com.badlogicgames.gdx:gdx:$gdxVersion"
 
+  testImplementation "org.jetbrains.kotlin:kotlin-test:$kotlinVersion"
+
   implementation 'com.caoccao.javet:javet:4.1.1'
   implementation 'com.caoccao.javet:javenode:0.8.0'
 
   api "dev.ultreon.JNoiseJDK11:jnoise-core:a6507bcc7e", {
-    exclude group:"org.jspecify", module:"jspecify"
+    exclude group: "org.jspecify", module: "jspecify"
   }
   api "dev.ultreon.JNoiseJDK11:jnoise-pipeline:a6507bcc7e", {
-    exclude group:"org.jspecify", module:"jspecify"
+    exclude group: "org.jspecify", module: "jspecify"
   }
   api "dev.ultreon.JNoiseJDK11:jnoise-generators:a6507bcc7e", {
-    exclude group:"org.jspecify", module:"jspecify"
+    exclude group: "org.jspecify", module: "jspecify"
   }
   api "dev.ultreon.JNoiseJDK11:jnoise-modifiers:a6507bcc7e", {
-    exclude group:"org.jspecify", module:"jspecify"
+    exclude group: "org.jspecify", module: "jspecify"
   }
   api "dev.ultreon.JNoiseJDK11:jnoise-modules:a6507bcc7e", {
-    exclude group:"org.jspecify", module:"jspecify"
+    exclude group: "org.jspecify", module: "jspecify"
   }
   api "io.github.libktx:ktx-ai:$ktxVersion"
   api "io.github.libktx:ktx-app:$ktxVersion"
@@ -67,3 +70,12 @@ jar {
 tasks.register('dist') {
   dependsOn 'jar'
 }
+
+tasks.test {
+  useTestNG()
+  testClassesDirs = sourceSets.test.output.classesDirs
+  classpath = sourceSets.test.runtimeClasspath
+  description = "Runs the Kotlin test suite."
+  group = "verification"
+}
+

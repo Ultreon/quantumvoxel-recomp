@@ -14,6 +14,7 @@ import com.badlogic.gdx.graphics.g3d.utils.MeshPartBuilder
 import com.badlogic.gdx.graphics.g3d.utils.MeshPartBuilder.VertexInfo
 import com.badlogic.gdx.graphics.g3d.utils.ModelBuilder
 import com.badlogic.gdx.math.GridPoint2
+import com.badlogic.gdx.math.Matrix4
 import com.badlogic.gdx.math.Quaternion
 import com.badlogic.gdx.math.Vector3
 import com.badlogic.gdx.utils.JsonReader
@@ -168,7 +169,8 @@ class JsonModelLoader @JvmOverloads constructor(
       val value: JsonValue = if (e.isObject) e else throw IOException("Invalid face at ${e.trace()}: $e")
       val direction: Direction = Direction.valueOf(key1.uppercase())
       val uvs = value.get("uv")?.asFloatArray() ?: throw IOException("Invalid 'uv' array at ${value.trace()}: $value")
-      val texture: String = value.get("texture")?.asString() ?: throw IOException("Invalid 'texture' value at ${value.trace()}: $value")
+      val texture: String =
+        value.get("texture")?.asString() ?: throw IOException("Invalid 'texture' value at ${value.trace()}: $value")
       val rotation = value.get("rotation")?.asInt() ?: 0
       val tintIndex = value.get("tintindex")?.asInt() ?: 0
       val cullFace = value.get("cullface")?.asString()
@@ -257,6 +259,10 @@ class JsonModelLoader @JvmOverloads constructor(
       result = 31 * result + uvs.hashCode()
       result = 31 * result + (cullface?.hashCode() ?: 0)
       return result
+    }
+
+    fun cullfaceDir(): Direction? {
+      return cullface?.let { Direction.valueOf(it.uppercase()) }
     }
   }
 
@@ -361,12 +367,14 @@ class JsonModelLoader @JvmOverloads constructor(
         v10.setUV(faceElement.uvs.x2 / 16 + region.u2, faceElement.uvs.y2 / 16 + region.v2)
         v11.setUV(faceElement.uvs.x2 / 16 + region.u2, faceElement.uvs.y1 / 16 + region.v)
 
+        var dir: Byte = -1
         when (direction) {
           UP -> {
             v00.setPos(to.x, to.y, from.z)
             v01.setPos(to.x, to.y, to.z)
             v10.setPos(from.x, to.y, from.z)
             v11.setPos(from.x, to.y, to.z)
+            dir = 0
           }
 
           DOWN -> {
@@ -374,6 +382,7 @@ class JsonModelLoader @JvmOverloads constructor(
             v01.setPos(from.x, from.y, to.z)
             v10.setPos(to.x, from.y, from.z)
             v11.setPos(to.x, from.y, to.z)
+            dir = 1
           }
 
           WEST -> {
@@ -381,6 +390,7 @@ class JsonModelLoader @JvmOverloads constructor(
             v01.setPos(from.x, to.y, from.z)
             v10.setPos(from.x, from.y, to.z)
             v11.setPos(from.x, to.y, to.z)
+            dir = 2
           }
 
           EAST -> {
@@ -388,6 +398,7 @@ class JsonModelLoader @JvmOverloads constructor(
             v01.setPos(to.x, to.y, to.z)
             v10.setPos(to.x, from.y, from.z)
             v11.setPos(to.x, to.y, from.z)
+            dir = 3
           }
 
           NORTH -> {
@@ -395,6 +406,7 @@ class JsonModelLoader @JvmOverloads constructor(
             v01.setPos(to.x, to.y, from.z)
             v10.setPos(from.x, from.y, from.z)
             v11.setPos(from.x, to.y, from.z)
+            dir = 4
           }
 
           SOUTH -> {
@@ -402,13 +414,16 @@ class JsonModelLoader @JvmOverloads constructor(
             v01.setPos(from.x, to.y, to.z)
             v10.setPos(to.x, from.y, to.z)
             v11.setPos(to.x, to.y, to.z)
+            dir = 5
           }
         }
+
+        rotate(v00, v01, v10, v11, dir, rotation)
 
         meshBuilder.rect(v00, v10, v11, v01)
 
         val material = Material()
-        material.set(TextureAttribute.createDiffuse(QuantumVoxel.textureManager[texture!!]))
+        material.set(TextureAttribute.createDiffuse(QuantumVoxel.textureManager[texture]))
         material.set(BlendingAttribute(GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA))
         material.set(FloatAttribute(FloatAttribute.AlphaTest))
         material.set(DepthTestAttribute(GL20.GL_LEQUAL))
@@ -431,6 +446,59 @@ class JsonModelLoader @JvmOverloads constructor(
       node.rotation.set(node.localTransform.getRotation(tmpQ))
     }
 
+    private fun rotate(
+      v00: VertexInfo,
+      v01: VertexInfo,
+      v10: VertexInfo,
+      v11: VertexInfo,
+      direction: Byte,
+      rotation: ElementRotation,
+    ): Boolean {
+      val originVec = rotation.originVec
+      val axis = rotation.axis
+      val angle = rotation.angle
+      val rescale = rotation.rescale // TODO: implement
+
+      // Rotate the vertices
+      rotate(v00.position, originVec, axis, angle, v00.position)
+      rotate(v01.position, originVec, axis, angle, v01.position)
+      rotate(v10.position, originVec, axis, angle, v10.position)
+      rotate(v11.position, originVec, axis, angle, v11.position)
+
+      return true
+    }
+
+    fun rotate(position: Vector3, originVec: Vector3, axis: Axis, degrees: Float, out: Vector3): Vector3 {
+      return rotateVector(position, originVec, degrees, axis.toVector(), out)
+    }
+
+    // Reusable instances
+    private val tempVector: Vector3 = Vector3()
+
+    private val rotationMatrix: Matrix4 = Matrix4()
+
+    private fun rotateVector(
+      vector: Vector3,
+      origin: Vector3,
+      angleDegrees: Float,
+      axis: Vector3,
+      result: Vector3,
+    ): Vector3 {
+      // Step 1: Translate the vector to the origin
+      tempVector.set(vector).sub(origin)
+
+      // Step 2: Create a rotation matrix
+      rotationMatrix.setToRotation(axis, angleDegrees)
+
+      // Step 3: Apply the rotation matrix to the translated vector
+      tempVector.mul(rotationMatrix)
+
+      // Step 4: Translate the vector back
+      result.set(tempVector).add(origin)
+
+      return result
+    }
+
     fun blockFaceFaceElementMap(): Map<Direction, FaceElement> = blockFaceFaceElementMap
 
     fun shade(): Boolean = shade
@@ -442,18 +510,26 @@ class JsonModelLoader @JvmOverloads constructor(
     fun to(): Vector3 = to
 
 
-
     override fun toString(): String =
       "ModelElement[blockFaceFaceElementMap=$blockFaceFaceElementMap, shade=$shade, rotation=$rotation, from=$from, to=$to]"
 
-    fun loadInto(i: Int, faceCull: FaceCull, x: Int, y: Int, z: Int, builder: MeshPartBuilder, textureElements: Map<String, NamespaceID>) {
+    fun loadInto(
+      i: Int,
+      faceCull: FaceCull,
+      x: Int,
+      y: Int,
+      z: Int,
+      builder: MeshPartBuilder,
+      textureElements: Map<String, NamespaceID>,
+    ) {
       val blockFaceFaceElementMap: Map<Direction, FaceElement> = this.blockFaceFaceElementMap
       val v00 = VertexInfo()
       val v01 = VertexInfo()
       val v10 = VertexInfo()
       val v11 = VertexInfo()
       for ((direction, faceElement) in blockFaceFaceElementMap.entries) {
-        if (faceCull.face(direction)) continue
+        val dir1 = faceElement.cullfaceDir()
+        if (dir1 != null && faceCull.face(dir1)) continue
 
         val texRef = faceElement.texture
         val texture: NamespaceID? = if (texRef == "#missing") NamespaceID.of(path = "textures/block/error.png")
@@ -472,17 +548,25 @@ class JsonModelLoader @JvmOverloads constructor(
 
         val region = QuantumVoxel.textureManager[texture!!]
 
-        v00.setUV(faceElement.uvs.x1 / 16 / region.texture.width + region.u, faceElement.uvs.y2 / 16 / region.texture.height + region.v2)
-        v01.setUV(faceElement.uvs.x1 / 16 / region.texture.width + region.u, faceElement.uvs.y1 / 16 / region.texture.height + region.v)
-        v10.setUV(faceElement.uvs.x2 / 16 / region.texture.width + region.u2, faceElement.uvs.y2 / 16 / region.texture.height + region.v2)
-        v11.setUV(faceElement.uvs.x2 / 16 / region.texture.width + region.u2, faceElement.uvs.y1 / 16 / region.texture.height + region.v)
+        val us = region.u2 - region.u
+        val vs = region.v2 - region.v
+        val x1 = region.u + faceElement.uvs.x1 * us
+        val x2 = region.u + faceElement.uvs.x2 * us
+        val y1 = region.v + faceElement.uvs.y1 * vs
+        val y2 = region.v + faceElement.uvs.y2 * vs
+        v00.setUV(x1, y2)
+        v01.setUV(x1, y1)
+        v10.setUV(x2, y2)
+        v11.setUV(x2, y1)
 
+        var dir: Byte = -1
         when (direction) {
           UP -> {
             v00.setPos(to.x, to.y, from.z)
             v01.setPos(to.x, to.y, to.z)
             v10.setPos(from.x, to.y, from.z)
             v11.setPos(from.x, to.y, to.z)
+            dir = 0
           }
 
           DOWN -> {
@@ -490,6 +574,7 @@ class JsonModelLoader @JvmOverloads constructor(
             v01.setPos(from.x, from.y, to.z)
             v10.setPos(to.x, from.y, from.z)
             v11.setPos(to.x, from.y, to.z)
+            dir = 1
           }
 
           WEST -> {
@@ -497,6 +582,7 @@ class JsonModelLoader @JvmOverloads constructor(
             v01.setPos(from.x, to.y, from.z)
             v10.setPos(from.x, from.y, to.z)
             v11.setPos(from.x, to.y, to.z)
+            dir = 2
           }
 
           EAST -> {
@@ -504,6 +590,7 @@ class JsonModelLoader @JvmOverloads constructor(
             v01.setPos(to.x, to.y, to.z)
             v10.setPos(to.x, from.y, from.z)
             v11.setPos(to.x, to.y, from.z)
+            dir = 3
           }
 
           NORTH -> {
@@ -511,6 +598,7 @@ class JsonModelLoader @JvmOverloads constructor(
             v01.setPos(to.x, to.y, from.z)
             v10.setPos(from.x, from.y, from.z)
             v11.setPos(from.x, to.y, from.z)
+            dir = 4
           }
 
           SOUTH -> {
@@ -518,8 +606,11 @@ class JsonModelLoader @JvmOverloads constructor(
             v01.setPos(from.x, to.y, to.z)
             v10.setPos(to.x, from.y, to.z)
             v11.setPos(to.x, to.y, to.z)
+            dir = 5
           }
         }
+
+        rotate(v00, v01, v10, v11, dir, rotation)
 
         v00.position.scl(1 / 16F).add(x.toFloat(), y.toFloat(), z.toFloat())
         v01.position.scl(1 / 16F).add(x.toFloat(), y.toFloat(), z.toFloat())
@@ -527,12 +618,6 @@ class JsonModelLoader @JvmOverloads constructor(
         v11.position.scl(1 / 16F).add(x.toFloat(), y.toFloat(), z.toFloat())
 
         builder.rect(v00, v10, v11, v01)
-
-//        val material = Material()
-//        material.set(TextureAttribute.createDiffuse(QuantumVoxel.textureManager[texture!!]))
-//        material.set(BlendingAttribute(GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA))
-//        material.set(FloatAttribute(FloatAttribute.AlphaTest))
-//        material.set(DepthTestAttribute(GL20.GL_LEQUAL))
       }
     }
 
@@ -578,9 +663,7 @@ class JsonModelLoader @JvmOverloads constructor(
     fun rescale(): Boolean = rescale
 
 
-
     override fun hashCode(): Int = Objects.hash(originVec, axis, angle, rescale)
-
 
 
     override fun equals(other: Any?): Boolean {
@@ -604,7 +687,8 @@ class JsonModelLoader @JvmOverloads constructor(
           return ElementRotation(Vector3(0f, 0f, 0f), Axis.Y, 0f, false)
         }
 
-        val origin: JsonValue = rotation["origin"].apply { if (!isArray) throw IOException("Invalid 'origin' array at ${rotation.trace()}: $rotation") }
+        val origin: JsonValue =
+          rotation["origin"].apply { if (!isArray) throw IOException("Invalid 'origin' array at ${rotation.trace()}: $rotation") }
         val axis: String = rotation["axis"].asString()
         val angle: Float = rotation["angle"].asFloat()
         val rescale: Boolean = rotation.getBoolean("rescale", false)

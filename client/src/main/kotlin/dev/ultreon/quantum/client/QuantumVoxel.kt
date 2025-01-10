@@ -23,6 +23,7 @@ import dev.ultreon.quantum.client.QuantumVoxel.resourceManager
 import dev.ultreon.quantum.client.QuantumVoxel.textureManager
 import dev.ultreon.quantum.client.QuantumVoxel.world
 import dev.ultreon.quantum.client.debug.DebugRenderer
+import dev.ultreon.quantum.client.input.GameInput
 import dev.ultreon.quantum.client.model.JsonModelLoader
 import dev.ultreon.quantum.client.model.ModelRegistry
 import dev.ultreon.quantum.client.resource.TexturesCategory
@@ -71,6 +72,7 @@ lateinit var gamePlatform: GamePlatform
  * - The `dispose` method cleans up resources and disposes of components safely when the game is terminated.
  */
 object QuantumVoxel : KtxGame<KtxScreen>(clearScreen = false) {
+  var gameInput: GameInput = GameInput()
   private val debugRenderer: DebugRenderer = DebugRenderer()
   private val bag: Bag<Component> = Bag()
   private val tmpTransform = Matrix4()
@@ -206,7 +208,7 @@ object QuantumVoxel : KtxGame<KtxScreen>(clearScreen = false) {
     player = world.createEntity().also { entity ->
       val positionComponent = PositionComponent(vec3d(0, 128, 0))
       entity.edit()
-        .add(PlayerComponent("Player"))
+        .add(LocalPlayerComponent("Player"))
         .add(RunningComponent(1.6F))
         .add(positionComponent)
         .add(CollisionComponent().also {
@@ -250,6 +252,8 @@ object QuantumVoxel : KtxGame<KtxScreen>(clearScreen = false) {
 
       doTick()
     }
+
+    gameInput.update()
 
     if (Gdx.input.isKeyJustPressed(Input.Keys.F3)) {
       debug = !debug

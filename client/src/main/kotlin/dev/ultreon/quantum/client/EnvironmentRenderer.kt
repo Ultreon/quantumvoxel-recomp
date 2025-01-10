@@ -15,6 +15,7 @@ import com.github.tommyettinger.textra.Font
 import com.github.tommyettinger.textra.Layout
 import dev.ultreon.quantum.blocks.Blocks
 import dev.ultreon.quantum.client.QuantumVoxel.dimension
+import dev.ultreon.quantum.client.QuantumVoxel.gameInput
 import dev.ultreon.quantum.client.QuantumVoxel.player
 import dev.ultreon.quantum.client.input.KeyBinds
 import dev.ultreon.quantum.client.world.Skybox
@@ -195,8 +196,8 @@ class EnvironmentRenderer {
    * @param position A `PositionComponent` that represents the current position and rotation state of the player.
    */
   private fun look(position: PositionComponent) {
-    val deltaX = Gdx.input.deltaX
-    val deltaY = Gdx.input.deltaY
+    val deltaX = if (gameInput.isMouseSupported) gameInput.mouseDeltaX else Gdx.input.deltaX.toFloat()
+    val deltaY = if (gameInput.isMouseSupported) gameInput.mouseDeltaY else Gdx.input.deltaY.toFloat()
 
     position.xRot -= deltaX * 0.5f
     position.xHeadRot = position.xRot

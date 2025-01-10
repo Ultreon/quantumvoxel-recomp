@@ -1,3 +1,5 @@
+import org.jetbrains.kotlin.gradle.dsl.jvm.JvmTargetValidationMode
+
 buildscript {
   repositories {
     mavenCentral()
@@ -9,6 +11,12 @@ buildscript {
 apply plugin: 'robovm'
 
 [compileJava, compileTestJava]*.options*.encoding = 'UTF-8'
+compileKotlin {
+  jvmTargetValidationMode = JvmTargetValidationMode.IGNORE
+  kotlinOptions {
+    jvmTarget = "1.8"
+  }
+}
 
 ext {
   mainClassName = "dev.ultreon.quantum.ios.IOSLauncher"
@@ -35,3 +43,10 @@ dependencies {
   implementation "de.tomgrill.gdxdialogs:gdx-dialogs-ios:$dialogsVersion"
   implementation project(':client')
 }
+
+tasks.register("zipAssets", Zip) {
+  from rootProject.file("assets")
+  archiveFile.set file("build/assets/quantum.zip")
+}
+
+processResources.dependsOn("zipAssets")

@@ -269,3 +269,4 @@ Thumbs.db
 /common/build/kotlin/compileKotlin/local-state/build-history.bin
 /common/build/libs/XintecRPG-$projectVersion.jar
 /common/build/tmp/jar/MANIFEST.MF
+/android/release/

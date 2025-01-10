@@ -129,6 +129,8 @@ tasks.matching { it.name.contains("Assets") && it.name.startsWith("merge") }.con
 }
 
 tasks.register('run', Exec) {
+  dependsOn build
+
   def path
   def localProperties = project.file("../local.properties")
   if (localProperties.exists()) {

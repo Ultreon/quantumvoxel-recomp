@@ -7,7 +7,14 @@
     <treeShaker>conservative</treeShaker>
     <resources>
         <resource>
-            <directory>../assets</directory>
+            <directory>build/assets</directory>
+            <includes>
+                <include>**</include>
+            </includes>
+            <skipPngCrush>true</skipPngCrush>
+        </resource>
+        <resource>
+            <directory>src/main/resources</directory>
             <includes>
                 <include>**</include>
             </includes>

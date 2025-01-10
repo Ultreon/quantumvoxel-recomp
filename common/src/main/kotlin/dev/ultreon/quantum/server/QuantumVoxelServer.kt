@@ -1,30 +1,30 @@
 package dev.ultreon.quantum.server
 
-import com.badlogic.gdx.ApplicationListener
+import dev.ultreon.quantum.network.Networker
+import dev.ultreon.quantum.world.Dimension
 
-class QuantumVoxelServer : ApplicationListener {
-  override fun create() {
-    // Create da server
+const val TPS = 20
+const val MSPT = 1000 / TPS
+
+abstract class QuantumVoxelServer {
+  val dimension: Dimension = ServerDimension()
+  abstract val networker: Networker
+
+  fun runTick() {
+
   }
 
-  override fun resize(width: Int, height: Int) {
-    // What?
+  private fun loop() {
+    var lastTick = System.currentTimeMillis()
+    while (true) {
+      val currentTick = System.currentTimeMillis()
+      val delta = currentTick - lastTick
+      if (delta >= MSPT) {
+        lastTick = currentTick
+        runTick()
+      }
+    }
   }
 
-  override fun render() {
-    // This is a tick method basically :flushed:
-  }
-
-  override fun pause() {
-    // Pausing a server? How convenient?
-  }
-
-  override fun resume() {
-    // Let's better just resume the server
-  }
-
-  override fun dispose() {
-    // Do some disposal
-  }
-
+  abstract val isDedicatedServer: Boolean
 }
