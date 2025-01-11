@@ -4,6 +4,9 @@ import com.github.xpenatan.gdx.backends.teavm.config.AssetFileHandle
 import com.github.xpenatan.gdx.backends.teavm.config.TeaBuildConfiguration
 import com.github.xpenatan.gdx.backends.teavm.config.TeaBuilder
 import com.github.xpenatan.gdx.backends.teavm.gen.SkipClass
+import org.teavm.backend.javascript.JSModuleType
+import org.teavm.tooling.TeaVMTargetType
+import org.teavm.tooling.TeaVMTool
 import org.teavm.vm.TeaVMOptimizationLevel
 import java.io.File
 
@@ -26,10 +29,11 @@ object TeaVMBuilder {
     // Register any classes or packages that require reflection here:
     // TeaReflectionSupplier.addReflectionClass("dev.ultreon.quantum.reflect")
 
-    val tool = TeaBuilder.config(teaBuildConfiguration)
+    val tool: TeaVMTool = TeaBuilder.config(teaBuildConfiguration)
     tool.mainClass = "dev.ultreon.quantum.teavm.TeaVMLauncher"
     tool.optimizationLevel = TeaVMOptimizationLevel.FULL
-    tool.setObfuscated(false)
+    tool.targetType = TeaVMTargetType.JAVASCRIPT
+    tool.setObfuscated(true)
     TeaBuilder.build(tool)
   }
 }

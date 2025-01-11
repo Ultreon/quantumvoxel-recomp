@@ -7,11 +7,8 @@ import com.badlogic.gdx.graphics.g2d.PixmapPacker
 import com.badlogic.gdx.graphics.g2d.TextureAtlas
 import com.badlogic.gdx.graphics.g2d.TextureRegion
 import com.badlogic.gdx.utils.Disposable
-import dev.ultreon.quantum.client.resource.TextureCategory
-import dev.ultreon.quantum.client.resource.TexturesCategory
 import dev.ultreon.quantum.logger
-import dev.ultreon.quantum.resource.ResourceManager
-import dev.ultreon.quantum.resource.StaticResource
+import dev.ultreon.quantum.resource.*
 import dev.ultreon.quantum.util.NamespaceID
 import ktx.assets.disposeSafely
 
@@ -33,7 +30,7 @@ import ktx.assets.disposeSafely
  */
 class TextureManager(val resourceManager: ResourceManager) : Disposable {
   private val atlases: MutableMap<String, TextureAtlas> = HashMap()
-  private lateinit var texturesCategory: TexturesCategory
+  private lateinit var texturesDir: ResourceDirectory
   private val packers: MutableMap<String, PixmapPacker> = HashMap()
   private val warns: MutableSet<NamespaceID> = HashSet()
   private val atlasWarns: MutableSet<String> = HashSet()
@@ -52,7 +49,10 @@ class TextureManager(val resourceManager: ResourceManager) : Disposable {
    * in the texture management system.
    */
   fun init() {
-    texturesCategory = resourceManager["textures"] as TexturesCategory
+    texturesDir = resourceManager["textures"].asDirOrNull()?.asDirectoryOrNull() ?: run {
+      logger.error("Textures directory not found")
+      return
+    }
     fallbackTexture = TextureRegion(Pixmap(2, 2, Format.RGB888).let { pixmap ->
       pixmap.setColor(1f, 0.5f, 0.0f, 1f)
       pixmap.drawPixel(0, 0)
@@ -75,9 +75,6 @@ class TextureManager(val resourceManager: ResourceManager) : Disposable {
   fun registerAtlas(name: String) {
     val skylineStrategy = PixmapPacker.SkylineStrategy()
     packers[name] = PixmapPacker(2048, 2048, Format.RGBA8888, 0, false, skylineStrategy)
-
-    texturesCategory.register(name, TextureCategory(texturesCategory, this, name))
-    texturesCategory.register(name, GuiTextureCategory(texturesCategory, this, name))
   }
 
   /**
@@ -89,12 +86,22 @@ class TextureManager(val resourceManager: ResourceManager) : Disposable {
   fun pack() {
     packers.forEach { (name, packer) ->
       logger.debug("Packing atlas: $name")
-      texturesCategory[name]?.forEach { resource ->
-        if (resource is StaticResource) {
+      texturesDir[name]?.asDirOrNull()?.forEach { resources ->
+        if (resources is ResourceLeaf) {
+          if (resources.isEmpty()) {
+            logger.warn("Texture group empty: $name")
+            return
+          }
+          val resource = resources.last()
           val location = resource.location
           packer.pack("$location", Pixmap(resource.data, 0, resource.data.size))
+        } else if (resources is ResourceDirectory) {
+          pack(packer, resources)
         }
-      } ?: logger.error("Atlas not found: $name")
+      } ?: run {
+        logger.warn("Texture group not found: $name")
+        return
+      }
 
       val generateTextureAtlas =
         packer.generateTextureAtlas(Texture.TextureFilter.Nearest, Texture.TextureFilter.Nearest, false)
@@ -104,6 +111,17 @@ class TextureManager(val resourceManager: ResourceManager) : Disposable {
     }
 
     packers.clear()
+  }
+
+  private fun pack(packer: PixmapPacker, resources: ResourceDirectory) {
+    for (resource in resources) {
+      if (resource is ResourceLeaf) {
+        val last = resource.last()
+        packer.pack("${last.location}", Pixmap(last.data, 0, last.data.size))
+      } else if (resource is ResourceDirectory) {
+        pack(packer, resource)
+      }
+    }
   }
 
   /**

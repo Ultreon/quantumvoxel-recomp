@@ -27,8 +27,8 @@ class Skybox : Disposable {
   val transform = Matrix4().setToTranslation(0f, 0f, 0f)
 
   val shaderProgram: ShaderProgram = ShaderProgram(
-    QuantumVoxel.resourceManager[NamespaceID.of(path = "shaders/skybox.vert")].text,
-    QuantumVoxel.resourceManager[NamespaceID.of(path = "shaders/skybox.frag")].text
+    QuantumVoxel.resourceManager.require(NamespaceID.of(path = "shaders/skybox.vert")).text,
+    QuantumVoxel.resourceManager.require(NamespaceID.of(path = "shaders/skybox.frag")).text
   ).also {
     if(!it.isCompiled) {
       logger.error("Failed to compile skybox shader:\n${it.log}")

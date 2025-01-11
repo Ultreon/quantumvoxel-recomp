@@ -278,6 +278,13 @@ data class Vector3D(
     z = v.z.toDouble()
   }
 
+  fun set(position: Vector3): Vector3D {
+    x = position.x.toDouble()
+    y = position.y.toDouble()
+    z = position.z.toDouble()
+    return this
+  }
+
   companion object {
     fun zero() = Vector3D(0.0, 0.0, 0.0)
     fun one() = Vector3D(1.0, 1.0, 1.0)

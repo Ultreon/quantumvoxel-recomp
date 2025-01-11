@@ -53,9 +53,9 @@ dependencies {
   api "io.github.libktx:ktx-preferences:$ktxVersion"
   api "io.github.libktx:ktx-reflect:$ktxVersion"
 
-  api 'io.socket:socket.io-client:2.1.1'
-  api 'io.socket:socket.io-server:4.1.2'
-  api("jakarta.servlet:jakarta.servlet-api:6.1.0")
+//  api 'io.socket:socket.io-client:2.1.1'
+//  api 'io.socket:socket.io-server:4.1.2'
+//  api("jakarta.servlet:jakarta.servlet-api:6.1.0")
 
   implementation "com.corundumstudio.socketio:netty-socketio:2.0.12"
 

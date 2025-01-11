@@ -13,6 +13,7 @@ object Blocks {
   val sand = register("sand", Block())
   val cobblestone = register("cobblestone", Block())
   val snowyGrass = register("snowy_grass", Block())
+  val iron: Block = register("iron_block", Block())
 
   fun register(name: String, block: Block): Block {
     Registries.blocks.register(NamespaceID.of(path = name), block)

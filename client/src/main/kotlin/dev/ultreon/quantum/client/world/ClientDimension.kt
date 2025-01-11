@@ -24,7 +24,7 @@ import kotlin.system.measureTimeMillis
 
 const val renderDistance = 8
 
-class ClientDimension(private val material: Material) : Dimension() {
+open class ClientDimension(private val material: Material) : Dimension() {
   val chunks: LongMap<ClientChunk> = LongMap()
   val chunksToLoad = GdxArray<Pair<GridPoint3, Long>>()
   val generator = Generator()

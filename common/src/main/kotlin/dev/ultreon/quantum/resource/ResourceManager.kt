@@ -17,27 +17,17 @@ private val logger = LoggerFactory["QV:Resources"]
 class ResourceManager(
   private val assetRoot: String,
 ) {
-  private val categories = mutableMapOf<String, ResourceCategory>()
+  private val root = ResourceRoot(assetRoot)
 
   /**
    * Retrieves a `ResourceCategory` by its name.
    *
    * @param name The name of the resource category to retrieve.
    * @return The `ResourceCategory` associated with the given name.
-   * @throws NoSuchResourceCategoryException If no category with the specified name is found.
+   * @throws NoSuchResourceDirectoryException If no category with the specified name is found.
    */
-  operator fun get(name: String): ResourceCategory {
-    return categories[name] ?: throw NoSuchResourceCategoryException(name)
-  }
-
-  /**
-   * Registers a new `ResourceCategory` in the resources with the specified name.
-   *
-   * @param name The unique name identifying the resource category being registered.
-   * @param category The `ResourceCategory` object to associate with the given name.
-   */
-  fun register(name: String, category: ResourceCategory) {
-    categories[name] = category
+  operator fun get(name: String): ResourceNode {
+    return root[name] ?: throw NoSuchResourceDirectoryException(name)
   }
 
   /**
@@ -46,58 +36,54 @@ class ResourceManager(
    * @param location The `NamespaceID` representing the hierarchical location of the resource
    * to retrieve, including its domain and path.
    * @return The `Resource` corresponding to the specified `NamespaceID`.
-   * @throws NoSuchResourceCategoryException If a required resource category is not found
+   * @throws NoSuchResourceDirectoryException If a required resource category is not found
    * while navigating the hierarchy.
    * @throws NoSuchResourceException If the desired resource is not found in the specified
    * category or subcategory.
    */
-  @Throws(NoSuchResourceCategoryException::class, NoSuchResourceException::class)
-  operator fun get(location: NamespaceID): Resource {
-    val path = location.path.split('/')
-    var category = categories[path[0]] ?: throw NoSuchResourceCategoryException(path[0])
-
-    for (i in 1 until path.size - 1) {
-      val resourceNode = category[path[i]]
-      category = resourceNode ?: throw NoSuchResourceException(location)
-    }
-
-    return category[location.domain, path.subList(0, path.size).joinToString("/")] ?: throw NoSuchResourceException(
-      location
-    )
+  @Throws(NoSuchResourceDirectoryException::class, NoSuchResourceException::class)
+  operator fun get(location: NamespaceID): Resource? {
+    return resourcesAt(location).lastOrNull()
   }
 
+  infix fun require(location: NamespaceID): Resource {
+    return resourcesAt(location).lastOrNull() ?: throw NoSuchResourceException(location.toString())
+  }
+
+  fun resourcesAt(location: NamespaceID): List<Resource> {
+    val path = location.path.split('/')
+    var node: ResourceDir = root
+
+    for (i in 0 until path.size - 1) {
+      val resourceNode = node[path[i]]
+      node = resourceNode as ResourceDir? ?: return emptyList()
+    }
+
+    return node[path[path.size - 1]]?.asLeafOrNull()?.get(location.domain) ?: emptyList()
+  }
+
+  operator fun contains(path: String): Boolean {
+    return getNodeOrNull(path) != null
+  }
 
   operator fun contains(location: NamespaceID): Boolean {
-    val path = location.path.split('/')
-    var category = categories[path[0]] ?: throw NoSuchResourceCategoryException(path[0])
-
-    for (i in 1 until path.size - 1) {
-      val resourceNode = category[path[i]]
-      category = resourceNode ?: return false
-    }
-
-    category[location.domain, path.subList(0, path.size).joinToString("/")] ?: return false
-    return true
+    return resourcesAt(location).isNotEmpty()
   }
 
-  fun getNode(location: NamespaceID): ResourceNode {
-    return getNodeOrNull(location) ?: throw NoSuchResourceException(location)
+  fun getNode(path: String): ResourceNode {
+    return getNodeOrNull(path) ?: throw NoSuchResourceException(path)
   }
 
-  fun getNodeOrNull(location: NamespaceID): ResourceNode? {
-    val path = location.path.split('/')
-    var category = categories[path[0]] ?: throw NoSuchResourceCategoryException(path[0])
+  fun getNodeOrNull(path: String): ResourceNode? {
+    val elems = path.split('/')
+    var node: ResourceDir = root ?: throw NoSuchResourceDirectoryException(path)
 
-
-    for (i in 1 until path.size - 1) {
-      val resourceNode = category[path[i]]
-      category = resourceNode ?: throw NoSuchResourceCategoryException(path[i])
+    for (i in 0 until elems.size - 1) {
+      val resourceNode = node[elems[i]] as ResourceDir? ?: return null
+      node = resourceNode
     }
 
-    return category[location.domain, path.subList(0, path.size).joinToString("/")]
-      ?: category[path.subList(0, path.size - 1).joinToString("/")]?.let {
-        ResourceLocation(location, it)
-      } ?: null
+    return node[elems.last()]
   }
 
   /**
@@ -127,7 +113,7 @@ class ResourceManager(
    * Resource categories referenced in the hierarchy must exist; otherwise, an error is logged.
    *
    * @param zip The `ZipInputStream` to read and extract resources from.
-   * @throws NoSuchResourceCategoryException If an unknown resource category is encountered.
+   * @throws NoSuchResourceDirectoryException If an unknown resource category is encountered.
    */
   fun loadZip(zip: ZipInputStream) {
     while (true) {
@@ -138,46 +124,54 @@ class ResourceManager(
         if (name.startsWith("$assetRoot/")) {
           val domain = name.substring(assetRoot.length + 1)
           val domainId = domain.substring(0, domain.indexOf('/'))
-          logger.debug("Loading domain: $domainId")
-          val path = domain.substring(domain.indexOf('/') + 1).split('/')
-          logger.debug("Loading resource category: $path")
-          val categories = path.dropLast(1)
-          logger.debug("Category path: $categories")
-          val filename = path.last()
-          logger.debug("Category filename: $filename")
-          loadCategory(zip, categories.toMutableList(), null, filename, domainId)
+                    val path = domain.substring(domain.indexOf('/') + 1).split('/')
+                    val categories = path.dropLast(1)
+                    val filename = path.last()
+                    loadDirectory(zip, categories.toMutableList(), filename, domainId)
         }
       }
     }
   }
 
-  private fun loadCategory(
+  private fun loadDirectory(
     zip: ZipInputStream,
-    categories: MutableList<String>,
-    category: ResourceCategory? = null,
+    pathElements: MutableList<String>,
     filename: String,
     domain: String,
-    parent: String = ""
+    parentPath: String = "",
+    parent: ResourceDir = root,
   ) {
-    val path = if (parent == "") "" else parent
-    logger.debug("Loading resource category: $domain:$path")
-    logger.debug("Remaining path: ${categories.joinToString("/")}")
-    logger.debug("Parent Category: ${category?.name}")
-    logger.debug("Parent Category Path: $parent")
+    val path = if (parentPath == "") "" else parentPath
 
-    if (categories.isEmpty()) {
-      logger.debug("Going to load resource: $domain:$path/$filename")
-      val resourceCategory = category ?: error("Invalid resource: $filename, not in a category!")
-      resourceCategory ?: throw NoSuchResourceCategoryException(path)
-      resourceCategory[domain, "$path/$filename"] =
-        StaticResource(NamespaceID.of(domain, "$path/$filename"), zip.readBytes())
+    if (pathElements.isEmpty()) {
+      parent ?: throw NoSuchResourceDirectoryException(path)
+      val resourceNode = if (filename in parent) {
+        parent[filename]
+      } else {
+        val resourceLeaf = ResourceLeaf(parent, filename)
+        parent[filename] = resourceLeaf
+        resourceLeaf
+      }
+
+      resourceNode?.asLeafOrNull()?.addResource(StaticResource(NamespaceID.of(domain, if (path == "") filename else "$path/$filename"), zip.readBytes())) ?: throw ResourceOverwriteException("$domain:$path/$filename")
     } else {
-      val categoryName = categories.removeAt(0)
-      logger.debug("Category Name: $categoryName")
+      val categoryName = pathElements.removeAt(0)
 
-      val s = if (parent == "") categoryName else "$parent/$categoryName"
-      logger.debug("Going to load resource category: $domain:$s")
-      loadCategory(zip, categories, category?.get(categoryName) ?: this.categories[categoryName], filename, domain, s)
+      val s = if (parentPath == "") categoryName else "$parentPath/$categoryName"
+
+      loadDirectory(
+        zip,
+        pathElements,
+        filename,
+        domain,
+        s,
+        if (categoryName !in parent) {
+          parent.mkdir(categoryName)
+          parent[categoryName] as ResourceDir
+        } else {
+          parent[categoryName] as? ResourceDir ?: throw NoSuchResourceDirectoryException(s)
+        }
+      )
     }
   }
 
@@ -190,44 +184,42 @@ class ResourceManager(
     list.forEach {
       if (it.isDirectory) {
         val domain = it.name()
-        logger.debug("Loading domain: $domain")
-        it.list().forEach last@{ category ->
+                it.list().forEach last@{ category ->
           if (category.isDirectory) {
-            val categoryPath = "$assetRoot/$domain/${category.name()}"
-            val category1 = categories[category.name()]
-            if (category1 == null) {
-              logger.warn("Unknown category: $categoryPath")
-              return@last
-            }
-            loadCategory(category, domain, category1, category.name())
+            val domainName = root
+            loadDirectory(category, domain, domainName, category.name())
           }
         }
       }
     }
   }
 
-  private fun loadCategory(file: FileHandle, domain: String, category: ResourceCategory? = null, path: String) {
+  private fun loadDirectory(file: FileHandle, domain: String, dir: ResourceDir, path: String) {
     file.list().forEach {
       when {
-        it.isDirectory -> loadCategory(
+        it.isDirectory -> loadDirectory(
           it,
           domain,
-          category!![it.name()] ?: throw NoSuchResourceCategoryException(it.name()),
-          path + it.name() + "/"
+          ResourceDirectory(it.name(), domain, dir),
+          "$path${it.name()}/"
         )
 
-        category != null -> loadResource(it, category, domain, path + it.name())
+        dir != null -> loadResource(it, dir, domain, path + it.name())
         else -> logger.warn("No category for file: $it")
       }
     }
   }
 
-  private fun loadResource(file: FileHandle, category: ResourceCategory, domain: String, path: String) {
+  private fun loadResource(file: FileHandle, directory: ResourceDir, domain: String, path: String) {
     val readBytes = file.readBytes()
     if (readBytes.isEmpty()) {
       logger.warn("Empty file: $file")
     }
 
-    category[domain, path] = StaticResource(NamespaceID.of(domain, path), readBytes)
+    if (file.name() !in directory) {
+      directory[file.name()] = ResourceDirectory(file.name(), domain, directory)
+    }
+
+    directory[file.name()]?.asLeafOrNull()?.addResource(StaticResource(NamespaceID.of(domain, path), readBytes)) ?: throw ResourceOverwriteException("$domain:$path")
   }
 }

@@ -10,9 +10,7 @@ import com.caoccao.javet.interop.V8Host
 import com.caoccao.javet.javenode.JNEventLoop
 import dev.ultreon.gdx.lwjgl3.angle.ANGLELoader
 import dev.ultreon.quantum.LoggerFactory
-import dev.ultreon.quantum.client.GamePlatform
-import dev.ultreon.quantum.client.QuantumVoxel
-import dev.ultreon.quantum.client.gamePlatform
+import dev.ultreon.quantum.client.*
 import dev.ultreon.quantum.factory
 import dev.ultreon.quantum.resource.ResourceManager
 import java.io.FileNotFoundException
@@ -108,31 +106,34 @@ fun main() {
       Os.MacOsX -> {
         MetalApp(QuantumVoxel, MetalConfig().apply {
           setTitle("Quantum Voxel")
-          setWindowedMode(640, 480)
+          setWindowedMode(MINIMUM_WIDTH * 2, MINIMUM_HEIGHT * 2)
           setOpenGLEmulation(MetalConfig.GLEmulation.ANGLE_GLES32, 2, 0)
           setWindowIcon(*(arrayOf(128, 64, 32, 16).map { "libgdx$it.png" }.toTypedArray()))
+          setBackBufferConfig(4, 4, 4, 4, 8, 8, 0)
         })
       }
 
       Os.Windows -> {
         VulkanApp(QuantumVoxel, VulkanConfig().apply {
           setTitle("Quantum Voxel")
-          setWindowedMode(640, 480)
+          setWindowedMode(MINIMUM_WIDTH * 2, MINIMUM_HEIGHT * 2)
           setForegroundFPS(0)
           useVsync(false)
           setOpenGLEmulation(VulkanConfig.GLEmulation.ANGLE_GLES32, 4, 3)
           setWindowIcon(*(arrayOf(128, 64, 32, 16).map { "libgdx$it.png" }.toTypedArray()))
+          setBackBufferConfig(4, 4, 4, 4, 8, 8, 0)
         })
       }
 
       else -> {
         OpenGLApp(QuantumVoxel, OpenGLConfig().apply {
           setTitle("Quantum Voxel")
-          setWindowedMode(640, 480)
+          setWindowedMode(MINIMUM_WIDTH * 2, MINIMUM_HEIGHT * 2)
           setForegroundFPS(0)
           useVsync(false)
           setOpenGLEmulation(OpenGLConfig.GLEmulation.ANGLE_GLES20, 4, 3)
           setWindowIcon(*(arrayOf(128, 64, 32, 16).map { "libgdx$it.png" }.toTypedArray()))
+          setBackBufferConfig(4, 4, 4, 4, 8, 8, 0)
         })
       }
     }

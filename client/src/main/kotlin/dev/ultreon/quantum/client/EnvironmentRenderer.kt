@@ -4,19 +4,20 @@ package dev.ultreon.quantum.client
 
 import com.badlogic.gdx.Gdx
 import com.badlogic.gdx.Input
-import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.graphics.g2d.SpriteBatch
 import com.badlogic.gdx.graphics.g3d.Environment
 import com.badlogic.gdx.graphics.g3d.ModelBatch
 import com.badlogic.gdx.graphics.g3d.attributes.ColorAttribute
 import com.badlogic.gdx.math.Matrix4
 import com.badlogic.gdx.math.Vector3
-import com.github.tommyettinger.textra.Font
+import com.badlogic.gdx.utils.Disposable
 import com.github.tommyettinger.textra.Layout
 import dev.ultreon.quantum.blocks.Blocks
 import dev.ultreon.quantum.client.QuantumVoxel.dimension
 import dev.ultreon.quantum.client.QuantumVoxel.gameInput
 import dev.ultreon.quantum.client.QuantumVoxel.player
+import dev.ultreon.quantum.client.gui.screens.InGameHudScreen
+import dev.ultreon.quantum.client.gui.screens.PauseScreen
 import dev.ultreon.quantum.client.input.KeyBinds
 import dev.ultreon.quantum.client.world.Skybox
 import dev.ultreon.quantum.entity.CollisionComponent
@@ -29,9 +30,7 @@ import dev.ultreon.quantum.util.NamespaceID
 import dev.ultreon.quantum.vec3d
 import ktx.app.clearScreen
 import ktx.assets.disposeSafely
-import ktx.graphics.use
 import ktx.math.vec3
-import javax.accessibility.AccessibleEditableText
 
 private val tmp1 = vec3()
 
@@ -50,7 +49,7 @@ private val tmp1 = vec3()
  * @constructor Creates a `GameScreen` instance that initializes the game world, rendering environment,
  *              camera, player entity, and necessary assets.
  */
-class EnvironmentRenderer {
+class EnvironmentRenderer : Disposable {
   private var lastHit: BlockHit? = null
   private val backupMatrix: Matrix4 = Matrix4()
   internal var lastRefreshPosition: Vector3D = vec3d()
@@ -58,8 +57,8 @@ class EnvironmentRenderer {
   private var lastPollTime: Long = 0
   private val speed: Float = 6f
   private val modelBatch = ModelBatch(
-    QuantumVoxel.resourceManager[NamespaceID.of(path = "shaders/default.vsh")].text,
-    QuantumVoxel.resourceManager[NamespaceID.of(path = "shaders/default.fsh")].text
+    (QuantumVoxel.resourceManager require NamespaceID.of(path = "shaders/default.vsh")).text,
+    (QuantumVoxel.resourceManager require NamespaceID.of(path = "shaders/default.fsh")).text
   )
   private val font = QuantumVoxel.font
   private val spriteBatch = SpriteBatch()
@@ -211,15 +210,19 @@ class EnvironmentRenderer {
   }
 
   private fun input() {
-    forward = KeyBinds.walkForwardsKey.isPressed() && (Gdx.input.isCursorCatched || gamePlatform.isMobile)
-    backward = KeyBinds.walkBackwardsKey.isPressed() && (Gdx.input.isCursorCatched || gamePlatform.isMobile)
-    strafeLeft = KeyBinds.walkLeftKey.isPressed() && (Gdx.input.isCursorCatched || gamePlatform.isMobile)
-    strafeRight = KeyBinds.walkRightKey.isPressed() && (Gdx.input.isCursorCatched || gamePlatform.isMobile)
-    up = KeyBinds.jumpKey.isPressed() && (Gdx.input.isCursorCatched || gamePlatform.isMobile)
-    down = KeyBinds.crouchKey.isPressed() && (Gdx.input.isCursorCatched || gamePlatform.isMobile)
+    if (!Gdx.input.isCursorCatched && !gamePlatform.isMobile) return
+    forward = KeyBinds.walkForwardsKey.isPressed()
+    backward = KeyBinds.walkBackwardsKey.isPressed()
+    strafeLeft = KeyBinds.walkLeftKey.isPressed()
+    strafeRight = KeyBinds.walkRightKey.isPressed()
+    up = KeyBinds.jumpKey.isPressed()
+    down = KeyBinds.crouchKey.isPressed()
 
     if (Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE) && !gamePlatform.isMobile) {
-      Gdx.input.isCursorCatched = false
+      if (Gdx.input.isCursorCatched) {
+        QuantumVoxel.nextFrame { QuantumVoxel.setScreen<PauseScreen>() }
+        Gdx.input.isCursorCatched = false
+      }
     }
     if (Gdx.input.isButtonJustPressed(Input.Buttons.LEFT) && !gamePlatform.isMobile) {
       if (Gdx.input.isCursorCatched) {
@@ -233,7 +236,7 @@ class EnvironmentRenderer {
       Gdx.input.isCursorCatched = true
     }
     player!!.getComponent(RunningComponent::class.java).running =
-      KeyBinds.runningKey.isPressed() && (Gdx.input.isCursorCatched || gamePlatform.isMobile)
+      KeyBinds.runningKey.isPressed()
 
     if (Gdx.input.isKeyJustPressed(Input.Keys.F1)) {
       dimension!!.rebuildAll()
@@ -346,7 +349,7 @@ class EnvironmentRenderer {
     // TODO
   }
 
-  fun dispose() {
+  override fun dispose() {
     modelBatch.disposeSafely()
     skybox.disposeSafely()
     spriteBatch.disposeSafely()

@@ -4,8 +4,9 @@ import dev.ultreon.quantum.resource.ResourceNode
 import dev.ultreon.quantum.util.NamespaceID
 import java.io.InputStream
 import java.io.Reader
+import java.nio.ByteBuffer
 
-interface Resource : ResourceNode {
+interface Resource {
   val location: NamespaceID
 
   val text: String
@@ -13,9 +14,6 @@ interface Resource : ResourceNode {
 
   fun reader(): Reader
   fun inputStream(): InputStream
-
-  override fun isCategory(): Boolean = false
-  fun length(): Long {
-    return data.size.toLong()
-  }
+  fun length(): Long = data.size.toLong()
+  fun map(): ByteBuffer = ByteBuffer.wrap(data)
 }

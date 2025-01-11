@@ -80,7 +80,6 @@ class JsonModelLoader @JvmOverloads constructor(
     val namespaceID: NamespaceID = block.id.mapPath { path -> "models/blocks/$path.json" }
     try {
       val resource: Resource = resourceManager[namespaceID] ?: return null
-      logger.debug("Loading block model: $namespaceID")
       return this.load(block.key, JsonReader().parse(resource.inputStream()))
     } catch (e: IOException) {
       logger.error("Couldn't load block model for ${block.id}: ${e.message}")
@@ -93,7 +92,6 @@ class JsonModelLoader @JvmOverloads constructor(
     val namespaceID: NamespaceID = item.id.mapPath { path -> "models/items/$path.json" }
     try {
       val resource: Resource = resourceManager[namespaceID] ?: return null
-      logger.debug("Loading item model: $namespaceID")
       return this.load(item.key, JsonReader().parse(resource.inputStream()))
     } catch (e: IOException) {
       logger.error("Couldn't load item model for ${item.id}: ${e.message}")
@@ -200,7 +198,7 @@ class JsonModelLoader @JvmOverloads constructor(
 
   fun load(key: ResourceId<*>, id: NamespaceID): BlockModel? {
     return try {
-      val resource: Resource = resourceManager[id.mapPath { path -> "models/${key.name.path}/$path.json" }]
+      val resource: Resource = resourceManager[id.mapPath { path -> "models/${key.name.path}/$path.json" }] ?: return null
       this.load(key, JsonReader().parse(resource.inputStream()))
     } catch (e: IOException) {
       null

@@ -2,7 +2,7 @@ package dev.ultreon.quantum.util
 
 import com.badlogic.gdx.utils.GdxRuntimeException
 
-class NamespaceID private constructor(
+data class NamespaceID(
   val domain: String,
   val path: String
 ) : Comparable<NamespaceID> {
@@ -92,3 +92,9 @@ class NamespaceID private constructor(
     }
   }
 }
+
+fun id(domain: String = "quantum", path: String): NamespaceID = NamespaceID.of(domain, path)
+
+fun String.asId(): NamespaceID = NamespaceID.parse(this)
+
+fun String.asIdOrNull(): NamespaceID? = NamespaceID.parseOrNull(this)

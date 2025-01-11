@@ -1,7 +1,6 @@
 package dev.ultreon.quantum.client.debug
 
 import com.artemis.Entity
-import com.badlogic.gdx.ai.utils.Collision
 import dev.ultreon.quantum.client.QuantumVoxel
 import dev.ultreon.quantum.client.draw
 import dev.ultreon.quantum.entity.CollisionComponent
@@ -16,13 +15,10 @@ class DebugRenderer {
     line = 1
 
     if (!QuantumVoxel.debug) {
-      QuantumVoxel.spriteBatch.use {
-        QuantumVoxel.font.draw(it, "Not Debug", 10f, 10f + (line++ * 10f))
-      }
       return
     }
 
-    QuantumVoxel.spriteBatch.begin()
+    QuantumVoxel.globalBatch.begin()
     val player: Entity? = QuantumVoxel.player
     if (player != null) {
       val position: PositionComponent? = player.getComponent(PositionComponent::class.java)
@@ -44,14 +40,14 @@ class DebugRenderer {
         left("No Clip", collision.noClip)
       }
     }
-    QuantumVoxel.spriteBatch.end()
+    QuantumVoxel.globalBatch.end()
   }
 
   fun left(name: String, value: Any?) {
-    QuantumVoxel.font.draw(QuantumVoxel.spriteBatch, "[gold]$name: [white]$value", 10f, 10f + (line++ * 10f))
+    QuantumVoxel.font.draw(QuantumVoxel.globalBatch, "[gold]$name: [white]$value", 10f, 10f + (line++ * 10f))
   }
 
   fun left(emoji: String, name: String, value: Any?) {
-    QuantumVoxel.font.draw(QuantumVoxel.spriteBatch, "[+$emoji][gold]$name: [white]$value", 10f, 10f + (line++ * 10f))
+    QuantumVoxel.font.draw(QuantumVoxel.globalBatch, "[+$emoji][gold]$name: [white]$value", 10f, 10f + (line++ * 10f))
   }
 }
