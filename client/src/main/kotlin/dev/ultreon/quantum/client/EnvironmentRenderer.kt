@@ -8,6 +8,9 @@ import com.badlogic.gdx.graphics.g2d.SpriteBatch
 import com.badlogic.gdx.graphics.g3d.Environment
 import com.badlogic.gdx.graphics.g3d.ModelBatch
 import com.badlogic.gdx.graphics.g3d.attributes.ColorAttribute
+import com.badlogic.gdx.graphics.g3d.utils.DefaultRenderableSorter
+import com.badlogic.gdx.graphics.g3d.utils.DefaultShaderProvider
+import com.badlogic.gdx.graphics.g3d.utils.RenderableSorter
 import com.badlogic.gdx.math.Matrix4
 import com.badlogic.gdx.math.Vector3
 import com.badlogic.gdx.utils.Disposable
@@ -57,8 +60,9 @@ class EnvironmentRenderer : Disposable {
   private var lastPollTime: Long = 0
   private val speed: Float = 6f
   private val modelBatch = ModelBatch(
-    (QuantumVoxel.resourceManager require NamespaceID.of(path = "shaders/default.vsh")).text,
-    (QuantumVoxel.resourceManager require NamespaceID.of(path = "shaders/default.fsh")).text
+    DefaultShaderProvider((QuantumVoxel.resourceManager require NamespaceID.of(path = "shaders/default.vsh")).text,
+    (QuantumVoxel.resourceManager require NamespaceID.of(path = "shaders/default.fsh")).text),
+    DefaultRenderableSorter()
   )
   private val font = QuantumVoxel.font
   private val spriteBatch = SpriteBatch()

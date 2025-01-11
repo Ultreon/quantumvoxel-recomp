@@ -1,6 +1,5 @@
 package dev.ultreon.quantum.client.world
 
-import com.badlogic.gdx.graphics.Camera
 import com.badlogic.gdx.graphics.GL20
 import com.badlogic.gdx.graphics.VertexAttribute
 import com.badlogic.gdx.graphics.VertexAttributes
@@ -18,7 +17,6 @@ import dev.ultreon.quantum.math.Vector3D
 import dev.ultreon.quantum.vec3d
 import dev.ultreon.quantum.world.BlockFlags
 import dev.ultreon.quantum.world.Chunk
-import dev.ultreon.quantum.world.Dimension
 import dev.ultreon.quantum.world.SIZE
 import ktx.assets.disposeSafely
 import ktx.collections.GdxArray
@@ -131,6 +129,21 @@ class ClientChunk(x: Int, y: Int, z: Int, private val material: Material, val di
       for (y in 0..<SIZE) {
         for (z in 0..<SIZE) {
           loadBlockInto(part2, x, y, z, renderType = "water")
+        }
+      }
+    }
+    val part3 = builder.part(
+      "world#water", GL20.GL_TRIANGLES, VertexAttributes(
+        VertexAttribute.Position(),
+        VertexAttribute.Normal(),
+        VertexAttribute.ColorPacked(),
+        VertexAttribute.TexCoords(0)
+      ), this.material
+    )
+    for (x in 0..<SIZE) {
+      for (y in 0..<SIZE) {
+        for (z in 0..<SIZE) {
+          loadBlockInto(part3, x, y, z, renderType = "foliage")
         }
       }
     }

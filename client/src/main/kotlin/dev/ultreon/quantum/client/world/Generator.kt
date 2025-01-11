@@ -232,7 +232,7 @@ class Generator {
 
           if (height in 65.5..160.0) {
             if (random.nextInt(2) == 0 && height > 64.5) {
-//              chunk.set(x, height.toInt() + 1, z, Blocks.SHORT_GRASS)
+              if (y == height.toInt() + 1) chunk[x, y, z] = Blocks.shortGrass
             } else if (random.nextInt(50) == 0 && height > 64.5) {
 //              chunk.set(x, height.toInt() + 1, z, Block.POPPY)
             } else if (random.nextInt(50) == 0 && height > 64.5) {

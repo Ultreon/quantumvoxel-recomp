@@ -17,6 +17,7 @@ import org.teavm.jso.JSBody
 import org.teavm.jso.JSObject
 
 /** Launches the TeaVM/HTML application. */
+@Deprecated("TeaVM backend is deprecated")
 fun main() {
   val config = TeaApplicationConfiguration("canvas").apply {
     //// If width and height are each greater than 0, then the app will use a fixed size.
@@ -47,10 +48,12 @@ fun main() {
   TeaApplication(QuantumVoxel, config)
 }
 
+@Deprecated("TeaVM backend is deprecated")
 class TeaVMFactory : LoggerFactory {
   override fun getLogger(name: String): Logger = TeaVMLogger(name)
 }
 
+@Deprecated("TeaVM backend is deprecated")
 class TeaVMLogger(val name: String) : Logger, JSObject {
   override fun info(message: String) {
     TeaVMConsole.info("$name: $message")

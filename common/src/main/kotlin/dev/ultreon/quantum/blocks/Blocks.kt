@@ -4,7 +4,7 @@ import dev.ultreon.quantum.registry.Registries
 import dev.ultreon.quantum.util.NamespaceID
 
 object Blocks {
-  val air: Block = register("air", Block().apply { hasCollider = false })
+  val air = register("air", Block().apply { hasCollider = false })
   val soil = register("soil", Block())
   val grass = register("grass", Block())
   val stone = register("stone", Block())
@@ -13,7 +13,8 @@ object Blocks {
   val sand = register("sand", Block())
   val cobblestone = register("cobblestone", Block())
   val snowyGrass = register("snowy_grass", Block())
-  val iron: Block = register("iron_block", Block())
+  val shortGrass = register("short_grass", Block().apply { renderType = "foliage"; hasCollider = false })
+  val iron = register("iron_block", Block())
 
   fun register(name: String, block: Block): Block {
     Registries.blocks.register(NamespaceID.of(path = name), block)

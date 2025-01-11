@@ -12,6 +12,7 @@ import java.io.File
 
 /** Builds the TeaVM/HTML application. */
 @SkipClass
+@Deprecated("TeaVM backend is deprecated")
 object TeaVMBuilder {
   @JvmStatic
   fun main(arguments: Array<String>) {

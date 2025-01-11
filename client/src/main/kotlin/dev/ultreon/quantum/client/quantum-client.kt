@@ -118,6 +118,7 @@ object QuantumVoxel : KtxGame<KtxScreen>(clearScreen = false) {
       diffuse(texture.texture)
       cullFace(GL20.GL_BACK)
       blendMode(GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA)
+      alphaTest(0.01f)
       depthTest(true, GL20.GL_LESS, 0.01f, 1000f)
     }
   }

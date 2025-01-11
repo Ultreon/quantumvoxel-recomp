@@ -236,11 +236,7 @@ open class ClientDimension(private val material: Material) : Dimension() {
   }
 
   fun render(modelBatch: ModelBatch) {
-    val (x, y, z) = QuantumVoxel.player!!.getComponent(PositionComponent::class.java).position
-    for (chunk in chunks.values().sortedBy {
-      val chunkPos = it.chunkPos
-      vec3d(chunkPos.x * SIZE.toDouble(), chunkPos.y * SIZE.toDouble(), chunkPos.z * SIZE.toDouble()).dst2(vec3d(x, y, z))
-    }) {
+    for (chunk in chunks.values()) {
       modelBatch.render(chunk)
     }
   }
@@ -262,3 +258,7 @@ open class ClientDimension(private val material: Material) : Dimension() {
     return rayTrace(RayD(position, lookVec))
   }
 }
+
+private operator fun GridPoint3.component1(): Int = x
+private operator fun GridPoint3.component2(): Int = y
+private operator fun GridPoint3.component3(): Int = z

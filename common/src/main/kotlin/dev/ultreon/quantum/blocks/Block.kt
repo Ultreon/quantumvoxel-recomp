@@ -14,12 +14,14 @@ class Block {
     get() = this == Blocks.air
   var isFluid: Boolean = false
   var renderType: String = "default"
+  var hasCollider: Boolean = true
   val bounds: GdxArray<BoundingBox> = gdxArrayOf(
     BoundingBox(
       vec3(0f, 0f, 0f),
       vec3(1f, 1f, 1f)
     )
   )
+
   val isSolid: Boolean = true
 
   override fun toString(): String {
@@ -42,8 +44,6 @@ class Block {
   fun boundsAt(x: Int, y: Int, z: Int): GdxArray<BoundingBoxD> {
     return boundsAt(vec3d(x.toDouble(), y.toDouble(), z.toDouble()))
   }
-
-  var hasCollider: Boolean = true
 }
 
 fun block(func: Block.() -> Unit): Block {
