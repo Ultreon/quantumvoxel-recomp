@@ -119,7 +119,7 @@ class BackgroundRenderer : Disposable {
   override fun dispose() {
     modelBatch.dispose()
     for (chunk in chunks) {
-      chunk.dispose()
+      chunk.disposeChunk()
     }
 
     skybox.dispose()

@@ -1,0 +1,9 @@
+{
+    "mainClass": "dev.ultreon.bubbles.switchgdx.SwitchLauncher",
+    "reflective": [
+
+    ],
+    "useStackTraces": true,
+    "useLineNumbers": true,
+    "useValueChecks": true
+}

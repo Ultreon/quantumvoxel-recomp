@@ -2,6 +2,10 @@ package dev.ultreon.langgen;
 
 import dev.ultreon.langgen.api.PackageExclusions;
 import dev.ultreon.langgen.javascript.JavascriptGen;
+import dev.ultreon.quantum.Logger;
+import dev.ultreon.quantum.LoggingKt;
+import dev.ultreon.quantum.lwjgl3.ANSIConsole;
+import dev.ultreon.quantum.lwjgl3.Lwjgl3LoggerFactory;
 import joptsimple.OptionParser;
 import joptsimple.OptionSet;
 import joptsimple.OptionSpec;
@@ -13,7 +17,19 @@ import java.nio.file.Path;
 import java.util.List;
 
 public class Main {
+    public static long lastUpdate;
+    private static Logger logger;
+
+    public static Logger getLogger() {
+        return logger;
+    }
+
     public static void main(String[] args) throws IOException {
+        LoggingKt.setFactory(Lwjgl3LoggerFactory.INSTANCE);
+        logger = LoggingKt.getFactory().getLogger("Main");
+
+        ANSIConsole.install();
+
         OptionParser parser = new OptionParser(true);
         OptionSpec<Boolean> js = parser.acceptsAll(List.of("js", "javascript"), "Generate Javascript files").withOptionalArg().ofType(Boolean.class).defaultsTo(false);
         OptionSpec<Boolean> debug = parser.acceptsAll(List.of("debug"), "Debug mode").withOptionalArg().ofType(Boolean.class).defaultsTo(false);

@@ -21,14 +21,14 @@ public class JsClassBuilder extends AnyJsClassBuilder {
                     if (new.target === DynamicJavaExtender) {
                         throw new Error("DynamicJavaExtender should not be instantiated directly.");
                     }
-            
+
                     this.javaType = javaType;
                     this.extendedType = null;
-            
+
                     // Dynamically set the extended type when the class is extended
                     this.setExtendedType(new.target);
                 }
-            
+
                 getExtendedType() {
                     if (this.extendedType === null) {
                         const JavaType = Java.type(this.javaType);
@@ -40,15 +40,15 @@ public class JsClassBuilder extends AnyJsClassBuilder {
                     }
                     return this.extendedType;
                 }
-            
+
                 setExtendedType(extendedClass) {
                     const JavaType = Java.type(this.javaType);
                     const extendedMethods = {};
-            
+
                     if (%2$s) {
                         return JavaType;
                     }
-            
+
                     // Copy methods from the extended class prototype to the extendedMethods object
                     Object.getOwnPropertyNames(extendedClass.prototype).forEach(name => {
                         if (name !== "constructor" && typeof extendedClass.prototype[name] === "function") {
@@ -57,20 +57,20 @@ public class JsClassBuilder extends AnyJsClassBuilder {
                             };
                         }
                     });
-            
+
                     this.extendedType = Java.extend(JavaType, extendedMethods);
                 }
-            
+
                 newInstance(...args) {
                     const ExtendedType = this.getExtendedType();
                     return new ExtendedType(...args);
                 }
             }
-            
+
             export default class extends DynamicJavaExtender {
                 constructor() {
                     super('%1$s');
-            
+
                     const $ = this.newInstance(...arguments);
                     return $;
                 }
@@ -341,7 +341,7 @@ public class JsClassBuilder extends AnyJsClassBuilder {
             fieldsByName.computeIfAbsent(field.getName(), v -> new ArrayList<>()).add(new Pair<>(field.getName(), field));
         }
 
-        for (var entry : methodsByName.sequencedEntrySet()) {
+        for (var entry : methodsByName.entrySet()) {
             String name = entry.getKey();
             List<Pair<String, Method>> value = entry.getValue();
 //            if (fieldsByName.containsKey(name)) {
@@ -436,7 +436,7 @@ public class JsClassBuilder extends AnyJsClassBuilder {
                 %4$s
                  */
                 %1$s() {
-                                
+
                 }
                 """.formatted(
                 toJavaMemberName(method),

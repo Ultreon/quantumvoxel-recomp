@@ -270,3 +270,5 @@ Thumbs.db
 /common/build/libs/XintecRPG-$projectVersion.jar
 /common/build/tmp/jar/MANIFEST.MF
 /android/release/
+/run/
+/lwjgl3/logs/

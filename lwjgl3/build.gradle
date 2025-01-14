@@ -28,7 +28,11 @@ if (JavaVersion.current().isJava9Compatible()) {
   compileJava.options.release.set(17)
 }
 kotlin.compilerOptions.jvmTarget.set(JvmTarget.JVM_17)
-compileKotlin.kotlinOptions.jvmTarget = "17"
+compileKotlin {
+  kotlinOptions {
+    jvmTarget = "17"
+  }
+}
 
 dependencies {
   implementation "com.badlogicgames.gdx-controllers:gdx-controllers-desktop:$gdxControllersVersion"
@@ -66,7 +70,9 @@ dependencies {
   // Guava
   implementation "com.google.guava:guava:33.4.0-jre"
 
-//  implementation("org.reflections:reflections:0.10.2")
+  // Reflections Library
+  implementation("org.reflections:reflections:0.10.2")
+
   // JOptSimple
   implementation "net.sf.jopt-simple:jopt-simple:5.0.4"
 
@@ -79,8 +85,10 @@ dependencies {
 def os = System.properties['os.name'].toLowerCase()
 
 run {
-  workingDir = rootProject.file('assets').path
-  setIgnoreExitValue(true)
+  mkdir(rootProject.file('run'))
+
+  workingDir = rootProject.file('run').path
+  setIgnoreExitValue(false)
 
   if (os.contains('mac')) jvmArgs += "-XstartOnFirstThread"
 }
@@ -171,33 +179,41 @@ if (enableGraalNative == 'true') {
   apply from: file("nativeimage.gradle")
 }
 
-//task generateBindings(type: JavaExec) {
-//  classpath = sourceSets.main.runtimeClasspath
-//  mainClass = 'dev.ultreon.langgen.Main'
-//  args = ['--js', '--stub', '--output='+file("../modules")]
-//
-//  inputs.files(sourceSets.main.allSource)
-//  outputs.dir(file("../modules"))
-//
-//  group = 'build'
-//  description = 'Generate bindings'
-//
-//  finalizedBy('compileTypescript')
-//}
-//
-//tasks.register('compileTypescript', Exec) {
-//  group = 'build'
-//  description = 'Compile typescript'
-//
-//  inputs.files(fileTree("../modules"))
-//  outputs.files(fileTree("../modules"))
-//
-//  if (System.getProperty('os.name').toLowerCase().contains('windows')) {
-//    commandLine 'cmd', '/c', 'npm', 'run', 'build'
-//  } else {
-//    commandLine 'bash', '-c', 'npm run build'
-//  }
-//  workingDir rootProject.file('modules')
-//}
-//
-//classes.finalizedBy generateBindings
+tasks.register('generateBindings', JavaExec) {
+  classpath = sourceSets.main.runtimeClasspath
+  mainClass = 'dev.ultreon.langgen.Main'
+  args = ['--js', '--stub', '--output=' + file("../modules")]
+
+  inputs.files(sourceSets.main.allSource)
+  outputs.dir(file("../modules"))
+
+  group = 'build'
+  description = 'Generate bindings'
+
+  finalizedBy('compileTypescript')
+}
+
+tasks.register('compileTypescript', Exec) {
+  group = 'build'
+  description = 'Compile typescript'
+
+  inputs.files(fileTree("../modules"))
+  outputs.files(fileTree("../modules"))
+
+  if (System.getProperty('os.name').toLowerCase().contains('windows')) {
+    commandLine 'cmd', '/c', 'npm', 'run', 'build'
+  } else {
+    commandLine 'bash', '-c', 'npm run build'
+  }
+  workingDir rootProject.file('modules')
+}
+
+classes.finalizedBy generateBindings
+
+tasks.register('runAnsiConsole', JavaExec) {
+  classpath = sourceSets.main.runtimeClasspath
+  mainClass = 'dev.ultreon.quantum.lwjgl3.ANSIConsole'
+
+  group = 'application'
+  description = 'Run ANSI console test'
+}

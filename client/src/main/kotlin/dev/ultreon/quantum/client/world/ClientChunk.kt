@@ -18,11 +18,19 @@ import dev.ultreon.quantum.vec3d
 import dev.ultreon.quantum.world.BlockFlags
 import dev.ultreon.quantum.world.Chunk
 import dev.ultreon.quantum.world.SIZE
+import kotlinx.coroutines.*
 import ktx.assets.disposeSafely
+import ktx.async.MainDispatcher
 import ktx.collections.GdxArray
+
+var allLoading = 0
+  private set
+
+private val lastLoad: Long get() = System.currentTimeMillis()
 
 class ClientChunk(x: Int, y: Int, z: Int, private val material: Material, val dimension: ClientDimension) : Chunk(),
   RenderableProvider {
+  private var loading: Boolean = false
   val start: GridPoint3
     get() = chunkPos.cpy().also {
       it.x *= SIZE
@@ -32,12 +40,13 @@ class ClientChunk(x: Int, y: Int, z: Int, private val material: Material, val di
   private var hasBlocks: Boolean = false
   private var airBlocks: Int = SIZE * SIZE * SIZE
   private var dirty: Boolean = true
-  val chunkPos: GridPoint3 = GridPoint3(x, y, z)
 
+  val chunkPos: GridPoint3 = GridPoint3(x, y, z)
   val blocks = Array(SIZE) { Array(SIZE) { Array(SIZE) { Blocks.air } } }
   private var worldModel: Model? = null
   var worldModelInstance: ModelInstance? = null
     private set
+
   override val offset: Vector3D
     get() = vec3d(chunkPos.x * SIZE, chunkPos.y * SIZE, chunkPos.z * SIZE)
 
@@ -54,16 +63,16 @@ class ClientChunk(x: Int, y: Int, z: Int, private val material: Material, val di
   }
 
   override fun set(x: Int, y: Int, z: Int, block: Block, flags: BlockFlags) {
-    val x = (x % SIZE + SIZE) % SIZE
-    val y = (y % SIZE + SIZE) % SIZE
-    val z = (z % SIZE + SIZE) % SIZE
-    val block1 = blocks[x][y][z]
+    val nx = (x % SIZE + SIZE) % SIZE
+    val ny = (y % SIZE + SIZE) % SIZE
+    val nz = (z % SIZE + SIZE) % SIZE
+    val block1 = blocks[nx][ny][nz]
     if (block1 == Blocks.air) {
       airBlocks--
     } else {
       airBlocks++
     }
-    blocks[x][y][z] = block
+    blocks[nx][ny][nz] = block
     if (block == Blocks.air) {
       airBlocks++
     } else {
@@ -86,6 +95,11 @@ class ClientChunk(x: Int, y: Int, z: Int, private val material: Material, val di
   }
 
   fun rebuild() {
+    if (loading || allLoading > (Runtime.getRuntime().availableProcessors() * 2).coerceAtLeast(1)) {
+      dirty = true
+      return
+    }
+
     dirty = false
 
     if (worldModelInstance != null || worldModel != null) {
@@ -97,70 +111,82 @@ class ClientChunk(x: Int, y: Int, z: Int, private val material: Material, val di
     buildModel()
   }
 
-  private fun buildModel(): Model? {
-    if (!hasBlocks) return null
+  @OptIn(DelicateCoroutinesApi::class)
+  private fun buildModel() {
+    if (loading || !hasBlocks) return
 
     val builder = ModelBuilder()
     builder.begin()
-    val part1 = builder.part(
-      "world#default", GL20.GL_TRIANGLES, VertexAttributes(
-        VertexAttribute.Position(),
-        VertexAttribute.Normal(),
-        VertexAttribute.ColorPacked(),
-        VertexAttribute.TexCoords(0)
-      ), this.material
-    )
-    for (x in 0..<SIZE) {
-      for (y in 0..<SIZE) {
-        for (z in 0..<SIZE) {
-          loadBlockInto(part1, x, y, z)
+    loading = true
+    allLoading++
+    GlobalScope.launch(dimension.context) {
+      val part1 = async(MainDispatcher) {
+        builder.part(
+          "world#default", GL20.GL_TRIANGLES, VertexAttributes(
+            VertexAttribute.Position(),
+            VertexAttribute.Normal(),
+            VertexAttribute.ColorPacked(),
+            VertexAttribute.TexCoords(0)
+          ), this@ClientChunk.material
+        )
+      }.await()
+      val part2 = async(MainDispatcher) {
+        builder.part(
+          "world#water", GL20.GL_TRIANGLES, VertexAttributes(
+            VertexAttribute.Position(),
+            VertexAttribute.Normal(),
+            VertexAttribute.ColorPacked(),
+            VertexAttribute.TexCoords(0)
+          ), this@ClientChunk.material
+        )
+      }.await()
+      val part3 = async(MainDispatcher) {
+        builder.part(
+          "world#water", GL20.GL_TRIANGLES, VertexAttributes(
+            VertexAttribute.Position(),
+            VertexAttribute.Normal(),
+            VertexAttribute.ColorPacked(),
+            VertexAttribute.TexCoords(0)
+          ), this@ClientChunk.material
+        )
+      }.await()
+      for (x in 0..<SIZE) {
+        for (y in 0..<SIZE) {
+          for (z in 0..<SIZE) {
+            loadBlockInto(part1, x, y, z)
+          }
         }
       }
-    }
-    val part2 = builder.part(
-      "world#water", GL20.GL_TRIANGLES, VertexAttributes(
-        VertexAttribute.Position(),
-        VertexAttribute.Normal(),
-        VertexAttribute.ColorPacked(),
-        VertexAttribute.TexCoords(0)
-      ), this.material
-    )
-    for (x in 0..<SIZE) {
-      for (y in 0..<SIZE) {
-        for (z in 0..<SIZE) {
-          loadBlockInto(part2, x, y, z, renderType = "water")
+      for (x in 0..<SIZE) {
+        for (y in 0..<SIZE) {
+          for (z in 0..<SIZE) {
+            loadBlockInto(part2, x, y, z, renderType = "water")
+          }
         }
       }
-    }
-    val part3 = builder.part(
-      "world#water", GL20.GL_TRIANGLES, VertexAttributes(
-        VertexAttribute.Position(),
-        VertexAttribute.Normal(),
-        VertexAttribute.ColorPacked(),
-        VertexAttribute.TexCoords(0)
-      ), this.material
-    )
-    for (x in 0..<SIZE) {
-      for (y in 0..<SIZE) {
-        for (z in 0..<SIZE) {
-          loadBlockInto(part3, x, y, z, renderType = "foliage")
+      for (x in 0..<SIZE) {
+        for (y in 0..<SIZE) {
+          for (z in 0..<SIZE) {
+            loadBlockInto(part3, x, y, z, renderType = "foliage")
+          }
         }
       }
+      async(MainDispatcher) {
+        val model = builder.end()
+        worldModel = model
+        worldModelInstance = ModelInstance(worldModel)
+        loading = false
+        allLoading--
+      }.await()
     }
-
-
-    val model = builder.end()
-    worldModel = model
-    worldModelInstance = ModelInstance(worldModel)
-    return model
   }
 
-  private fun loadBlockInto(meshPartBuilder: MeshPartBuilder, x: Int, y: Int, z: Int, renderType: String = "default") {
+  private suspend fun loadBlockInto(meshPartBuilder: MeshPartBuilder, x: Int, y: Int, z: Int, renderType: String = "default") = coroutineScope {
     val block = get(x, y, z)
     if (block != Blocks.air) {
       val model = ModelRegistry[block]
-      if (renderType != block?.renderType) {
-        return
+      if (renderType != block.renderType) {
+        return@coroutineScope
       }
       model.loadInto(
         meshPartBuilder, x, y, z, FaceCull(
@@ -173,7 +199,7 @@ class ClientChunk(x: Int, y: Int, z: Int, private val material: Material, val di
         )
       )
 
-      this.hasBlocks = true
+      this@ClientChunk.hasBlocks = true
     }
   }
 
@@ -187,12 +213,27 @@ class ClientChunk(x: Int, y: Int, z: Int, private val material: Material, val di
     return this[localX, localY, localZ]
   }
 
+  suspend fun getAsync(localX: Int, localY: Int, localZ: Int): Block = coroutineScope {
+    async(MainDispatcher) {
+      return@async getSafe(localX, localY, localZ)
+    }
+  }.await()
+
   override fun getRenderables(array: GdxArray<Renderable>, pool: Pool<Renderable>) {
+    if (loading || !hasBlocks) return
     worldModelInstance?.getRenderables(array, pool)
   }
 
-  override fun dispose() {
+  fun disposeChunk(): Boolean {
+    if (loading) {
+      return false
+    }
     worldModel.disposeSafely()
+    return true
+  }
+
+  override fun dispose() {
+    throw UnsupportedOperationException()
   }
 
   fun reposition(position: Vector3D) {

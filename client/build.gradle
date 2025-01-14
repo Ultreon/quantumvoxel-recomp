@@ -2,13 +2,12 @@ import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 [compileJava, compileTestJava]*.options*.encoding = 'UTF-8'
 
-java.sourceCompatibility = 11
-java.targetCompatibility = 11
+java.sourceCompatibility = 8
+java.targetCompatibility = 8
 if (JavaVersion.current().isJava9Compatible()) {
-  compileJava.options.release.set(11)
+  compileJava.options.release.set(8)
 }
-kotlin.compilerOptions.jvmTarget.set(JvmTarget.JVM_11)
-compileKotlin.kotlinOptions.jvmTarget = 11
+kotlin.compilerOptions.jvmTarget.set(JvmTarget.JVM_1_8)
 
 eclipse.project.name = appName + '-client'
 

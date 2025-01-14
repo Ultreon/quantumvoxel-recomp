@@ -296,8 +296,6 @@ public class JavascriptGen implements LangGenerator {
             build1.start();
             build1.join();
 
-            System.out.println("LangGenConfig.stubPath.resolve(\"typescript\").toAbsolutePath().toString() = " + LangGenConfig.stubPath.resolve("node_modules/@ultreon/quantumjs").toAbsolutePath().toString());
-
             // Package into NPM package (quantumjs.tgz)
             Path packagePath = LangGenConfig.stubPath.resolve("quantumjs.tgz");
             Files.deleteIfExists(packagePath);

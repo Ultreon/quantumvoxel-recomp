@@ -1,5 +1,6 @@
 package dev.ultreon.langgen.api;
 
+import dev.ultreon.langgen.Main;
 import org.jetbrains.annotations.Nullable;
 import org.reflections.Reflections;
 import org.reflections.scanners.Scanners;
@@ -73,7 +74,7 @@ public abstract class ClasspathBuilder extends ClasspathWrapper implements NameT
             processEntries(allClasses);
             processClasses(outputDir);
 
-            executor.close();
+            executor.shutdown();
 
             run.run();
             busy--;
@@ -128,7 +129,7 @@ public abstract class ClasspathBuilder extends ClasspathWrapper implements NameT
             } catch (ClassNotFoundException | NoClassDefFoundError e) {
                 // ignore
             } catch (Throwable e) {
-                getLogger().log(Level.SEVERE, "Failed to process class: {}" + className, e);
+                Main.getLogger().error("Failed to process class: " + className + " (" + processed + "/" + prepareMax + ")");
             }
 
             processed++;
@@ -191,6 +192,11 @@ public abstract class ClasspathBuilder extends ClasspathWrapper implements NameT
     private void processEntry(String className) throws ClassNotFoundException {
         ClassLoader classLoader = Thread.currentThread().getContextClassLoader();
         Class<?> clazz = Class.forName(className, false, classLoader);
+
+        if (System.currentTimeMillis() - Main.lastUpdate > 1000) {
+            Main.lastUpdate = System.currentTimeMillis();
+            Main.getLogger().info("Processed " + classes.size() + "/" + prepareMax + " classes (" + (classes.size() * 100 / prepareMax) + "%)");
+        }
 
         if (this.ignorePrivate && !Modifier.isPublic(clazz.getModifiers()) && !Modifier.isProtected(clazz.getModifiers())) {
             return;

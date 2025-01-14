@@ -25,7 +25,7 @@ public class Converters {
      * @return the name of the package to convert to
      */
     public static @Nullable String convert(String name) {
-        for (Map.Entry<String, String> entry : CONVERTERS.sequencedEntrySet()) {
+        for (Map.Entry<String, String> entry : CONVERTERS.entrySet()) {
             if (name.startsWith(entry.getKey() + ".")) {
                 String value = entry.getValue();
                 return value + name.substring(entry.getKey().length());

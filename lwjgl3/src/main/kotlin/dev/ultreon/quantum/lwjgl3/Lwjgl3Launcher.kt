@@ -30,7 +30,7 @@ import dev.ultreon.gdx.lwjgl3.Lwjgl3MetalApplication as MetalApp
 
 /** Launches the desktop (LWJGL3) application. */
 fun main() {
-  factory = LoggerFactory { Lwjgl3Logger(it) }
+  factory = Lwjgl3LoggerFactory
 
   val logger = LoggerFactory["Lwjgl3Launcher"]
 

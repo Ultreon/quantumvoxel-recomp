@@ -11,6 +11,8 @@ object KeyBinds {
   val jumpKey = KeyBind("jumpKey", Keys.SPACE)
   val crouchKey = KeyBind("crouchKey", Keys.SHIFT_LEFT)
   val runningKey = KeyBind("runningKey", Keys.ALT_LEFT)
+  val hotbarKeys = (0 until 10) .map { KeyBind("hotbarKey$it", if (it == 9) Keys.NUM_0 else Keys.NUM_1 + it) }
+  val inventoryKey = KeyBind("inventoryKey", Keys.I)
 }
 
 class KeyBind(val name: String, var key: Int) {

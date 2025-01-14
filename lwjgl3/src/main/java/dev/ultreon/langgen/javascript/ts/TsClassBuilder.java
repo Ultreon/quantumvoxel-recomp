@@ -1,5 +1,6 @@
 package dev.ultreon.langgen.javascript.ts;
 
+import dev.ultreon.langgen.Main;
 import dev.ultreon.langgen.api.ClassCompat;
 import dev.ultreon.langgen.api.Converters;
 import dev.ultreon.langgen.api.PackageExclusions;
@@ -20,7 +21,6 @@ public class TsClassBuilder extends AnyJsClassBuilder {
     protected final Class<?> clazz;
     protected final LinkedHashSet<String> imports = new LinkedHashSet<>();
 
-    private final Logger logger = Logger.getLogger("TypescriptClassBuilder");
     private final boolean isInterface;
     protected String name;
     @Nullable
@@ -87,8 +87,8 @@ public class TsClassBuilder extends AnyJsClassBuilder {
             if (classFromType != null) {
                 if (ClassCompat.isForcedAbstract(classFromType)) {
                     if (forcedSuperclass.get() != null) {
-                        logger.log(Level.SEVERE, "Superclass cannot be forced while already having a forced superclass! (forced %s and %s in %s)"
-                                .formatted(type, forcedSuperclass.get(), clazz));
+                        Main.getLogger().error("Superclass cannot be forced while already having a forced superclass! (forced %s and %s in %s)"
+                            .formatted(type, forcedSuperclass.get(), clazz));
                         throw new Error("Superclass cannot be forced while already having a forced superclass!");
                     }
                     forcedSuperclass.set(type);
@@ -114,7 +114,7 @@ public class TsClassBuilder extends AnyJsClassBuilder {
                     throw new Error("Forced superclass is same class! (forced %s in %s)".formatted(this.forcedSuperclass, clazz));
             }
 
-            logger.log(Level.WARNING, "Forced superclass: " + this.forcedSuperclass + " in " + clazz);
+            Main.getLogger().warn("Forced superclass: " + this.forcedSuperclass + " in " + clazz);
         }
 
         if (interfaces.length > 0) {
@@ -158,7 +158,7 @@ public class TsClassBuilder extends AnyJsClassBuilder {
                 result.append(" extends ").append(str);
             }
         } else if (this.forcedSuperclass != null) {
-            logger.log(Level.WARNING, "Forcing superclass: " + this.forcedSuperclass + " in " + clazz);
+            Main.getLogger().warn("Forcing superclass: " + this.forcedSuperclass + " in " + clazz);
             String str = typeToString(this.forcedSuperclass, null);
             if (!str.equals("any")) {
                 result.append(" extends ").append(str);
@@ -194,11 +194,12 @@ public class TsClassBuilder extends AnyJsClassBuilder {
     @Nullable
     private Class<?> getClassFromType(Type type) {
         if (type == null) return null;
-        return switch (type) {
-            case ParameterizedType parameterizedType -> (Class<?>) parameterizedType.getRawType();
-            case Class<?> aClass -> aClass;
-            default -> null;
-        };
+        if (type instanceof ParameterizedType parameterizedType) {
+            return (Class<?>) parameterizedType.getRawType();
+        } else if (type instanceof Class<?> aClass) {
+            return aClass;
+        }
+        return null;
     }
 
     private void writeTypeParams(StringBuilder result) {
@@ -373,18 +374,18 @@ public class TsClassBuilder extends AnyJsClassBuilder {
             if (PackageExclusions.isExcluded(superclass)) superclass = null;
             if ((superclass != null && superclass != Object.class) || forcedSuperclass != null) {
                 if (forcedSuperclass != null) {
-                    logger.log(Level.WARNING, "Forcing super call to %s! (forced %s in %s)".formatted(clazz, forcedSuperclass, clazz));
+                    Main.getLogger().warn("Forcing super call to %s! (forced %s in %s)".formatted(clazz, forcedSuperclass, clazz));
                     Class<?> classFromType = getClassFromType(forcedSuperclass);
                     if (classFromType == null)
-                        logger.log(Level.SEVERE, "Forced superclass isn't defined as class! (forced %s in %s)".formatted(forcedSuperclass, clazz));
+                        Main.getLogger().error("Forced superclass isn't defined as class! (forced %s in %s)".formatted(forcedSuperclass, clazz));
                     if (classFromType == Object.class)
-                        logger.log(Level.SEVERE, "Forced superclass is Object! (forced %s in %s)".formatted(forcedSuperclass, clazz));
+                        Main.getLogger().error("Forced superclass is Object! (forced %s in %s)".formatted(forcedSuperclass, clazz));
                     superclass = classFromType;
                 }
 
                 Constructor<?>[] constructors = superclass != null ? superclass.getDeclaredConstructors() : new Constructor[0];
                 if (constructors.length == 0) {
-                    logger.log(Level.WARNING, "Superclass %s has no constructor! (in %s)".formatted(superclass, clazz));
+                    Main.getLogger().warn("Superclass %s has no constructor! (in %s)".formatted(superclass, clazz));
                     result.append("/*").append(level.displayName).append("*/").append(" public constructor(...args: any[]) { super() };\n\n");
                 } else {
                     String params = "undefined as any, ".repeat(constructors[0].getParameterCount());
@@ -408,7 +409,7 @@ public class TsClassBuilder extends AnyJsClassBuilder {
                 staticMethodByName.computeIfAbsent(curMethod.getName(), key -> new ArrayList<>()).add(curMethod);
             }
         }
-        for (var entry : staticMethodByName.sequencedEntrySet()) {
+        for (var entry : staticMethodByName.entrySet()) {
             String name = entry.getKey();
             List<Method> methods = entry.getValue();
 
@@ -432,7 +433,7 @@ public class TsClassBuilder extends AnyJsClassBuilder {
                 methodByName.computeIfAbsent(curMethod.getName(), k -> new ArrayList<>()).add(curMethod);
             }
         }
-        for (var entry : methodByName.sequencedEntrySet()) {
+        for (var entry : methodByName.entrySet()) {
             String name = entry.getKey();
             List<Method> methods = entry.getValue();
 
@@ -452,97 +453,90 @@ public class TsClassBuilder extends AnyJsClassBuilder {
     }
 
     private String typeToString(Type type, @Nullable Executable exec) {
-        switch (type) {
-            case Class<?> cls -> {
-                if (PackageExclusions.isExcluded(cls)) return "any";
+        if (Objects.requireNonNull(type) instanceof Class<?> cls) {
+            if (PackageExclusions.isExcluded(cls)) return "any";
 
-                Class<?> componentType = cls;
-                String suffix = "";
-                if (cls.isArray()) {
-                    componentType = cls.getComponentType();
+            Class<?> componentType = cls;
+            String suffix = "";
+            if (cls.isArray()) {
+                componentType = cls.getComponentType();
+                suffix += "[]";
+                if (componentType.isArray()) {
+                    componentType = componentType.getComponentType();
                     suffix += "[]";
                     if (componentType.isArray()) {
                         componentType = componentType.getComponentType();
                         suffix += "[]";
                         if (componentType.isArray()) {
-                            componentType = componentType.getComponentType();
-                            suffix += "[]";
-                            if (componentType.isArray()) {
-                                return "any";
-                            }
+                            return "any";
                         }
                     }
                 }
-
-                TypeVariable<? extends Class<?>>[] genericParams = componentType.getTypeParameters();
-                if (genericParams.length > 0) {
-                    StringBuilder sb = new StringBuilder(toTsType(componentType).replace(".", "$"));
-                    sb.append("<");
-                    for (TypeVariable<? extends Class<?>> ignored : genericParams) {
-                        sb.append("any, ");
-                    }
-                    sb.delete(sb.length() - 2, sb.length());
-                    sb.append(">");
-                    sb.append(suffix);
-                    return sb.toString();
-                }
-
-                return toTsType(cls) + suffix;
             }
-            case TypeVariable<?> typeVariable -> {
-                for (TypeVariable<?> clsTypeParam : clazz.getTypeParameters()) {
-                    if (typeVariable.getName().equals(clsTypeParam.getName())) {
-                        return clsTypeParam.getName();
-                    }
-                }
-                if (exec != null) {
-                    for (TypeVariable<?> execTypeParam : exec.getTypeParameters()) {
-                        if (typeVariable.getName().equals(execTypeParam.getName())) {
-                            return execTypeParam.getName();
-                        }
-                    }
-                    return "any";
-                }
 
+            TypeVariable<? extends Class<?>>[] genericParams = componentType.getTypeParameters();
+            if (genericParams.length > 0) {
+                StringBuilder sb = new StringBuilder(toTsType(componentType).replace(".", "$"));
+                sb.append("<");
+                for (TypeVariable<? extends Class<?>> ignored : genericParams) {
+                    sb.append("any, ");
+                }
+                sb.delete(sb.length() - 2, sb.length());
+                sb.append(">");
+                sb.append(suffix);
+                return sb.toString();
+            }
+
+            return toTsType(cls) + suffix;
+        } else if (type instanceof TypeVariable<?> typeVariable) {
+            for (TypeVariable<?> clsTypeParam : clazz.getTypeParameters()) {
+                if (typeVariable.getName().equals(clsTypeParam.getName())) {
+                    return clsTypeParam.getName();
+                }
+            }
+            if (exec != null) {
+                for (TypeVariable<?> execTypeParam : exec.getTypeParameters()) {
+                    if (typeVariable.getName().equals(execTypeParam.getName())) {
+                        return execTypeParam.getName();
+                    }
+                }
                 return "any";
             }
-            case ParameterizedType parameterizedType -> {
-                StringBuilder result = new StringBuilder();
-                Type genericType = parameterizedType.getRawType();
-                if (genericType == null) return "any";
 
-                String typeString = genericType instanceof Class<?> cls ? toTsType(cls) : typeToString(genericType, exec);
-                if (Objects.equals(typeString, "any")) return "any";
-                if (genericType instanceof Class<?> cls && !Modifier.isPublic(cls.getModifiers()) && !Modifier.isProtected(cls.getModifiers())) return "any";
-                if (genericType == Object.class) return "any";
-                if (genericType.getTypeName().equals("?")) return "any";
-                if (genericType instanceof Class<?> cls && PackageExclusions.isExcluded(cls)) return "any";
+            return "any";
+        } else if (type instanceof ParameterizedType parameterizedType) {
+            StringBuilder result = new StringBuilder();
+            Type genericType = parameterizedType.getRawType();
+            if (genericType == null) return "any";
 
-                result.append(typeString);
-                Type[] genericArgs = parameterizedType.getActualTypeArguments();
-                if (genericArgs.length > 0) {
-                    result.append("<");
-                    for (int i = 0; i < genericArgs.length; i++) {
-                        result.append(typeToString(genericArgs[i], exec));
-                        if (i < genericArgs.length - 1) {
-                            result.append(", ");
-                        }
-                    }
-                    result.append(">");
-                }
-                return result.toString();
-            }
-            case WildcardType ignored -> {
+            String typeString = genericType instanceof Class<?> cls ? toTsType(cls) : typeToString(genericType, exec);
+            if (Objects.equals(typeString, "any")) return "any";
+            if (genericType instanceof Class<?> cls && !Modifier.isPublic(cls.getModifiers()) && !Modifier.isProtected(cls.getModifiers()))
                 return "any";
+            if (genericType == Object.class) return "any";
+            if (genericType.getTypeName().equals("?")) return "any";
+            if (genericType instanceof Class<?> cls && PackageExclusions.isExcluded(cls)) return "any";
+
+            result.append(typeString);
+            Type[] genericArgs = parameterizedType.getActualTypeArguments();
+            if (genericArgs.length > 0) {
+                result.append("<");
+                for (int i = 0; i < genericArgs.length; i++) {
+                    result.append(typeToString(genericArgs[i], exec));
+                    if (i < genericArgs.length - 1) {
+                        result.append(", ");
+                    }
+                }
+                result.append(">");
             }
-            case GenericArrayType genericArrayType -> {
-                return typeToString(genericArrayType.getGenericComponentType(), exec) + "[]";
-            }
-            default -> {
-                logger.warning("Unknown type: " + type.getClass().getName());
-                return type.toString().replace("?", "any");
-            }
+            return result.toString();
+        } else if (type instanceof WildcardType) {
+            return "any";
+        } else if (type instanceof GenericArrayType genericArrayType) {
+            return typeToString(genericArrayType.getGenericComponentType(), exec) + "[]";
         }
+        Main.getLogger().warn("Unknown type: " + type.getClass().getName());
+        return type.toString().replace("?", "any");
     }
 
     private <T> void getAllMethods(@NotNull Class<T> curClass, Set<Method> output) {

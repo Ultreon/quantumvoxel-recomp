@@ -20,7 +20,7 @@ public class SimpleClasspathBuilder extends ClasspathBuilder {
     private final Function<Class<?>, ClassBuilder> classBuilder;
 
     public SimpleClasspathBuilder(String extension, Function<Class<?>, ClassBuilder> finalClassBuilder, Function<Class<?>, ClassBuilder> classBuilder) {
-        super(false);
+        super(true);
         this.finalClassBuilder = finalClassBuilder;
         this.classBuilder = classBuilder;
         if (!extension.startsWith(".")) {

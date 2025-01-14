@@ -3,14 +3,12 @@ import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 apply plugin: 'org.jetbrains.kotlin.jvm'
 
 
-java.sourceCompatibility = 11
-java.targetCompatibility = 11
+java.sourceCompatibility = 8
+java.targetCompatibility = 8
 if (JavaVersion.current().isJava9Compatible()) {
-  compileJava.options.release.set(11)
+  compileJava.options.release.set(8)
 }
-kotlin.compilerOptions.jvmTarget.set(JvmTarget.JVM_11)
-compileKotlin.kotlinOptions.jvmTarget = 11
-compileTestKotlin.kotlinOptions.jvmTarget = 11
+kotlin.compilerOptions.jvmTarget.set(JvmTarget.JVM_1_8)
 
 eclipse.project.name = appName + '-common'
 
@@ -22,22 +20,8 @@ dependencies {
 
   implementation 'com.caoccao.javet:javet:4.1.1'
   implementation 'com.caoccao.javet:javenode:0.8.0'
+  implementation "io.ktor:ktor-network:2.3.12"
 
-  api "dev.ultreon.JNoiseJDK11:jnoise-core:a6507bcc7e", {
-    exclude group: "org.jspecify", module: "jspecify"
-  }
-  api "dev.ultreon.JNoiseJDK11:jnoise-pipeline:a6507bcc7e", {
-    exclude group: "org.jspecify", module: "jspecify"
-  }
-  api "dev.ultreon.JNoiseJDK11:jnoise-generators:a6507bcc7e", {
-    exclude group: "org.jspecify", module: "jspecify"
-  }
-  api "dev.ultreon.JNoiseJDK11:jnoise-modifiers:a6507bcc7e", {
-    exclude group: "org.jspecify", module: "jspecify"
-  }
-  api "dev.ultreon.JNoiseJDK11:jnoise-modules:a6507bcc7e", {
-    exclude group: "org.jspecify", module: "jspecify"
-  }
   api "io.github.libktx:ktx-ai:$ktxVersion"
   api "io.github.libktx:ktx-app:$ktxVersion"
   api "io.github.libktx:ktx-artemis:$ktxVersion"

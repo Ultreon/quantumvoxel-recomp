@@ -1,41 +1,50 @@
 package dev.ultreon.quantum.client.world
 
-import com.badlogic.gdx.graphics.g3d.*
+import com.badlogic.gdx.graphics.g3d.Material
+import com.badlogic.gdx.graphics.g3d.ModelBatch
 import com.badlogic.gdx.math.GridPoint3
-import com.badlogic.gdx.utils.LongMap
 import dev.ultreon.quantum.blocks.Block
 import dev.ultreon.quantum.blocks.Blocks
-import dev.ultreon.quantum.client.EnvironmentRenderer
-import dev.ultreon.quantum.client.QuantumVoxel
-import dev.ultreon.quantum.entity.PositionComponent
+import dev.ultreon.quantum.client.gamePlatform
 import dev.ultreon.quantum.logger
 import dev.ultreon.quantum.math.Vector3D
 import dev.ultreon.quantum.util.BlockHit
 import dev.ultreon.quantum.util.RayD
-import dev.ultreon.quantum.vec3d
 import dev.ultreon.quantum.world.BlockFlags
 import dev.ultreon.quantum.world.Dimension
 import dev.ultreon.quantum.world.SIZE
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import ktx.assets.disposeSafely
+import ktx.async.MainDispatcher
+import ktx.async.newAsyncContext
 import ktx.collections.GdxArray
 import ktx.collections.GdxSet
-import ktx.collections.sortBy
+import java.util.concurrent.ConcurrentHashMap
 import kotlin.system.measureTimeMillis
 
-const val renderDistance = 8
+val renderDistance: Int
+  get() = if (gamePlatform.isMobile) 4 else 8
 
 open class ClientDimension(private val material: Material) : Dimension() {
-  val chunks: LongMap<ClientChunk> = LongMap()
+  val chunks: MutableMap<Long, ClientChunk> = ConcurrentHashMap()
   val chunksToLoad = GdxArray<Pair<GridPoint3, Long>>()
   val generator = Generator()
 
+  private var toRemove = listOf<ClientChunk>()
+  private var toRebuild = listOf<ClientChunk>()
+
+  val context = newAsyncContext(Runtime.getRuntime().availableProcessors() / 2, "ChunkBuilder")
+
   override fun get(x: Int, y: Int, z: Int): Block {
-    return chunks.get(location(x.floorDiv(SIZE), y.floorDiv(SIZE), z.floorDiv(SIZE)))
-      ?.get(x.mod(SIZE), y.mod(SIZE), z.mod(SIZE)) ?: Blocks.air
+    synchronized(chunks) {
+      return chunks[location(x.floorDiv(SIZE), y.floorDiv(SIZE), z.floorDiv(SIZE))]
+        ?.get(x.mod(SIZE), y.mod(SIZE), z.mod(SIZE)) ?: Blocks.air
+    }
   }
 
   override fun set(x: Int, y: Int, z: Int, block: Block, flags: BlockFlags) {
-    val get = chunks.get(location(x.floorDiv(SIZE), y.floorDiv(SIZE), z.floorDiv(SIZE)))
+    val get = chunks[location(x.floorDiv(SIZE), y.floorDiv(SIZE), z.floorDiv(SIZE))]
     get?.let {
       logger.info("Setting block at $x, $y, $z to $block")
       it.set(x % SIZE, y % SIZE, z % SIZE, block, flags)
@@ -51,7 +60,7 @@ open class ClientDimension(private val material: Material) : Dimension() {
   }
 
   override fun chunkAt(x: Int, y: Int, z: Int): ClientChunk? {
-    return chunks.get(location(x, y, z))
+    return chunks[location(x, y, z)]
   }
 
   override fun chunkAtBlock(x: Int, y: Int, z: Int): ClientChunk? {
@@ -60,18 +69,20 @@ open class ClientDimension(private val material: Material) : Dimension() {
 
   fun put(chunk: ClientChunk) {
     val location = location(chunk.chunkPos.x, chunk.chunkPos.y, chunk.chunkPos.z)
-    if (chunks.containsKey(location)) {
-      remove(chunks.get(location))
+    if (location in chunks) {
+      remove(chunks[location] ?: return)
       logger.warn("Overridden chunk at ${chunk.chunkPos}")
     }
     chunks.put(location, chunk)
   }
 
   fun remove(chunk: ClientChunk) {
+    if (chunk.disposeChunk()) {
+      return
+    }
     if (chunks.remove(location(chunk.chunkPos.x, chunk.chunkPos.y, chunk.chunkPos.z)) == null) {
       logger.warn("Tried to remove nonexistent chunk at ${chunk.chunkPos}")
     }
-    chunk.dispose()
 
     forChunksAround(chunk) { rebuild() }
   }
@@ -99,7 +110,7 @@ open class ClientDimension(private val material: Material) : Dimension() {
             continue
           }
 
-          chunks.get(location(x, y, z))?.let(action)?.let {
+          chunks[location(x, y, z)]?.let(action)?.let {
             didAction = true
           }
         }
@@ -117,7 +128,7 @@ open class ClientDimension(private val material: Material) : Dimension() {
         if (x == 0 && y == 0 && z == 0) {
           continue
         } else {
-          chunks.get(location(chunkPos.x + x, chunkPos.y + y, chunkPos.z + z)) ?: return false
+          chunks[location(chunkPos.x + x, chunkPos.y + y, chunkPos.z + z)] ?: return false
         }
       }
       return true
@@ -157,13 +168,13 @@ open class ClientDimension(private val material: Material) : Dimension() {
   }
 
   fun rebuildAll() {
-    for (chunk in chunks.values()) {
+    for (chunk in chunks.values) {
       chunk.rebuild()
     }
   }
 
-  fun refreshChunks(position: Vector3D) {
-    val requiredChunks = GdxArray<Pair<GridPoint3, Long>>()
+  suspend fun refreshChunks(position: Vector3D) = coroutineScope {
+    val requiredChunks: MutableList<Pair<GridPoint3, Long>> = arrayListOf()
     val cx = position.x.toInt().floorDiv(SIZE)
     val cy = position.y.toInt().floorDiv(SIZE)
     val cz = position.z.toInt().floorDiv(SIZE)
@@ -182,9 +193,14 @@ open class ClientDimension(private val material: Material) : Dimension() {
       }
     }
 
+    requiredChunks.sortBy {
+      it.first.dst(cx, cy, cz)
+    }
+
     val toRemove = GdxArray<ClientChunk>()
     val toRebuild = GdxSet<ClientChunk>()
-    for (chunk in chunks.values()) {
+    val await = coroutineScope { async(MainDispatcher) { chunks.map { it.value } } }.await()
+    for (chunk in await) {
       if (chunk.chunkPos.dst(cx, cy, cz) > renderDistance) {
         toRemove.add(chunk)
         toRebuild.remove(chunk)
@@ -192,20 +208,29 @@ open class ClientDimension(private val material: Material) : Dimension() {
       }
     }
 
-    for (chunk in toRemove) {
-      remove(chunk)
+    async(MainDispatcher) {
+      this@ClientDimension.toRemove = toRemove.toList()
+    }.await()
+
+    async(MainDispatcher) {
+      this@ClientDimension.toRebuild = toRebuild.toList()
+    }.await()
+
+    async(MainDispatcher) {
+      chunksToLoad.clear()
+      for (chunk in requiredChunks) {
+        this@ClientDimension.chunksToLoad.add(chunk)
+      }
+    }.await()
+  }
+
+  fun pollChunks() {
+    for (removing in toRemove) {
+      remove(removing)
     }
 
-    for (chunk in toRebuild) {
-      chunk.rebuild()
-    }
-
-    requiredChunks.sortBy {
-      it.first.dst2(cx.toInt(), cy.toInt(), cz.toInt())
-    }
-    chunksToLoad.clear()
-    for (chunk in requiredChunks) {
-      this.chunksToLoad.add(chunk)
+    for (rebuilding in toRebuild) {
+      rebuilding.rebuild()
     }
   }
 
@@ -236,20 +261,25 @@ open class ClientDimension(private val material: Material) : Dimension() {
   }
 
   fun render(modelBatch: ModelBatch) {
-    for (chunk in chunks.values()) {
+    for (chunk: ClientChunk in chunks.values) {
       modelBatch.render(chunk)
     }
   }
 
   override fun dispose() {
-    for (chunk in chunks.values()) {
-      chunk.dispose()
+    context.disposeSafely()
+
+    for (chunk in chunks.values) {
+      val disposeChunk = chunk.disposeChunk()
+      if (!disposeChunk) {
+        logger.warn("Failed to dispose chunk at ${chunk.chunkPos}")
+      }
     }
     chunks.clear()
   }
 
   fun updateLocations(position: Vector3D) {
-    for (chunk in chunks.values()) {
+    for (chunk in chunks.values) {
       chunk.reposition(position)
     }
   }

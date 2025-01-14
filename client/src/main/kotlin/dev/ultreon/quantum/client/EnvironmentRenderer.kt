@@ -10,20 +10,23 @@ import com.badlogic.gdx.graphics.g3d.ModelBatch
 import com.badlogic.gdx.graphics.g3d.attributes.ColorAttribute
 import com.badlogic.gdx.graphics.g3d.utils.DefaultRenderableSorter
 import com.badlogic.gdx.graphics.g3d.utils.DefaultShaderProvider
-import com.badlogic.gdx.graphics.g3d.utils.RenderableSorter
 import com.badlogic.gdx.math.Matrix4
 import com.badlogic.gdx.math.Vector3
+import com.badlogic.gdx.scenes.scene2d.Stage
+import com.badlogic.gdx.utils.Align
 import com.badlogic.gdx.utils.Disposable
 import com.github.tommyettinger.textra.Layout
 import dev.ultreon.quantum.blocks.Blocks
 import dev.ultreon.quantum.client.QuantumVoxel.dimension
 import dev.ultreon.quantum.client.QuantumVoxel.gameInput
+import dev.ultreon.quantum.client.QuantumVoxel.guiScale
+import dev.ultreon.quantum.client.QuantumVoxel.isTouch
 import dev.ultreon.quantum.client.QuantumVoxel.player
-import dev.ultreon.quantum.client.gui.screens.InGameHudScreen
 import dev.ultreon.quantum.client.gui.screens.PauseScreen
 import dev.ultreon.quantum.client.input.KeyBinds
 import dev.ultreon.quantum.client.world.Skybox
 import dev.ultreon.quantum.entity.CollisionComponent
+import dev.ultreon.quantum.entity.InventoryComponent
 import dev.ultreon.quantum.entity.PositionComponent
 import dev.ultreon.quantum.entity.RunningComponent
 import dev.ultreon.quantum.logger
@@ -31,9 +34,18 @@ import dev.ultreon.quantum.math.Vector3D
 import dev.ultreon.quantum.util.BlockHit
 import dev.ultreon.quantum.util.NamespaceID
 import dev.ultreon.quantum.vec3d
+import kotlinx.coroutines.DelicateCoroutinesApi
+import kotlinx.coroutines.GlobalScope
+import ktx.actors.onClick
 import ktx.app.clearScreen
 import ktx.assets.disposeSafely
 import ktx.math.vec3
+import ktx.scene2d.actors
+import ktx.scene2d.button
+import ktx.scene2d.label
+
+import kotlinx.coroutines.async
+import kotlinx.coroutines.launch
 
 private val tmp1 = vec3()
 
@@ -59,6 +71,32 @@ class EnvironmentRenderer : Disposable {
   private var lastRefreshTime: Long = 0
   private var lastPollTime: Long = 0
   private val speed: Float = 6f
+  private val hotbar: Hotbar = Hotbar().apply {
+    width = 216f
+    x = Gdx.graphics.width / guiScale / 2f - width / 2f
+    y = 10f
+  }
+  private val hud = Stage(QuantumVoxel.guiViewport).apply {
+    actors {
+      if (isTouch) {
+        button {
+          label("Pause") {
+            setAlignment(Align.center)
+            setOrigin(0.5f, 0.5f)
+          }
+          onClick {
+            QuantumVoxel.setScreen<PauseScreen>()
+            Gdx.input.isCursorCatched = false
+          }
+          setPosition(Gdx.graphics.width / 2f - width / 2f, Gdx.graphics.height - height - 10f)
+          setSize(100f, 20f)
+        }
+      }
+
+      addActor(QuantumVoxel.touchpad)
+      addActor(hotbar)
+    }
+  }
   private val modelBatch = ModelBatch(
     DefaultShaderProvider((QuantumVoxel.resourceManager require NamespaceID.of(path = "shaders/default.vsh")).text,
     (QuantumVoxel.resourceManager require NamespaceID.of(path = "shaders/default.fsh")).text),
@@ -94,7 +132,9 @@ class EnvironmentRenderer : Disposable {
   init {
 //    world.inject(player)
 
-    dimension!!.refreshChunks(player!!.getComponent(PositionComponent::class.java).position)
+    GlobalScope.launch(dimension!!.context) {
+      dimension!!.refreshChunks(player!!.getComponent(PositionComponent::class.java).position)
+    }
   }
 
   /**
@@ -103,6 +143,7 @@ class EnvironmentRenderer : Disposable {
    *
    * @param delta A `Float` value representing the time elapsed since the last frame, used to scale time-dependent calculations.
    */
+  @OptIn(DelicateCoroutinesApi::class)
   fun render(delta: Float) {
     val player = player
     val dimension = dimension
@@ -119,9 +160,11 @@ class EnvironmentRenderer : Disposable {
     dimension.updateLocations(position.position)
 
     Gdx.gl.glDepthMask(true)
+
     modelBatch.begin(camera)
     dimension.render(modelBatch)
     modelBatch.end()
+//    dimension.pollChunks()
 
     vel.set(0f, 0f, 0f)
 
@@ -146,13 +189,32 @@ class EnvironmentRenderer : Disposable {
 
     if (lastRefreshTime + 100 < System.currentTimeMillis()) {
       if (position.position != lastRefreshPosition) {
-        dimension.refreshChunks(player.getComponent(PositionComponent::class.java).position)
+        GlobalScope.launch(QuantumVoxel.dimension!!.context) {
+          dimension.refreshChunks(player.getComponent(PositionComponent::class.java).position)
+        }
         lastRefreshTime = System.currentTimeMillis()
         lastRefreshPosition = position.position.copy()
       } else {
         lastRefreshTime = System.currentTimeMillis()
       }
     }
+
+
+    backupMatrix.set(spriteBatch.transformMatrix)
+    spriteBatch.transformMatrix = spriteBatch.transformMatrix.scale(QuantumVoxel.guiScale, QuantumVoxel.guiScale, QuantumVoxel.guiScale)
+
+    try {
+      spriteBatch.begin()
+      renderHud()
+      spriteBatch.end()
+    } finally {
+      spriteBatch.transformMatrix = backupMatrix
+    }
+  }
+
+  private fun renderHud() {
+    hud.act(Gdx.graphics.deltaTime)
+    hud.draw()
   }
 
   private fun rayCast(): BlockHit {
@@ -222,12 +284,22 @@ class EnvironmentRenderer : Disposable {
     up = KeyBinds.jumpKey.isPressed()
     down = KeyBinds.crouchKey.isPressed()
 
+    val inv = player!!.getComponent(InventoryComponent::class.java)
+    if (inv != null) {
+      for ((i, key) in KeyBinds.hotbarKeys.withIndex()) {
+        if (key.isJustPressed()) {
+          inv.hotbarIndex = i
+        }
+      }
+    }
+
     if (Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE) && !gamePlatform.isMobile) {
       if (Gdx.input.isCursorCatched) {
         QuantumVoxel.nextFrame { QuantumVoxel.setScreen<PauseScreen>() }
         Gdx.input.isCursorCatched = false
       }
     }
+
     if (Gdx.input.isButtonJustPressed(Input.Buttons.LEFT) && !gamePlatform.isMobile) {
       if (Gdx.input.isCursorCatched) {
         rayCast().let {
@@ -239,6 +311,7 @@ class EnvironmentRenderer : Disposable {
       }
       Gdx.input.isCursorCatched = true
     }
+
     player!!.getComponent(RunningComponent::class.java).running =
       KeyBinds.runningKey.isPressed()
 
@@ -376,6 +449,8 @@ class EnvironmentRenderer : Disposable {
 
     spriteBatch.projectionMatrix =
       spriteBatch.projectionMatrix.setToOrtho2D(0f, 0f, width.toFloat(), height.toFloat())
+
+    hotbar.x = Gdx.graphics.width / guiScale / 2f - hotbar.width / 2f
   }
 }
 

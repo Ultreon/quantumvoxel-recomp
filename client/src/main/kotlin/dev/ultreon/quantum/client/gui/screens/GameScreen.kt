@@ -14,7 +14,7 @@ import ktx.graphics.color
 private val background = color(0f, 0f, 0f, 0.5f)
 
 abstract class GameScreen : KtxScreen {
-  open val stage: Stage = Stage(QuantumVoxel.guiViewport)
+  val stage: Stage = Stage(QuantumVoxel.guiViewport)
 
   var screenWidth: Int = (stage.viewport.worldWidth.toInt() / guiScale).toInt()
     private set
@@ -23,8 +23,8 @@ abstract class GameScreen : KtxScreen {
 
   override fun render(delta: Float) {
     if (QuantumVoxel.environmentRenderer != null) {
-      if (this !is InGameHudScreen) {
-        QuantumVoxel.getScreen<InGameHudScreen>().render(delta)
+      if (this !is PlaceholderScreen) {
+        QuantumVoxel.getScreen<PlaceholderScreen>().render(delta)
         QuantumVoxel.shapes
       }
     }
@@ -33,7 +33,7 @@ abstract class GameScreen : KtxScreen {
       QuantumVoxel.nextFrame {
         if (Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE)) {
           if (QuantumVoxel.environmentRenderer != null) {
-            QuantumVoxel.setScreen<InGameHudScreen>()
+            QuantumVoxel.setScreen<PlaceholderScreen>()
             Gdx.input.setCursorPosition(Gdx.graphics.width / 2, Gdx.graphics.height / 2)
             Gdx.input.isCursorCatched = true
           }
@@ -43,7 +43,7 @@ abstract class GameScreen : KtxScreen {
 
     super.render(delta)
 
-    if (this !is InGameHudScreen) {
+    if (this !is PlaceholderScreen) {
       globalBatch.begin()
       shapes.filledRectangle(0f, 0f, Gdx.graphics.width.toFloat(), Gdx.graphics.height.toFloat(), background)
       globalBatch.end()

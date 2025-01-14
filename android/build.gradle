@@ -43,10 +43,31 @@ android {
     targetCompatibility "8"
     coreLibraryDesugaringEnabled true
   }
+  signingConfigs {
+    if (findProperty("android.keystore")) {
+      release {
+        storeFile property("android.keystore")
+        storePassword property("android.keystore.password")
+      }
+    }
+
+    debug {
+      storeFile file("../debug.keystore")
+      storePassword "android"
+      keyAlias "androiddebugkey"
+      keyPassword "android"
+    }
+  }
   buildTypes {
     release {
       minifyEnabled true
       proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+    }
+
+    debug {
+      minifyEnabled false
+      debuggable true
+      profileable true
     }
   }
 
