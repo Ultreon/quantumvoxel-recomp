@@ -1,7 +1,6 @@
 package dev.ultreon.quantum.client.resource
 
 import dev.ultreon.quantum.client.texture.TextureManager
-import dev.ultreon.quantum.logger
 import dev.ultreon.quantum.resource.Resource
 import dev.ultreon.quantum.resource.ResourceCategory
 import dev.ultreon.quantum.resource.StaticResource

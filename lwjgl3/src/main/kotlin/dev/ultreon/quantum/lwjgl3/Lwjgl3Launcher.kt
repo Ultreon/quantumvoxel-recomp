@@ -20,7 +20,6 @@ import java.nio.file.StandardCopyOption
 import java.util.zip.ZipInputStream
 import kotlin.io.path.Path
 import kotlin.io.path.toPath
-import kotlin.math.log
 import com.badlogic.gdx.backends.lwjgl3.Lwjgl3Application as OpenGLApp
 import com.badlogic.gdx.backends.lwjgl3.Lwjgl3ApplicationConfiguration as OpenGLConfig
 import com.github.dgzt.gdx.lwjgl3.Lwjgl3ApplicationConfiguration as VulkanConfig
@@ -42,18 +41,20 @@ fun main() {
 
   gamePlatform = object : GamePlatform {
     override fun loadResources(resourceManager: ResourceManager) {
-      try {
-        // Locate resource "_assetroot" and use its parent directory as the root
-        val resource = QuantumVoxel::class.java.classLoader.getResource("_assetroot")
-        val path = resource?.toURI()?.toPath()?.parent ?: throw FileNotFoundException("Asset root not found")
-        resourceManager.load(Gdx.files.absolute(path.toString()))
+//      try {
+//        // Locate resource "_assetroot" and use its parent directory as the root
+//        val resource = QuantumVoxel::class.java.classLoader.getResource("_assetroot")
+//        val path = resource?.toURI()?.toPath()?.parent ?: throw FileNotFoundException("Asset root not found")
+//        resourceManager.load(Gdx.files.absolute(path.toString()))
+//
+//      } catch (e: Exception) {
+//        ZipInputStream(QuantumVoxel::class.java.getResourceAsStream("/quantum.zip")?.buffered()
+//                ?: Files.newInputStream(Paths.get("quantum.zip")).buffered()).use {
+//          resourceManager.loadZip(it)
+//        }
+//      }
 
-      } catch (e: Exception) {
-        ZipInputStream(QuantumVoxel::class.java.getResourceAsStream("/quantum.zip")?.buffered()
-                ?: Files.newInputStream(Paths.get("quantum.zip")).buffered()).use {
-          resourceManager.loadZip(it)
-        }
-      }
+      resourceManager.loadFromAssetsTxt(Gdx.files.internal("assets.txt"))
     }
 
     override val isMobile: Boolean
@@ -103,18 +104,18 @@ fun main() {
 
   try {
     when (SharedLibraryLoader.os) {
-      Os.MacOsX -> {
-        MetalApp(QuantumVoxel, MetalConfig().apply {
-          setTitle("Quantum Voxel")
-          setWindowedMode(MINIMUM_WIDTH * 2, MINIMUM_HEIGHT * 2)
-          setOpenGLEmulation(MetalConfig.GLEmulation.ANGLE_GLES32, 2, 0)
-          setWindowIcon(*(arrayOf(128, 64, 32, 16).map { "libgdx$it.png" }.toTypedArray()))
-          setBackBufferConfig(4, 4, 4, 4, 8, 8, 0)
-        })
-      }
+//      Os.MacOsX -> {
+//        MetalApp(quantum, MetalConfig().apply {
+//          setTitle("Quantum Voxel")
+//          setWindowedMode(MINIMUM_WIDTH * 2, MINIMUM_HEIGHT * 2)
+//          setOpenGLEmulation(MetalConfig.GLEmulation.ANGLE_GLES32, 2, 0)
+//          setWindowIcon(*(arrayOf(128, 64, 32, 16).map { "libgdx$it.png" }.toTypedArray()))
+//          setBackBufferConfig(4, 4, 4, 4, 8, 8, 0)
+//        })
+//      }
 
       Os.Windows -> {
-        VulkanApp(QuantumVoxel, VulkanConfig().apply {
+        VulkanApp(quantum, VulkanConfig().apply {
           setTitle("Quantum Voxel")
           setWindowedMode(MINIMUM_WIDTH * 2, MINIMUM_HEIGHT * 2)
           setForegroundFPS(0)
@@ -126,9 +127,9 @@ fun main() {
       }
 
       else -> {
-        OpenGLApp(QuantumVoxel, OpenGLConfig().apply {
+        OpenGLApp(QuantumVoxel(), OpenGLConfig().apply {
           setTitle("Quantum Voxel")
-          setWindowedMode(MINIMUM_WIDTH * 2, MINIMUM_HEIGHT * 2)
+          setWindowedMode(MINIMUM_WIDTH * 3 - 2, MINIMUM_HEIGHT * 3 - 2)
           setForegroundFPS(0)
           useVsync(false)
           setOpenGLEmulation(OpenGLConfig.GLEmulation.ANGLE_GLES20, 4, 3)

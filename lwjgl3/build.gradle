@@ -28,11 +28,7 @@ if (JavaVersion.current().isJava9Compatible()) {
   compileJava.options.release.set(17)
 }
 kotlin.compilerOptions.jvmTarget.set(JvmTarget.JVM_17)
-compileKotlin {
-  kotlinOptions {
-    jvmTarget = "17"
-  }
-}
+compileKotlin.kotlinOptions.jvmTarget = "17"
 
 dependencies {
   implementation "com.badlogicgames.gdx-controllers:gdx-controllers-desktop:$gdxControllersVersion"

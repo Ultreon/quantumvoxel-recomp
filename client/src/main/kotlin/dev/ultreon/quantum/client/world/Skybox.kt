@@ -6,7 +6,7 @@ import com.badlogic.gdx.graphics.glutils.ShaderProgram
 import com.badlogic.gdx.math.Matrix4
 import com.badlogic.gdx.math.Vector3
 import com.badlogic.gdx.utils.Disposable
-import dev.ultreon.quantum.client.QuantumVoxel
+import dev.ultreon.quantum.client.quantum
 import dev.ultreon.quantum.client.cube
 import dev.ultreon.quantum.logger
 import dev.ultreon.quantum.util.NamespaceID
@@ -27,8 +27,8 @@ class Skybox : Disposable {
   val transform = Matrix4().setToTranslation(0f, 0f, 0f)
 
   val shaderProgram: ShaderProgram = ShaderProgram(
-    QuantumVoxel.resourceManager.require(NamespaceID.of(path = "shaders/skybox.vert")).text,
-    QuantumVoxel.resourceManager.require(NamespaceID.of(path = "shaders/skybox.frag")).text
+    quantum.resourceManager.require(NamespaceID.of(path = "shaders/skybox.vert")).text,
+    quantum.resourceManager.require(NamespaceID.of(path = "shaders/skybox.frag")).text
   ).also {
     if(!it.isCompiled) {
       logger.error("Failed to compile skybox shader:\n${it.log}")

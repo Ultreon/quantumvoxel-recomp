@@ -13,16 +13,12 @@ kotlin.compilerOptions.jvmTarget.set(JvmTarget.JVM_1_8)
 eclipse.project.name = appName + '-common'
 
 dependencies {
-  api "com.badlogicgames.gdx:gdx-ai:$aiVersion"
   api "com.badlogicgames.gdx:gdx:$gdxVersion"
 
   testImplementation "org.jetbrains.kotlin:kotlin-test:$kotlinVersion"
 
-  implementation 'com.caoccao.javet:javet:4.1.1'
-  implementation 'com.caoccao.javet:javenode:0.8.0'
-  implementation "io.ktor:ktor-network:2.3.12"
+//  implementation "io.ktor:ktor-network:2.3.12"
 
-  api "io.github.libktx:ktx-ai:$ktxVersion"
   api "io.github.libktx:ktx-app:$ktxVersion"
   api "io.github.libktx:ktx-artemis:$ktxVersion"
   api "io.github.libktx:ktx-assets-async:$ktxVersion"
@@ -40,11 +36,6 @@ dependencies {
 //  api 'io.socket:socket.io-client:2.1.1'
 //  api 'io.socket:socket.io-server:4.1.2'
 //  api("jakarta.servlet:jakarta.servlet-api:6.1.0")
-
-  implementation "com.corundumstudio.socketio:netty-socketio:2.0.12"
-
-  // ByteBuddy
-  implementation "net.bytebuddy:byte-buddy:$byteBuddyVersion"
 }
 
 jar {

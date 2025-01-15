@@ -3,8 +3,6 @@ package dev.ultreon.quantum.world
 import com.badlogic.gdx.utils.Disposable
 import dev.ultreon.quantum.blocks.Block
 import dev.ultreon.quantum.blocks.BoundingBoxD
-import dev.ultreon.quantum.logger
-import dev.ultreon.quantum.math.Vector3D
 import dev.ultreon.quantum.util.BlockHit
 import dev.ultreon.quantum.util.RayD
 import dev.ultreon.quantum.util.WorldRayCaster

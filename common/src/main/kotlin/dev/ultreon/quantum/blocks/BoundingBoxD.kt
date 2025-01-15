@@ -19,7 +19,6 @@
 package dev.ultreon.quantum.blocks
 
 import dev.ultreon.quantum.math.Vector3D
-import java.io.Serializable
 
 /**
  * Encapsulates an axis aligned bounding box represented by a minimum and a maximum Vector. Additionally you can query for the
@@ -28,7 +27,7 @@ import java.io.Serializable
  * @author badlogicgames@gmail.com, Xoppa
  */
 @Suppress("SpellCheckingInspection")
-class BoundingBoxD : Serializable {
+class BoundingBoxD {
   /**
    * Minimum vector. All XYZ components should be inferior to corresponding [.max] components. Call [.update] if
    * you manually change this vector.

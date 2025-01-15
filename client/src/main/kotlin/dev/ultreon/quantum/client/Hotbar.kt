@@ -15,8 +15,8 @@ private val hotbarSelect = id(path = "textures/gui/hud/hotbar/hotbar_select.png"
 class Hotbar : Actor() {
   val index: Int
     get() {
-      val player = QuantumVoxel.player
-      val inventory = player?.getComponent(InventoryComponent::class.java)
+      val player = quantum.player
+      val inventory = player?.inventoryComponent
       return inventory?.hotbarIndex ?: 0
     }
 

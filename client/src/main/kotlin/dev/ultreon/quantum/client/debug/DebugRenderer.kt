@@ -1,20 +1,17 @@
 package dev.ultreon.quantum.client.debug
 
-import com.artemis.Entity
 import com.badlogic.gdx.Gdx
-import com.badlogic.gdx.graphics.Cubemap
-import com.badlogic.gdx.graphics.Mesh
-import com.badlogic.gdx.graphics.Texture
-import com.badlogic.gdx.graphics.Texture3D
-import com.badlogic.gdx.graphics.TextureArray
+import com.badlogic.gdx.graphics.*
 import com.badlogic.gdx.graphics.glutils.GLFrameBuffer
 import com.badlogic.gdx.graphics.glutils.ShaderProgram
-import dev.ultreon.quantum.client.QuantumVoxel
 import dev.ultreon.quantum.client.draw
+import dev.ultreon.quantum.client.quantum
+import dev.ultreon.quantum.client.world.PlayerEntity
 import dev.ultreon.quantum.client.world.allLoading
 import dev.ultreon.quantum.entity.CollisionComponent
 import dev.ultreon.quantum.entity.PositionComponent
 import dev.ultreon.quantum.entity.RunningComponent
+import ktx.graphics.use
 import java.util.*
 
 private val runtime: Runtime = Runtime.getRuntime()
@@ -25,58 +22,76 @@ class DebugRenderer {
   fun render() {
     line = 1
 
-    if (!QuantumVoxel.debug) {
+    if (!quantum.debug) {
       return
     }
 
-    QuantumVoxel.globalBatch.begin()
-    val player: Entity? = QuantumVoxel.player
-    if (player != null) {
-      val position: PositionComponent? = player.getComponent(PositionComponent::class.java)
-      if (position != null) {
-        left("📍", "XYZ", position.position)
-        left("🔄", "X Rotation", "${position.xRot}, ${position.yRot}")
+    quantum.globalBatch.use {
+      val player: PlayerEntity? = quantum.player
+      if (player != null) {
+        val position: PositionComponent? = player.positionComponent
+        if (position != null) {
+          left("📍", "XYZ", position.position)
+          left("🔄", "X Rotation", "${position.xRot}, ${position.yRot}")
+        }
+
+        val running: RunningComponent? = player.runningComponent
+        if (running != null) {
+          left("💨", "Running", running.running)
+        }
+
+        val collision: CollisionComponent? = player.collisionComponent
+        if (collision != null) {
+          left("🌊", "On Ground", collision.onGround)
+          left("👉", "Collide XYZ", "${collision.isCollidingX}, ${collision.isCollidingY}, ${collision.isCollidingZ}")
+          left("👉", "Colliding", collision.isColliding)
+          left("👻", "No Clip", collision.noClip)
+        }
+      } else {
+        left("👻", "No Player", null)
       }
 
-      val running: RunningComponent? = player.getComponent(RunningComponent::class.java)
-      if (running != null) {
-        left("💨", "Running", running.running)
-      }
+      val memory = runtime.totalMemory() - runtime.freeMemory()
+      val mb = memory / 1024.0 / 1024.0
+      left("💾", "Used Memory", "${String.format(Locale.getDefault(), "%.2f", mb)} MB")
+      left(
+        "💾",
+        "Total Memory",
+        "${String.format(Locale.getDefault(), "%.2f", runtime.totalMemory() / 1024.0 / 1024.0)} MB"
+      )
+      left("🕒", "FPS", Gdx.graphics.framesPerSecond)
 
-      val collision: CollisionComponent? = player.getComponent(CollisionComponent::class.java)
-      if (collision != null) {
-        left("🌊","On Ground", collision.onGround)
-        left("👉", "Collide XYZ", "${collision.isCollidingX}, ${collision.isCollidingY}, ${collision.isCollidingZ}")
-        left("👉", "Colliding", collision.isColliding)
-        left("👻", "No Clip", collision.noClip)
+      left("📦", "Mesh Status", Mesh.getManagedStatus())
+      left("📦", "Shader Status", ShaderProgram.getManagedStatus())
+      left("📦", "Texture Status", Texture.getManagedStatus())
+      left("📦", "Texture 3D Status", Texture3D.getManagedStatus())
+      left("📦", "Texture Array Status", TextureArray.getManagedStatus())
+      left("📦", "Framebuffer Status", GLFrameBuffer.getManagedStatus())
+      left("📦", "Cubemap Status", Cubemap.getManagedStatus())
+
+      left("📥", "Loading chunks count", allLoading)
+
+      // Input
+      left("🖱️", "Mouse X", Gdx.input.x)
+      left("🖱️", "Mouse Y", Gdx.input.y)
+      left("🖱️", "Input Processor", Gdx.input.inputProcessor?.javaClass?.simpleName ?: "None")
+      left("🖱️", "Cursor Catched", Gdx.input.isCursorCatched)
+      left("🖱️", "Mouse Delta X", Gdx.input.deltaX)
+      left("🖱️", "Mouse Delta Y", Gdx.input.deltaY)
+      for (i in 0 until Gdx.input.maxPointers) {
+        if (!Gdx.input.isTouched(i)) continue
+        left("🖱️", "Pointer $i", Gdx.input.isTouched(i))
+        left("🖱️", "Pointer $i Delta X", Gdx.input.getDeltaX(i))
+        left("🖱️", "Pointer $i Delta Y", Gdx.input.getDeltaY(i))
       }
-    } else {
-      left("👻", "No Player", null)
     }
-
-    val memory = runtime.totalMemory() - runtime.freeMemory()
-    val mb = memory / 1024.0 / 1024.0
-    left("💾", "Used Memory", "${String.format(Locale.getDefault(), "%.2f", mb)} MB")
-    left("💾", "Total Memory", "${String.format(Locale.getDefault(), "%.2f", runtime.totalMemory() / 1024.0 / 1024.0)} MB")
-    left("🕒", "FPS", Gdx.graphics.framesPerSecond)
-
-    left("📦", "Mesh Status", Mesh.getManagedStatus())
-    left("📦", "Shader Status", ShaderProgram.getManagedStatus())
-    left("📦", "Texture Status", Texture.getManagedStatus())
-    left("📦", "Texture 3D Status", Texture3D.getManagedStatus())
-    left("📦", "Texture Array Status", TextureArray.getManagedStatus())
-    left("📦", "Framebuffer Status", GLFrameBuffer.getManagedStatus())
-    left("📦", "Cubemap Status", Cubemap.getManagedStatus())
-
-    left("📥", "Loading chunks count", allLoading)
-    QuantumVoxel.globalBatch.end()
   }
 
   fun left(name: String, value: Any?) {
-    QuantumVoxel.font.draw(QuantumVoxel.globalBatch, "[gold]$name: [white]$value", 10f, 10f + (line++ * 10f))
+    quantum.font.draw(quantum.globalBatch, "[gold]$name: [white]$value", 10f, 10f + (line++ * 10f))
   }
 
   fun left(emoji: String, name: String, value: Any?) {
-    QuantumVoxel.font.draw(QuantumVoxel.globalBatch, "[+$emoji][gold]$name: [white]$value", 10f, 10f + (line++ * 10f))
+    quantum.font.draw(quantum.globalBatch, "[+$emoji][gold]$name: [white]$value", 10f, 10f + (line++ * 10f))
   }
 }

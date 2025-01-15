@@ -7,6 +7,7 @@ import com.badlogic.gdx.graphics.g2d.PixmapPacker
 import com.badlogic.gdx.graphics.g2d.TextureAtlas
 import com.badlogic.gdx.graphics.g2d.TextureRegion
 import com.badlogic.gdx.utils.Disposable
+import dev.ultreon.quantum.client.QuantumVoxel
 import dev.ultreon.quantum.logger
 import dev.ultreon.quantum.resource.*
 import dev.ultreon.quantum.util.NamespaceID
@@ -35,7 +36,7 @@ class TextureManager(val resourceManager: ResourceManager) : Disposable {
   private val warns: MutableSet<NamespaceID> = HashSet()
   private val atlasWarns: MutableSet<String> = HashSet()
 
-  private lateinit var fallbackTexture: TextureRegion
+  private var fallbackTexture: TextureRegion? = null
 
   /**
    * Initializes the textures category and sets up a fallback texture to be used when
@@ -57,8 +58,10 @@ class TextureManager(val resourceManager: ResourceManager) : Disposable {
       pixmap.setColor(1f, 0.5f, 0.0f, 1f)
       pixmap.drawPixel(0, 0)
       pixmap.drawPixel(1, 1)
-      Texture(pixmap).also { _ ->
-        pixmap.disposeSafely()
+      QuantumVoxel.await {
+        Texture(pixmap).also { _ ->
+          pixmap.disposeSafely()
+        }
       }
     }, 0, 0, 2, 2)
   }
@@ -103,11 +106,13 @@ class TextureManager(val resourceManager: ResourceManager) : Disposable {
         return
       }
 
-      val generateTextureAtlas =
-        packer.generateTextureAtlas(Texture.TextureFilter.Nearest, Texture.TextureFilter.Nearest, false)
+      QuantumVoxel.await {
+        val generateTextureAtlas =
+          packer.generateTextureAtlas(Texture.TextureFilter.Nearest, Texture.TextureFilter.Nearest, false)
 
-      atlases[name] = generateTextureAtlas
-      packer.dispose()
+        atlases[name] = generateTextureAtlas
+        packer.dispose()
+      }
     }
 
     packers.clear()
@@ -145,14 +150,14 @@ class TextureManager(val resourceManager: ResourceManager) : Disposable {
         logger.warn("Atlas not found: ${location.path.split("/")[0]}")
         atlasWarns += location.path.split("/")[0]
       }
-      return fallbackTexture
+      return fallbackTexture!!
     }
     return atlas.findRegion("$texture") ?: run {
       if (location !in warns) {
         logger.warn("Texture not found: $texture")
         warns += location
       }
-      fallbackTexture
+      fallbackTexture!!
     }
   }
 
@@ -161,7 +166,7 @@ class TextureManager(val resourceManager: ResourceManager) : Disposable {
       atlas.disposeSafely()
     }
 
-    fallbackTexture.texture.disposeSafely()
+    fallbackTexture?.texture.disposeSafely()
 
     packers.forEach { (_, packer) ->
       packer.disposeSafely()

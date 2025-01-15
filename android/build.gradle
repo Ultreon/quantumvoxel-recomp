@@ -17,7 +17,7 @@ android {
       aidl.setSrcDirs(['src/main/java', 'src/main/kotlin'])
       renderscript.setSrcDirs(['src/main/java', 'src/main/kotlin'])
       res.setSrcDirs(['res'])
-      assets.setSrcDirs(['build/assets', 'src/main/assets'])
+      assets.setSrcDirs(['../assets'])
       jniLibs.setSrcDirs(['libs'])
     }
   }
@@ -94,10 +94,6 @@ dependencies {
   }
   implementation 'androidx.core:core-ktx:1.12.0' // Use the latest version available
   natives implementation('com.caoccao.javet:javet-node-android:4.1.1')
-  natives "com.badlogicgames.gdx:gdx-box2d-platform:$gdxVersion:natives-arm64-v8a"
-  natives "com.badlogicgames.gdx:gdx-box2d-platform:$gdxVersion:natives-armeabi-v7a"
-  natives "com.badlogicgames.gdx:gdx-box2d-platform:$gdxVersion:natives-x86"
-  natives "com.badlogicgames.gdx:gdx-box2d-platform:$gdxVersion:natives-x86_64"
   natives "com.badlogicgames.gdx:gdx-freetype-platform:$gdxVersion:natives-arm64-v8a"
   natives "com.badlogicgames.gdx:gdx-freetype-platform:$gdxVersion:natives-armeabi-v7a"
   natives "com.badlogicgames.gdx:gdx-freetype-platform:$gdxVersion:natives-x86"
@@ -141,14 +137,6 @@ tasks.matching { it.name.contains("merge") && it.name.contains("JniLibFolders") 
   packageTask.dependsOn 'copyAndroidNatives'
 }
 
-tasks.matching { it.name.contains("Resources") && it.name.startsWith("process") }.configureEach { packageTask ->
-  packageTask.dependsOn 'zipAssets'
-}
-
-tasks.matching { it.name.contains("Assets") && it.name.startsWith("merge") }.configureEach { packageTask ->
-  packageTask.dependsOn 'zipAssets'
-}
-
 tasks.register('run', Exec) {
   dependsOn build
 
@@ -174,8 +162,3 @@ tasks.register('run', Exec) {
 }
 
 eclipse.project.name = appName + "-android"
-
-tasks.register("zipAssets", Zip) {
-  from rootProject.file("assets")
-  archiveFile.set file("build/assets/quantum.zip")
-}

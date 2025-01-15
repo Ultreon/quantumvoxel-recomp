@@ -4,7 +4,6 @@ import com.badlogic.gdx.graphics.Pixmap
 import com.badlogic.gdx.graphics.Texture
 import com.badlogic.gdx.graphics.g2d.Batch
 import com.badlogic.gdx.scenes.scene2d.Actor
-import space.earlygrey.shapedrawer.ShapeDrawer
 
 class Background : Actor() {
   private val background = Pixmap(1, 1, Pixmap.Format.RGBA8888).let { pixmap ->

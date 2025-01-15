@@ -8,6 +8,7 @@ import com.badlogic.gdx.backends.android.AndroidApplication
 import com.badlogic.gdx.backends.android.AndroidApplicationConfiguration
 import dev.ultreon.quantum.client.GamePlatform
 import dev.ultreon.quantum.client.QuantumVoxel
+import dev.ultreon.quantum.client.gameInput
 import dev.ultreon.quantum.client.gamePlatform
 import dev.ultreon.quantum.resource.ResourceManager
 
@@ -19,13 +20,13 @@ class AndroidLauncher : AndroidApplication() {
 
     gamePlatform = object : GamePlatform {
       override fun loadResources(resourceManager: ResourceManager) {
-        resourceManager.load(Gdx.files.internal("quantum.zip"))
+        resourceManager.loadFromAssetsTxt(Gdx.files.internal("assets.txt"))
       }
 
       override val isMobile: Boolean
         get() = true
     }
-    initialize(QuantumVoxel, AndroidApplicationConfiguration().apply {
+    initialize(QuantumVoxel(), AndroidApplicationConfiguration().apply {
       // Configure your application here.
       useImmersiveMode = true // Recommended, but not required.
       useGyroscope = true
@@ -35,7 +36,7 @@ class AndroidLauncher : AndroidApplication() {
   override fun onGenericMotionEvent(event: MotionEvent): Boolean {
     if ((event.source and InputDevice.SOURCE_MOUSE) == InputDevice.SOURCE_MOUSE) {
       if (event.actionMasked == MotionEvent.ACTION_HOVER_MOVE) {
-        QuantumVoxel.gameInput.onMouseMove(event.x, event.y) // Handle the movement
+        gameInput.onMouseMove(event.x, event.y) // Handle the movement
 
         // Reset cursor to the center
         resetCursorToCenter()

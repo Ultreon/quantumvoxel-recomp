@@ -20,14 +20,12 @@ package dev.ultreon.quantum.util
 
 import dev.ultreon.quantum.math.Vector3D
 import dev.ultreon.quantum.vec3d
-import java.io.Serial
-import java.io.Serializable
 
 /** Encapsulates a ray having a starting position and a unit length direction.
  *
  * @author badlogicgames@gmail.com
  */
-class RayD : Serializable {
+class RayD {
   val origin: Vector3D = vec3d()
   val direction: Vector3D = vec3d()
 
@@ -133,7 +131,7 @@ class RayD : Serializable {
   }
 
   companion object {
-    private val serialVersionUID = -620692054835390878L
+    private const val serialVersionUID = -620692054835390878L
     var tmp: Vector3D = vec3d()
   }
 }

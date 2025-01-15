@@ -3,7 +3,7 @@ package dev.ultreon.quantum.client.gui.screens
 import com.badlogic.gdx.Gdx
 import com.badlogic.gdx.scenes.scene2d.Stage
 import com.badlogic.gdx.utils.Align
-import dev.ultreon.quantum.client.QuantumVoxel
+import dev.ultreon.quantum.client.quantum
 import ktx.actors.onClick
 import ktx.scene2d.*
 
@@ -25,7 +25,7 @@ class PauseScreen : GameScreen() {
         }
 
         onClick {
-          QuantumVoxel.setScreen<PlaceholderScreen>()
+          quantum.setScreen<PlaceholderScreen>()
           Gdx.input.isCursorCatched = true
         }
 
@@ -42,7 +42,7 @@ class PauseScreen : GameScreen() {
         }
 
         onClick {
-          QuantumVoxel.setScreen<TitleScreen>()
+          quantum.setScreen<TitleScreen>()
           Gdx.input.isCursorCatched = true
         }
 

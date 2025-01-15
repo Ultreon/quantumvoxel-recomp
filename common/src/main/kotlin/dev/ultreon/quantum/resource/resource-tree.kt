@@ -1,5 +1,6 @@
 package dev.ultreon.quantum.resource
 
+import dev.ultreon.quantum.logger
 import dev.ultreon.quantum.util.NamespaceID
 
 class ResourceRoot(
@@ -109,7 +110,13 @@ class ResourceLeaf(val parent: ResourceDir, override val name: String) : Resourc
   }
 
   override fun toString(): String = "$parent/$name"
-  operator fun get(domain: String): List<Resource> = resources[domain] ?: emptyList()
+  operator fun get(domain: String): List<Resource> {
+    logger.debug("Getting resources for domain $domain in resource leaf: $this")
+    return resources[domain] ?: run {
+      logger.error("No resources found for domain $domain in resource leaf: $this")
+      emptyList()
+    }
+  }
   fun addResource(resource: Resource) {
     val domain = resource.location.domain
     val list = resources[domain] ?: mutableListOf<Resource>().also { resources[domain] = it }

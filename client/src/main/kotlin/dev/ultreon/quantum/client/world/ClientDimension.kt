@@ -27,6 +27,7 @@ val renderDistance: Int
   get() = if (gamePlatform.isMobile) 4 else 8
 
 open class ClientDimension(private val material: Material) : Dimension() {
+  private lateinit var player: PlayerEntity
   val chunks: MutableMap<Long, ClientChunk> = ConcurrentHashMap()
   val chunksToLoad = GdxArray<Pair<GridPoint3, Long>>()
   val generator = Generator()
@@ -34,7 +35,7 @@ open class ClientDimension(private val material: Material) : Dimension() {
   private var toRemove = listOf<ClientChunk>()
   private var toRebuild = listOf<ClientChunk>()
 
-  val context = newAsyncContext(Runtime.getRuntime().availableProcessors() / 2, "ChunkBuilder")
+  val context = newAsyncContext((Runtime.getRuntime().availableProcessors()) * 4, "ChunkBuilder")
 
   override fun get(x: Int, y: Int, z: Int): Block {
     synchronized(chunks) {
@@ -286,6 +287,11 @@ open class ClientDimension(private val material: Material) : Dimension() {
 
   fun rayCast(position: Vector3D, lookVec: Vector3D): BlockHit {
     return rayTrace(RayD(position, lookVec))
+  }
+
+  fun spawnPlayer(vec3d: Vector3D): PlayerEntity {
+    this.player = PlayerEntity(this, vec3d)
+    return player
   }
 }
 

@@ -35,7 +35,6 @@ eclipse.project {
 dependencies {
   implementation "com.badlogicgames.gdx-controllers:gdx-controllers-ios:$gdxControllersVersion"
   implementation "com.badlogicgames.gdx:gdx-backend-robovm:$gdxVersion"
-  implementation "com.badlogicgames.gdx:gdx-box2d-platform:$gdxVersion:natives-ios"
   implementation "com.badlogicgames.gdx:gdx-freetype-platform:$gdxVersion:natives-ios"
   implementation "com.badlogicgames.gdx:gdx-platform:$gdxVersion:natives-ios"
   implementation "com.mobidevelop.robovm:robovm-cocoatouch:$robovmVersion"

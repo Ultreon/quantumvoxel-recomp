@@ -135,7 +135,7 @@ inline fun texture(path: String, crossinline init: Texture.() -> Unit = {}): Tex
  * @return The `TextureRegion` associated with the specified `NamespaceID`.
  */
 fun texture(namespaceID: NamespaceID): TextureRegion {
-  val texture = QuantumVoxel.textureManager[namespaceID]
+  val texture = quantum.textureManager[namespaceID]
   return texture
 }
 

@@ -11,7 +11,8 @@ import java.util.function.Consumer
 
 class JsonModel(
   val id: NamespaceID,
-  private val textureElements: Map<String, NamespaceID>, private val modelElements: List<ModelElement>,
+  private val textureElements: Map<String, NamespaceID>,
+  private val modelElements: List<ModelElement>,
   val ambientOcclusion: Boolean,
   val display: JsonModelLoader.Display,
 ) : BlockModel, ItemModel {

@@ -1,8 +1,5 @@
 package dev.ultreon.quantum.resource
 
-import dev.ultreon.quantum.resource.Resource
-import dev.ultreon.quantum.resource.StaticResource
-
 interface ResourceCategory : Iterable<Resource> {
   val name: String
   val parent: ResourceCategory?

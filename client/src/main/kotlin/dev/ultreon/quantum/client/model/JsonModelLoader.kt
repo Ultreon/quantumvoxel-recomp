@@ -20,7 +20,7 @@ import com.badlogic.gdx.math.Vector3
 import com.badlogic.gdx.utils.JsonReader
 import com.badlogic.gdx.utils.JsonValue
 import dev.ultreon.quantum.blocks.Block
-import dev.ultreon.quantum.client.QuantumVoxel
+import dev.ultreon.quantum.client.quantum
 import dev.ultreon.quantum.id
 import dev.ultreon.quantum.item.Item
 import dev.ultreon.quantum.key
@@ -71,7 +71,7 @@ value class FaceCull(val data: Int) {
 }
 
 class JsonModelLoader @JvmOverloads constructor(
-  private val resourceManager: ResourceManager = QuantumVoxel.resourceManager,
+  private val resourceManager: ResourceManager = quantum.resourceManager,
 ) {
   private var key: ResourceId<*>? = null
 
@@ -79,8 +79,24 @@ class JsonModelLoader @JvmOverloads constructor(
   fun load(block: Block): JsonModel? {
     val namespaceID: NamespaceID = block.id.mapPath { path -> "models/blocks/$path.json" }
     try {
-      val resource: Resource = resourceManager[namespaceID] ?: return null
-      return this.load(block.key, JsonReader().parse(resource.inputStream()))
+      val resource: Resource = resourceManager[namespaceID] ?: run {
+        logger.warn("No block model for ${block.id}")
+        return null
+      }
+      logger.debug("Retrieved resource for ${block.id}")
+      val jsonReader = JsonReader()
+      logger.debug("Json reader created for ${block.id}")
+      val inputStream = resource.inputStream()
+      logger.debug("Opened resource stream for ${block.id}")
+      val modelData = jsonReader.parse(inputStream)
+      logger.debug("Parsed block model json for ${block.id}")
+      val key1 = block.key
+      logger.debug("Attempting to load block model for ${block.id}")
+      val load = this.load(key1, modelData)
+      logger.debug("Loaded block model for ${block.id}, closing stream")
+      inputStream.close()
+      logger.debug("Returning block model for ${block.id}")
+      return load
     } catch (e: IOException) {
       logger.error("Couldn't load block model for ${block.id}: ${e.message}")
       return null
@@ -91,8 +107,15 @@ class JsonModelLoader @JvmOverloads constructor(
   fun load(item: Item): JsonModel? {
     val namespaceID: NamespaceID = item.id.mapPath { path -> "models/items/$path.json" }
     try {
-      val resource: Resource = resourceManager[namespaceID] ?: return null
-      return this.load(item.key, JsonReader().parse(resource.inputStream()))
+      val resource: Resource = resourceManager[namespaceID] ?: run {
+        logger.warn("No item model for ${item.id}")
+        return null
+      }
+      val modelData = JsonReader().parse(resource.inputStream())
+      logger.debug("Loaded item model json for ${item.id}")
+      val load = this.load(item.key, modelData)
+      logger.debug("Loaded item model for ${item.id}")
+      return load
     } catch (e: IOException) {
       logger.error("Couldn't load item model for ${item.id}: ${e.message}")
       return null
@@ -106,19 +129,30 @@ class JsonModelLoader @JvmOverloads constructor(
     ) { "Invalid model key, must be block or item: $key" }
 
     val root: JsonValue = modelData
+
+    logger.debug("Root: $root")
     val textures: JsonValue = root["textures"]
+
+    logger.debug("Textures: $textures")
     val textureElements: Map<String, NamespaceID> = loadTextures(textures)
 
     //        GridPoint2 textureSize = loadVec2i(root.getAsJson5Array("texture_size"), new GridPoint2(16, 16));
     val textureSize = GridPoint2(16, 16)
+    logger.debug("Texture size: $textureSize")
 
     val elements: JsonValue = root["elements"]
+
+    logger.debug("Elements: $elements")
     val modelElements = loadElements(elements, textureSize.x, textureSize.y)
 
     val ambientOcclusion: Boolean = root.getBoolean("ambientocclusion", true)
 
+    logger.debug("Ambient occlusion: $ambientOcclusion")
+
     // TODO: Allow display properties.
     val display = Display()
+
+    logger.debug("Display: $display")
 
     return JsonModel(key.name, textureElements, modelElements, ambientOcclusion, display)
   }
@@ -358,7 +392,7 @@ class JsonModelLoader @JvmOverloads constructor(
         v10.setNor(direction.normal)
         v11.setNor(direction.normal)
 
-        val region = QuantumVoxel.textureManager[texture!!]
+        val region = quantum.textureManager[texture!!]
 
         v00.setUV(faceElement.uvs.x1 / 16 + region.u, faceElement.uvs.y2 / 16 + region.v2)
         v01.setUV(faceElement.uvs.x1 / 16 + region.u, faceElement.uvs.y1 / 16 + region.v)
@@ -421,7 +455,7 @@ class JsonModelLoader @JvmOverloads constructor(
         meshBuilder.rect(v00, v10, v11, v01)
 
         val material = Material()
-        material.set(TextureAttribute.createDiffuse(QuantumVoxel.textureManager[texture]))
+        material.set(TextureAttribute.createDiffuse(quantum.textureManager[texture]))
         material.set(BlendingAttribute(GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA))
         material.set(FloatAttribute(FloatAttribute.AlphaTest))
         material.set(DepthTestAttribute(GL20.GL_LEQUAL))
@@ -544,7 +578,7 @@ class JsonModelLoader @JvmOverloads constructor(
         v10.setNor(direction.normal)
         v11.setNor(direction.normal)
 
-        val region = QuantumVoxel.textureManager[texture!!]
+        val region = quantum.textureManager[texture!!]
 
         val us = region.u2 - region.u
         val vs = region.v2 - region.v

@@ -1,16 +1,10 @@
 package dev.ultreon.quantum.client
 
 import com.badlogic.gdx.graphics.Color
-import com.badlogic.gdx.graphics.GL20
 import com.badlogic.gdx.graphics.Texture
 import com.badlogic.gdx.graphics.g2d.TextureRegion
 import com.badlogic.gdx.graphics.g3d.Material
-import com.badlogic.gdx.graphics.g3d.attributes.BlendingAttribute
-import com.badlogic.gdx.graphics.g3d.attributes.ColorAttribute
-import com.badlogic.gdx.graphics.g3d.attributes.DepthTestAttribute
-import com.badlogic.gdx.graphics.g3d.attributes.FloatAttribute
-import com.badlogic.gdx.graphics.g3d.attributes.IntAttribute
-import com.badlogic.gdx.graphics.g3d.attributes.TextureAttribute
+import com.badlogic.gdx.graphics.g3d.attributes.*
 import dev.ultreon.quantum.InternalApi
 
 @DslMarker

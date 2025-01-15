@@ -4,7 +4,7 @@ import com.badlogic.gdx.utils.Disposable
 import com.badlogic.gdx.utils.JsonReader
 import dev.ultreon.quantum.blocks.Block
 import dev.ultreon.quantum.blocks.Blocks
-import dev.ultreon.quantum.client.QuantumVoxel
+import dev.ultreon.quantum.client.quantum
 import dev.ultreon.quantum.id
 import dev.ultreon.quantum.item.Item
 import dev.ultreon.quantum.logger
@@ -16,7 +16,7 @@ import dev.ultreon.quantum.util.NamespaceID
 object ModelRegistry : Disposable {
   private val blockModels = mutableMapOf<Block, JsonModel>()
   private val itemModels = mutableMapOf<Item, JsonModel>()
-  private val _fallbackModel: JsonModel = QuantumVoxel.jsonModelLoader.load(
+  private val _fallbackModel: JsonModel = quantum.jsonModelLoader.load(
     ResourceId.of(RegistryKeys.blocks, NamespaceID.of(path = "error")), JsonReader().parse("""
     {
       "parent": "block/cube_all",
@@ -44,26 +44,31 @@ object ModelRegistry : Disposable {
     get() = _fallbackModel
 
   fun loadModels() {
-    val jsonModelLoader = QuantumVoxel.jsonModelLoader
+    val jsonModelLoader = quantum.jsonModelLoader
     if (Registries.blocks.values.isEmpty()) logger.error("Where are my blocks?")
+    logger.debug("Loading block models")
     Registries.blocks.values.forEach {
+      logger.debug("Loading block model for ${it.id}")
       if (it == Blocks.air) return@forEach
 
-      val load = jsonModelLoader.load(it)
+      val load: JsonModel? = jsonModelLoader.load(it)
+
+      logger.debug("Loaded block model for ${it.id}")
       load?.let { model ->
+        logger.debug("Putting block model for ${it.id}")
         blockModels[it] = model
       } ?: run {
         logger.warn("No block model for ${it.id}")
       }
     }
-    Registries.items.values.forEach {
-      val load = jsonModelLoader.load(it)
-      load?.let { model ->
-        itemModels[it] = model
-      } ?: run {
-        logger.warn("No item model for ${it.id}")
-      }
-    }
+//    Registries.items.values.forEach {
+//      val load = jsonModelLoader.load(it)
+//      load?.let { model ->
+//        itemModels[it] = model
+//      } ?: run {
+//        logger.warn("No item model for ${it.id}")
+//      }
+//    }
   }
 
   operator fun get(block: Block): JsonModel = blockModels[block] ?: fallbackModel

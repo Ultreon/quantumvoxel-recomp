@@ -1,8 +1,10 @@
 package dev.ultreon.quantum.resource
 
+import com.badlogic.gdx.Gdx
 import com.badlogic.gdx.files.FileHandle
 import dev.ultreon.quantum.LoggerFactory
 import dev.ultreon.quantum.util.NamespaceID
+import java.io.ByteArrayOutputStream
 import java.util.zip.ZipInputStream
 
 private val logger = LoggerFactory["QV:Resources"]
@@ -43,23 +45,49 @@ class ResourceManager(
    */
   @Throws(NoSuchResourceDirectoryException::class, NoSuchResourceException::class)
   operator fun get(location: NamespaceID): Resource? {
-    return resourcesAt(location).lastOrNull()
+    logger.debug("Access to resource: $location")
+    val resourcesAt = resourcesAt(location)
+    logger.debug("Resources at location: $resourcesAt")
+    return if (resourcesAt.isEmpty()) run {
+      logger.error("No resources found at location: $location")
+      null
+    } else run {
+      logger.debug("Returning last resource: ${resourcesAt[resourcesAt.size - 1]}")
+      resourcesAt[resourcesAt.size - 1]
+    }
   }
 
   infix fun require(location: NamespaceID): Resource {
+    logger.debug("Required access to resource: $location")
     return resourcesAt(location).lastOrNull() ?: throw NoSuchResourceException(location.toString())
   }
 
   fun resourcesAt(location: NamespaceID): List<Resource> {
     val path = location.path.split('/')
+    logger.debug("Starting navigation to ${path[path.size - 1]}")
     var node: ResourceDir = root
 
     for (i in 0 until path.size - 1) {
+      logger.debug("Navigating to ${path[i]}")
       val resourceNode = node[path[i]]
-      node = resourceNode as ResourceDir? ?: return emptyList()
+      node = resourceNode as ResourceDir? ?: run {
+        logger.error("Resource directory not found: ${path[i]}")
+        return emptyList()
+      }
     }
 
-    return node[path[path.size - 1]]?.asLeafOrNull()?.get(location.domain) ?: emptyList()
+    val resourceNode = node[path[path.size - 1]]
+    logger.debug("Navigated to ${path[path.size - 1]}")
+    if (resourceNode == null) {
+      logger.error("Resource node not found: ${path[path.size - 1]}")
+      return emptyList()
+    }
+    val asLeafOrNull = resourceNode.asLeafOrNull()
+    if (asLeafOrNull == null) {
+      logger.error("Resource leaf not found: ${path[path.size - 1]}")
+      return emptyList()
+    }
+    return asLeafOrNull[location.domain]
   }
 
   operator fun contains(path: String): Boolean {
@@ -153,7 +181,13 @@ class ResourceManager(
         resourceLeaf
       }
 
-      resourceNode?.asLeafOrNull()?.addResource(StaticResource(NamespaceID.of(domain, if (path == "") filename else "$path/$filename"), zip.readBytes())) ?: throw ResourceOverwriteException("$domain:$path/$filename")
+      val byteArrayOutputStream = ByteArrayOutputStream()
+      var b = zip.read()
+      while (b != -1) {
+        byteArrayOutputStream.write(b)
+        b = zip.read()
+      }
+      resourceNode?.asLeafOrNull()?.addResource(StaticResource(NamespaceID.of(domain, if (path == "") filename else "$path/$filename"), byteArrayOutputStream.toByteArray())) ?: throw ResourceOverwriteException("$domain:$path/$filename")
     } else {
       val categoryName = pathElements.removeAt(0)
 
@@ -220,6 +254,42 @@ class ResourceManager(
       directory[file.name()] = ResourceDirectory(file.name(), domain, directory)
     }
 
-    directory[file.name()]?.asLeafOrNull()?.addResource(StaticResource(NamespaceID.of(domain, path), readBytes)) ?: throw ResourceOverwriteException("$domain:$path")
+    directory[file.name()]?.asLeafOrNull()?.addResource(StaticResource(NamespaceID.of(domain, path), readBytes))
+  }
+
+  fun loadFromAssetsTxt(internal: FileHandle) {
+    val fileList = internal.readString().split('\n')
+    if (fileList.isEmpty()) {
+      logger.warn("No files in directory: ${internal.path()}")
+      return
+    }
+
+    for (file in fileList) {
+      if (file.startsWith(assetRoot + "/")) {
+        val domain = file.substring(assetRoot.length + 1)
+        val domainId = domain.substring(0, domain.indexOf('/'))
+        val path = domain.substring(domain.indexOf('/') + 1).split('/')
+        val categories = path.dropLast(1)
+        val filename = path.last()
+
+        var category: ResourceDir = root
+        for (categoryName in categories) {
+          category = category[categoryName] as? ResourceDir ?: run {
+            category.mkdir(categoryName)
+            category[categoryName] as ResourceDir
+          }
+        }
+
+        val resourceNode = if (filename in category) {
+          category[filename]
+        } else {
+          val resourceLeaf = ResourceLeaf(category, filename)
+          category[filename] = resourceLeaf
+          resourceLeaf
+        }
+
+        resourceNode?.asLeafOrNull()?.addResource(StaticResource(NamespaceID.of(domainId, if (categories.isEmpty()) filename else "${categories.joinToString("/")}/$filename"), Gdx.files.internal(file).readBytes()))
+      }
+    }
   }
 }

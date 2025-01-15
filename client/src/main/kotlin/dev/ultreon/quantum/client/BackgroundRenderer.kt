@@ -30,11 +30,11 @@ class BackgroundRenderer : Disposable {
     update()
   }
   private val modelBatch = ModelBatch(
-    (QuantumVoxel.resourceManager require NamespaceID.of(path = "shaders/default.vsh")).text,
-    (QuantumVoxel.resourceManager require NamespaceID.of(path = "shaders/default.fsh")).text
+    (quantum.resourceManager require NamespaceID.of(path = "shaders/default.vsh")).text,
+    (quantum.resourceManager require NamespaceID.of(path = "shaders/default.fsh")).text
   )
   private val skybox: Skybox = Skybox()
-  private var chunks = Array(3) { ClientChunk(it - 1, 0, 0, QuantumVoxel.material, FakeDimension())}
+  private var chunks = Array(3) { ClientChunk(it - 1, 0, 0, quantum.material, FakeDimension())}
 
   init {
     val selector = Random.nextInt(4)
@@ -126,4 +126,4 @@ class BackgroundRenderer : Disposable {
   }
 }
 
-class FakeDimension : ClientDimension(QuantumVoxel.material)
+class FakeDimension : ClientDimension(quantum.material)

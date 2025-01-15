@@ -272,3 +272,4 @@ Thumbs.db
 /android/release/
 /run/
 /lwjgl3/logs/
+/switchgdx/build/

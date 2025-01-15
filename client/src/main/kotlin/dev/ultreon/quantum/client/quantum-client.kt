@@ -4,61 +4,43 @@
 package dev.ultreon.quantum.client
 
 import com.artemis.Component
-import com.artemis.Entity
 import com.artemis.World
 import com.artemis.utils.Bag
 import com.badlogic.gdx.Gdx
 import com.badlogic.gdx.Input
-import com.badlogic.gdx.graphics.*
+import com.badlogic.gdx.graphics.GL20
+import com.badlogic.gdx.graphics.OrthographicCamera
+import com.badlogic.gdx.graphics.Pixmap
+import com.badlogic.gdx.graphics.Texture
 import com.badlogic.gdx.graphics.g2d.BitmapFont
-import com.badlogic.gdx.graphics.g2d.NinePatch
 import com.badlogic.gdx.graphics.g2d.SpriteBatch
 import com.badlogic.gdx.graphics.g2d.TextureRegion
 import com.badlogic.gdx.math.Matrix4
-import com.badlogic.gdx.scenes.scene2d.ui.Button.ButtonStyle
-import com.badlogic.gdx.scenes.scene2d.ui.Label.LabelStyle
 import com.badlogic.gdx.scenes.scene2d.ui.Touchpad
-import com.badlogic.gdx.scenes.scene2d.utils.NinePatchDrawable
-import com.badlogic.gdx.scenes.scene2d.utils.TextureRegionDrawable
+import com.badlogic.gdx.utils.Queue
 import com.badlogic.gdx.utils.async.AsyncExecutor
 import com.badlogic.gdx.utils.viewport.ScreenViewport
 import com.badlogic.gdx.utils.viewport.Viewport
 import com.github.tommyettinger.textra.Font
 import com.github.tommyettinger.textra.KnownFonts
 import dev.ultreon.quantum.blocks.Blocks
-import dev.ultreon.quantum.client.QuantumVoxel.jsonModelLoader
-import dev.ultreon.quantum.client.QuantumVoxel.resourceManager
-import dev.ultreon.quantum.client.QuantumVoxel.textureManager
-import dev.ultreon.quantum.client.QuantumVoxel.world
 import dev.ultreon.quantum.client.debug.DebugRenderer
 import dev.ultreon.quantum.client.gui.screens.PlaceholderScreen
-import dev.ultreon.quantum.client.gui.screens.PauseScreen
-import dev.ultreon.quantum.client.gui.screens.SplashScreen
-import dev.ultreon.quantum.client.gui.screens.TitleScreen
 import dev.ultreon.quantum.client.input.*
 import dev.ultreon.quantum.client.model.JsonModelLoader
 import dev.ultreon.quantum.client.model.ModelRegistry
 import dev.ultreon.quantum.client.texture.TextureManager
 import dev.ultreon.quantum.client.world.ClientDimension
-import dev.ultreon.quantum.entity.CollisionComponent
-import dev.ultreon.quantum.entity.InventoryComponent
-import dev.ultreon.quantum.entity.PositionComponent
-import dev.ultreon.quantum.entity.RunningComponent
+import dev.ultreon.quantum.client.world.PlayerEntity
 import dev.ultreon.quantum.logger
 import dev.ultreon.quantum.resource.ResourceManager
 import dev.ultreon.quantum.util.NamespaceID
-import dev.ultreon.quantum.util.Tickable
-import dev.ultreon.quantum.util.id
 import dev.ultreon.quantum.vec3d
 import ktx.app.KtxGame
 import ktx.app.KtxScreen
 import ktx.app.clearScreen
 import ktx.assets.disposeSafely
 import ktx.async.MainDispatcher
-import ktx.scene2d.Scene2DSkin
-import ktx.style.addStyle
-import ktx.style.defaultStyle
-import ktx.style.skin
 import space.earlygrey.shapedrawer.ShapeDrawer
 import java.io.FileNotFoundException
 import java.util.concurrent.CompletableFuture
@@ -71,6 +53,7 @@ const val TPS = 20
 const val SPT = 1F / TPS
 
 lateinit var gamePlatform: GamePlatform
+
 
 /**
  * The `QuantumVoxel` object represents the main entry point for the Quantum Voxel application.
@@ -90,43 +73,43 @@ lateinit var gamePlatform: GamePlatform
  * - The `render` method manages the drawing lifecycle, including handling and rendering crash details if any exception occurs.
  * - The `dispose` method cleans up resources and disposes of components safely when the game is terminated.
  */
-object QuantumVoxel : KtxGame<KtxScreen>(clearScreen = false) {
+class QuantumVoxel : KtxGame<KtxScreen>(clearScreen = false) {
+  init {
+    instance = this
+  }
+
+  private var init: Boolean = false
+  private var deferResize: Boolean = false
+  private var loaded: Boolean = false
+
   // Movement
-  private lateinit var keyMovement: KeyMovement
-  private lateinit var touchMovement: TouchMovement
-  private lateinit var controllerMovement: ControllerMovement
+  lateinit var keyMovement: KeyMovement
+  lateinit var touchMovement: TouchMovement
+  lateinit var controllerMovement: ControllerMovement
   var movement: PlayerMovement = KeyMovement()
   lateinit var touchpad: Touchpad
-    private set
 
   var backgroundRenderer: BackgroundRenderer? = null
-  private val tasks: MutableList<() -> Unit> = ArrayList()
+  private val tasks: Queue<() -> Unit> = Queue()
   val isTouch: Boolean
     get() = Gdx.input.isPeripheralAvailable(Input.Peripheral.MultitouchScreen) && !Gdx.input.isPeripheralAvailable(
       Input.Peripheral.HardwareKeyboard
     )
-  val scaledWidth: Int
-    get() = (Gdx.graphics.width.coerceAtLeast(1) / guiScale).toInt()
-  val scaledHeight: Int
-    get() = (Gdx.graphics.height.coerceAtLeast(1) / guiScale).toInt()
   var gameInput: GameInput = GameInput()
-  private val debugRenderer: DebugRenderer = DebugRenderer()
-  private val bag: Bag<Component> = Bag()
-  private val tmpTransform = Matrix4()
+  internal val debugRenderer: DebugRenderer by lazy { DebugRenderer() }
+  private val bag: Bag<Component> by lazy { Bag() }
+  private val tmpTransform by lazy { Matrix4() }
   lateinit var globalBatch: SpriteBatch
     private set
   lateinit var shapes: ShapeDrawer
     private set
-  var debug = false
+  var debug = true
   var environmentRenderer: EnvironmentRenderer? = null
-    set(value) {
-      field = value
-    }
-  var player: Entity? = null
+  var player: PlayerEntity? = null
   var dimension: ClientDimension? = null
   private lateinit var crashFont: BitmapFont
   private lateinit var crashSpriteBatch: SpriteBatch
-  private var crash: Exception? = null
+  private var crash: Throwable? = null
   var setGuiScale = 0
     set(value) {
       field = value.coerceAtLeast(0)
@@ -147,7 +130,7 @@ object QuantumVoxel : KtxGame<KtxScreen>(clearScreen = false) {
 
   var frameTick = 0F
 
-  val executor: AsyncExecutor = AsyncExecutor(4, "QV:Async Worker")
+  val executor: AsyncExecutor by lazy { AsyncExecutor(4, "QV:Async Worker") }
 
   /**
    * Manages and organizes resources such as textures, models, and shaders.
@@ -155,14 +138,19 @@ object QuantumVoxel : KtxGame<KtxScreen>(clearScreen = false) {
    * Plays a key role in resource loading, initialization, and memory management.
    * Integrally involved in the application lifecycle to ensure all necessary assets are available.
    */
-  val resourceManager: ResourceManager = ResourceManager("client")
+  val resourceManager: ResourceManager by lazy { ResourceManager("client") }
 
   val bitmapFont by lazy {
-    BitmapFont(
-      ResourceFileHandle(NamespaceID.of(path = "fonts/luna_pixel.fnt")),
-      ResourceFileHandle(NamespaceID.of(path = "textures/font/luna_pixel.png")),
-      false
-    )
+    try {
+      BitmapFont(
+        Gdx.files.internal("client/quantum/fonts/luna_pixel.fnt"),
+        Gdx.files.internal("client/quantum/textures/font/luna_pixel.png"),
+        false
+      )
+    } catch (e: Throwable) {
+      logger.error("Failed to load font:\n${e.stackTraceToString()}")
+      BitmapFont()
+    }
   }
 
   val font by lazy {
@@ -181,7 +169,7 @@ object QuantumVoxel : KtxGame<KtxScreen>(clearScreen = false) {
    * Utilizes the provided `ResourceManager` to access and organize relevant resources needed for model generation.
    * Facilitates the integration of JSON-based assets into the application's resource pipeline.
    */
-  val jsonModelLoader: JsonModelLoader = JsonModelLoader(resourceManager)
+  val jsonModelLoader: JsonModelLoader by lazy { JsonModelLoader(resourceManager) }
 
   /**
    * An instance of `TextureManager` responsible for handling texture-related tasks within the application.
@@ -189,7 +177,7 @@ object QuantumVoxel : KtxGame<KtxScreen>(clearScreen = false) {
    * Works in conjunction with the `ResourceManager` to manage texture resources efficiently.
    * Plays a crucial role in maintaining texture data during the application's lifecycle.
    */
-  val textureManager: TextureManager = TextureManager(resourceManager)
+  val textureManager: TextureManager by lazy { TextureManager(resourceManager) }
 
   @JvmField
   var world: World? = null
@@ -212,94 +200,28 @@ object QuantumVoxel : KtxGame<KtxScreen>(clearScreen = false) {
         TextureRegion(it, 0, 0, 1, 1)
       }
     })
+    Gdx.graphics.setVSync(false)
 
-    try {
-      Gdx.graphics.setVSync(false)
+    width = Gdx.graphics.width.coerceAtLeast(MINIMUM_WIDTH)
+    height = Gdx.graphics.height.coerceAtLeast(MINIMUM_HEIGHT)
 
-      width = Gdx.graphics.width.coerceAtLeast(MINIMUM_WIDTH)
-      height = Gdx.graphics.height.coerceAtLeast(MINIMUM_HEIGHT)
+    Blocks.init()
 
-      Blocks.init()
+    gamePlatform.loadResources(resourceManager)
 
-      if (!Gdx.files.isLocalStorageAvailable || Gdx.files.internal("quantum.zip")
-          .exists() || System.getProperty("quantum.nativeimage")?.toBoolean() == true
-      ) {
-        resourceManager.load(Gdx.files.internal("quantum.zip"))
-      } else {
-        gamePlatform.loadResources(resourceManager)
-      }
+    guiCam = OrthographicCamera()
+    guiViewport = ScreenViewport(guiCam)
 
-      textureManager.init()
-      textureManager.registerAtlas("block")
-      textureManager.registerAtlas("font")
-      textureManager.registerAtlas("gui")
+    loaded = true
 
-      textureManager.pack()
-      ModelRegistry.loadModels()
-
-      Scene2DSkin.defaultSkin = skin {
-        addStyle(
-          defaultStyle, ButtonStyle(
-            NinePatchDrawable(NinePatch(textureManager[id(path = "textures/gui/buttons/dark.png")], 7, 7, 7, 7)),
-            NinePatchDrawable(
-              NinePatch(
-                textureManager[id(path = "textures/gui/buttons/dark_pressed.png")],
-                7,
-                7,
-                7,
-                7
-              )
-            ),
-            null
-          )
-        )
-        addStyle(defaultStyle, LabelStyle(bitmapFont, Color.WHITE))
-        addStyle(
-          defaultStyle,
-          Touchpad.TouchpadStyle(
-            TextureRegionDrawable(textureManager[id(path = "textures/gui/touchpad.png")]),
-            TextureRegionDrawable(textureManager[id(path = "textures/gui/touchpad_knob.png")])
-          )
-        )
-      }
-
-      guiCam = OrthographicCamera().also {
-        it.setToOrtho(false, Gdx.graphics.width.toFloat(), Gdx.graphics.height.toFloat())
-      }
-      guiViewport = ScreenViewport(guiCam)
-
-      touchpad = Touchpad(0.1f, Scene2DSkin.defaultSkin).also {
-        it.setPosition(10f, 10f)
-        it.setSize(1f, 1f)
-      }
-
-      keyMovement = KeyMovement()
-      touchMovement = TouchMovement(touchpad)
-      controllerMovement = ControllerMovement()
-
-      addScreen(SplashScreen())
-      addScreen(TitleScreen())
-      addScreen(PlaceholderScreen())
-      addScreen(PauseScreen())
-      setScreen<SplashScreen>()
-
-//      addScreen(GameRenderer())
-//      setScreen<GameRenderer>()
-
-      logger.debug("Quantum Voxel started!", this)
-    } catch (e: Exception) {
-      logger.error(e.stackTraceToString())
-      this.crash = e
-      this.crashSpriteBatch = SpriteBatch()
-      this.crashFont = BitmapFont()
-    }
+    logger.debug("Quantum Voxel started!", this)
   }
 
   fun startWorld() {
-    world = World()
+//    world = World()
 
     dimension = ClientDimension(material)
-    player = world!!.createEntity().also { entity ->
+    player = /*world!!.createEntity().also { entity ->
       val positionComponent = PositionComponent(vec3d(0, 128, 0))
       entity.edit()
         .add(LocalPlayerComponent("Player"))
@@ -312,7 +234,7 @@ object QuantumVoxel : KtxGame<KtxScreen>(clearScreen = false) {
         })
 
       environmentRenderer?.lastRefreshPosition?.set(entity.getComponent(PositionComponent::class.java).position)
-    }
+    }*/ dimension!!.spawnPlayer(vec3d(0, 128, 0))
 
     backgroundRenderer.disposeSafely()
     backgroundRenderer = null
@@ -321,7 +243,7 @@ object QuantumVoxel : KtxGame<KtxScreen>(clearScreen = false) {
     environmentRenderer?.resize(width, height)
 
     Gdx.input.isCursorCatched = true
-    QuantumVoxel.setScreen<PlaceholderScreen>()
+    quantum.setScreen<PlaceholderScreen>()
   }
 
   fun stopWorld(after: () -> Unit) {
@@ -366,7 +288,25 @@ object QuantumVoxel : KtxGame<KtxScreen>(clearScreen = false) {
    * In the normal operation case (no crash), the method delegates rendering to the superclass implementation.
    */
   override fun render() {
-    val crash = crash
+    clearScreen(0f, 0f, 0f, 1f)
+
+    if (this.width != Gdx.graphics.width || this.height != Gdx.graphics.height) {
+      resize(Gdx.graphics.width, Gdx.graphics.height)
+    }
+
+    if (!loaded) {
+      return
+    }
+
+    if (!init) {
+      addScreen(LoadScreen())
+      setScreen<LoadScreen>()
+    }
+    this.init = true
+
+    if (deferResize) {
+      resize(this.width, this.height)
+    }
 
     if (frameTick > SPT) {
       frameTick -= SPT
@@ -382,21 +322,17 @@ object QuantumVoxel : KtxGame<KtxScreen>(clearScreen = false) {
 
     frameTick += Gdx.graphics.deltaTime
 
-    if (crash != null) {
-      clearScreen(0f, 0f, 0f, 1f)
-      crashSpriteBatch.begin()
-      crashFont.color = Color.WHITE
-      val message = crash.stackTraceToString().replace("\t", "    ")
-      for ((index, line) in message.lines().withIndex()) {
-        crashFont.draw(crashSpriteBatch, line, 20f, Gdx.graphics.height.toFloat() - 20f - (index * 12f))
+    synchronized(tasks) {
+      if (!tasks.isEmpty) {
+        var polled: (() -> Unit)? = tasks.removeFirst()
+        while (polled != null) {
+          polled()
+          if (tasks.isEmpty) break
+          polled = tasks.removeFirst()
+        }
+
       }
-      crashSpriteBatch.end()
-      return
     }
-    for (task in tasks) {
-      task()
-    }
-    tasks.clear()
 
     Gdx.gl.glViewport(0, 0, Gdx.graphics.width, Gdx.graphics.height)
     environmentRenderer?.apply {
@@ -420,8 +356,6 @@ object QuantumVoxel : KtxGame<KtxScreen>(clearScreen = false) {
       globalBatch.transformMatrix = tmpTransform.cpy()
     }
 
-//    super.render()
-
     gamePlatform.nextFrame()
   }
 
@@ -429,11 +363,7 @@ object QuantumVoxel : KtxGame<KtxScreen>(clearScreen = false) {
     dimension?.tick()
     bag.clear()
     player?.let {
-      world?.componentManager?.getComponentsFor(it.id, bag)?.forEach { component ->
-        if (component is Tickable) {
-          component.tick()
-        }
-      }
+      it.tick()
     }
   }
 
@@ -448,8 +378,8 @@ object QuantumVoxel : KtxGame<KtxScreen>(clearScreen = false) {
    * @return The maximum allowable GUI scale as an integer value.
    */
   fun calcMaxGuiScale(): Int {
-    var windowWidth = width
-    var windowHeight = height
+    var windowWidth = this.width
+    var windowHeight = this.height
 
     if (windowWidth / MINIMUM_WIDTH < windowHeight / MINIMUM_HEIGHT) {
       return (windowWidth / MINIMUM_WIDTH).coerceAtLeast(1)
@@ -463,26 +393,25 @@ object QuantumVoxel : KtxGame<KtxScreen>(clearScreen = false) {
     return min.coerceAtLeast(1)
   }
 
-  var guiScale: Float =
+  val guiScale: Float get() =
     (if (setGuiScale <= 0) calcMaxGuiScale() else setGuiScale.coerceAtMost(calcMaxGuiScale())).toFloat()
-    private set
 
   override fun resize(width: Int, height: Int) {
+    if (!loaded) {
+      this.deferResize = true
+      return
+    }
+
     this.width = width
     this.height = height
 
     super.resize(width, height)
 
-    repeat(2) {
-      guiScale = (if (setGuiScale <= 0) calcMaxGuiScale() else setGuiScale.coerceAtMost(calcMaxGuiScale())).toFloat()
+    guiCam.setToOrtho(false, width.toFloat(), height.toFloat())
+    guiCam.zoom = 1 / guiScale
 
-      guiCam.setToOrtho(false, width.toFloat(), height.toFloat())
-      guiCam.zoom = 1f / guiScale
-      guiViewport.update(width, height, false)
-
-      environmentRenderer?.resize(width, height)
-      globalBatch.projectionMatrix.setToOrtho2D(0f, 0f, width.toFloat(), height.toFloat())
-    }
+    environmentRenderer?.resize(width, height)
+    globalBatch.projectionMatrix.setToOrtho2D(0f, 0f, width.toFloat(), height.toFloat())
   }
 
   operator fun <T> invoke(block: (QuantumVoxel) -> T): CompletableFuture<T> {
@@ -504,13 +433,51 @@ object QuantumVoxel : KtxGame<KtxScreen>(clearScreen = false) {
     super.setScreen(type)
   }
 
-  fun nextFrame(function: () -> Unit) {
-    this.tasks.add(function)
+  fun submit(function: () -> Unit) {
+    synchronized(tasks) {
+      this.tasks.addLast(function)
+    }
   }
 
-  private lateinit var guiCam: OrthographicCamera
+  internal lateinit var guiCam: OrthographicCamera
 
   lateinit var guiViewport: Viewport
     private set
+
+  companion object {
+    lateinit var instance: QuantumVoxel
+
+    fun <T> await(function: () -> T): T {
+      val waiting = CompletableFuture<T>()
+      quantum.submit {
+        waiting.complete(function())
+      }
+
+      return waiting.join()
+    }
+  }
 }
 
+val quantum get() = QuantumVoxel.instance
+val shapes get() = quantum.shapes
+val textureManager get() = quantum.textureManager
+val gameInput get() = quantum.gameInput
+val guiCam get() = quantum.guiCam
+val guiViewport get() = quantum.guiViewport
+val isTouch get() = quantum.isTouch
+val guiScale get() = quantum.guiScale
+var backgroundRenderer
+  get() = quantum.backgroundRenderer
+  set(value) {
+    quantum.backgroundRenderer = value
+  }
+val environmentRenderer get() = quantum.environmentRenderer
+val debug get() = quantum.debug
+val debugRenderer get() = quantum.debugRenderer
+val player get() = quantum.player
+val world get() = quantum.world
+val dimension get() = quantum.dimension
+val globalBatch get() = quantum.globalBatch
+inline fun <reified T : KtxScreen> setScreen() {
+  quantum.setScreen<T>()
+}

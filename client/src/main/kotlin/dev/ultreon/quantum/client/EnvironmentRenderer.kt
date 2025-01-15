@@ -17,11 +17,6 @@ import com.badlogic.gdx.utils.Align
 import com.badlogic.gdx.utils.Disposable
 import com.github.tommyettinger.textra.Layout
 import dev.ultreon.quantum.blocks.Blocks
-import dev.ultreon.quantum.client.QuantumVoxel.dimension
-import dev.ultreon.quantum.client.QuantumVoxel.gameInput
-import dev.ultreon.quantum.client.QuantumVoxel.guiScale
-import dev.ultreon.quantum.client.QuantumVoxel.isTouch
-import dev.ultreon.quantum.client.QuantumVoxel.player
 import dev.ultreon.quantum.client.gui.screens.PauseScreen
 import dev.ultreon.quantum.client.input.KeyBinds
 import dev.ultreon.quantum.client.world.Skybox
@@ -36,6 +31,7 @@ import dev.ultreon.quantum.util.NamespaceID
 import dev.ultreon.quantum.vec3d
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
 import ktx.actors.onClick
 import ktx.app.clearScreen
 import ktx.assets.disposeSafely
@@ -43,9 +39,6 @@ import ktx.math.vec3
 import ktx.scene2d.actors
 import ktx.scene2d.button
 import ktx.scene2d.label
-
-import kotlinx.coroutines.async
-import kotlinx.coroutines.launch
 
 private val tmp1 = vec3()
 
@@ -76,7 +69,7 @@ class EnvironmentRenderer : Disposable {
     x = Gdx.graphics.width / guiScale / 2f - width / 2f
     y = 10f
   }
-  private val hud = Stage(QuantumVoxel.guiViewport).apply {
+  private val hud = Stage(quantum.guiViewport).apply {
     actors {
       if (isTouch) {
         button {
@@ -85,7 +78,7 @@ class EnvironmentRenderer : Disposable {
             setOrigin(0.5f, 0.5f)
           }
           onClick {
-            QuantumVoxel.setScreen<PauseScreen>()
+            quantum.setScreen<PauseScreen>()
             Gdx.input.isCursorCatched = false
           }
           setPosition(Gdx.graphics.width / 2f - width / 2f, Gdx.graphics.height - height - 10f)
@@ -93,16 +86,16 @@ class EnvironmentRenderer : Disposable {
         }
       }
 
-      addActor(QuantumVoxel.touchpad)
+      addActor(quantum.touchpad)
       addActor(hotbar)
     }
   }
   private val modelBatch = ModelBatch(
-    DefaultShaderProvider((QuantumVoxel.resourceManager require NamespaceID.of(path = "shaders/default.vsh")).text,
-    (QuantumVoxel.resourceManager require NamespaceID.of(path = "shaders/default.fsh")).text),
+    DefaultShaderProvider((quantum.resourceManager require NamespaceID.of(path = "shaders/default.vsh")).text,
+    (quantum.resourceManager require NamespaceID.of(path = "shaders/default.fsh")).text),
     DefaultRenderableSorter()
   )
-  private val font = QuantumVoxel.font
+  private val font = quantum.font
   private val spriteBatch = SpriteBatch()
   val camera = perspectiveCamera {
     position.set(0f, 1.6f, 0f)
@@ -133,7 +126,7 @@ class EnvironmentRenderer : Disposable {
 //    world.inject(player)
 
     GlobalScope.launch(dimension!!.context) {
-      dimension!!.refreshChunks(player!!.getComponent(PositionComponent::class.java).position)
+      dimension!!.refreshChunks(player!!.positionComponent.position)
     }
   }
 
@@ -151,7 +144,7 @@ class EnvironmentRenderer : Disposable {
       logger.warn("Player or dimension is null")
       return
     }
-    val position: PositionComponent = player.getComponent(PositionComponent::class.java)
+    val position: PositionComponent = player.positionComponent
 
     clearScreen(red = 0F, green = 0F, blue = 0F)
     Gdx.gl.glDepthMask(false)
@@ -189,8 +182,8 @@ class EnvironmentRenderer : Disposable {
 
     if (lastRefreshTime + 100 < System.currentTimeMillis()) {
       if (position.position != lastRefreshPosition) {
-        GlobalScope.launch(QuantumVoxel.dimension!!.context) {
-          dimension.refreshChunks(player.getComponent(PositionComponent::class.java).position)
+        GlobalScope.launch(quantum.dimension!!.context) {
+          dimension.refreshChunks(player.positionComponent.position)
         }
         lastRefreshTime = System.currentTimeMillis()
         lastRefreshPosition = position.position.copy()
@@ -201,7 +194,7 @@ class EnvironmentRenderer : Disposable {
 
 
     backupMatrix.set(spriteBatch.transformMatrix)
-    spriteBatch.transformMatrix = spriteBatch.transformMatrix.scale(QuantumVoxel.guiScale, QuantumVoxel.guiScale, QuantumVoxel.guiScale)
+    spriteBatch.transformMatrix = spriteBatch.transformMatrix.scale(quantum.guiScale, quantum.guiScale, quantum.guiScale)
 
     try {
       spriteBatch.begin()
@@ -218,7 +211,7 @@ class EnvironmentRenderer : Disposable {
   }
 
   private fun rayCast(): BlockHit {
-    val position = player!!.getComponent(PositionComponent::class.java)
+    val position = player!!.positionComponent
     val hit = dimension!!.rayCast(position.position.cpy().add(0.0, 1.6, 0.0), vec3d().also {
       val vec = tmp1
       position.lookVec(vec)
@@ -249,7 +242,7 @@ class EnvironmentRenderer : Disposable {
 
     vel.set(tmpVec).add(0F, -flight, 0F)
 
-    val collision = player!!.getComponent(CollisionComponent::class.java) ?: return
+    val collision = player!!.collisionComponent ?: return
     if (vel.x != 0F) collision.velocityX = vel.x.toDouble() / TPS
     if (up && collision.onGround) collision.velocityY = 0.4
     if (vel.z != 0F) collision.velocityZ = vel.z.toDouble() / TPS
@@ -284,7 +277,7 @@ class EnvironmentRenderer : Disposable {
     up = KeyBinds.jumpKey.isPressed()
     down = KeyBinds.crouchKey.isPressed()
 
-    val inv = player!!.getComponent(InventoryComponent::class.java)
+    val inv = player!!.inventoryComponent
     if (inv != null) {
       for ((i, key) in KeyBinds.hotbarKeys.withIndex()) {
         if (key.isJustPressed()) {
@@ -295,7 +288,7 @@ class EnvironmentRenderer : Disposable {
 
     if (Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE) && !gamePlatform.isMobile) {
       if (Gdx.input.isCursorCatched) {
-        QuantumVoxel.nextFrame { QuantumVoxel.setScreen<PauseScreen>() }
+        quantum.submit { quantum.setScreen<PauseScreen>() }
         Gdx.input.isCursorCatched = false
       }
     }
@@ -312,7 +305,7 @@ class EnvironmentRenderer : Disposable {
       Gdx.input.isCursorCatched = true
     }
 
-    player!!.getComponent(RunningComponent::class.java).running =
+    player!!.runningComponent.running =
       KeyBinds.runningKey.isPressed()
 
     if (Gdx.input.isKeyJustPressed(Input.Keys.F1)) {
@@ -331,9 +324,9 @@ class EnvironmentRenderer : Disposable {
   private fun drawInfo(position: PositionComponent) {
     backupMatrix.set(spriteBatch.transformMatrix)
     spriteBatch.transformMatrix =
-      spriteBatch.transformMatrix.scale(QuantumVoxel.guiScale, QuantumVoxel.guiScale, QuantumVoxel.guiScale)
+      spriteBatch.transformMatrix.scale(quantum.guiScale, quantum.guiScale, quantum.guiScale)
 
-    val pos = player!!.getComponent(PositionComponent::class.java).position
+    val pos = player!!.positionComponent.position
 
     try {
       font.draw(
@@ -362,26 +355,26 @@ class EnvironmentRenderer : Disposable {
 
       font.draw(
         spriteBatch,
-        "[gold]X Rotation: [white]${player!!.getComponent(PositionComponent::class.java).xRot}",
+        "[gold]X Rotation: [white]${player!!.positionComponent.xRot}",
         10f,
         110f
       )
       font.draw(
         spriteBatch,
-        "[gold]Y Rotation: [white]${player!!.getComponent(PositionComponent::class.java).yRot}",
+        "[gold]Y Rotation: [white]${player!!.positionComponent.yRot}",
         10f,
         120f
       )
       font.draw(
         spriteBatch,
-        "[gold]X Head Rotation: [white]${player!!.getComponent(PositionComponent::class.java).xHeadRot}",
+        "[gold]X Head Rotation: [white]${player!!.positionComponent.xHeadRot}",
         10f,
         130f
       )
 
       font.draw(
         spriteBatch,
-        "[gold]Running: [white]${player!!.getComponent(RunningComponent::class.java).running}",
+        "[gold]Running: [white]${player!!.runningComponent.running}",
         10f,
         140f
       )
@@ -407,7 +400,7 @@ class EnvironmentRenderer : Disposable {
 
       font.draw(spriteBatch, "[gold]Is Mobile: [white]${gamePlatform.isMobile}", 10f, 220f)
 
-      font.draw(spriteBatch, "[gold]Gui Scale: [white]${QuantumVoxel.guiScale}", 10f, 230f)
+      font.draw(spriteBatch, "[gold]Gui Scale: [white]${quantum.guiScale}", 10f, 230f)
       font.draw(spriteBatch, "[gold]Intersected at: [white]${lastHit?.point}", 10f, 240f)
     } finally {
       spriteBatch.transformMatrix.set(backupMatrix)

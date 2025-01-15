@@ -2,8 +2,6 @@ import dev.ultreon.quantum.ExperimentalQuantumApi
 import dev.ultreon.quantum.server.PaletteStorage
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertNull
-import kotlin.test.assertFailsWith
 
 class Test1 {
   @OptIn(ExperimentalQuantumApi::class)

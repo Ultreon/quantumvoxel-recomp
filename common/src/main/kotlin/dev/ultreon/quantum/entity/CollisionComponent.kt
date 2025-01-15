@@ -2,13 +2,11 @@ package dev.ultreon.quantum.entity
 
 import com.artemis.Component
 import dev.ultreon.quantum.blocks.BoundingBoxD
-import dev.ultreon.quantum.logger
 import dev.ultreon.quantum.util.BoundingBoxUtils
 import dev.ultreon.quantum.util.Tickable
 import dev.ultreon.quantum.vec3d
 import dev.ultreon.quantum.world.Dimension
 import kotlin.math.abs
-import kotlin.math.log
 
 private val tmp1 = vec3d()
 private val tmp2 = vec3d()
