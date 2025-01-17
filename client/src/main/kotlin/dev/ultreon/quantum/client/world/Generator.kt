@@ -1,5 +1,6 @@
 package dev.ultreon.quantum.client.world
 
+import de.articdive.jnoise.generators.noisegen.opensimplex.FastSimplexNoiseGenerator
 import dev.ultreon.quantum.blocks.Blocks
 import dev.ultreon.quantum.world.SIZE
 import java.util.Random as JavaRandom
@@ -10,177 +11,46 @@ const val MAGIC_NUMBER_L = 0x24D2A6E648C3A8E9L;
 private var seed = MAGIC_NUMBER_L xor java.lang.Double.doubleToLongBits(System.nanoTime().toDouble())
 
 class Generator {
-//  private val noise = JNoise.newBuilder()
-//    .fastSimplex(seed, Simplex2DVariant.CLASSIC, Simplex3DVariant.IMPROVE_XZ, Simplex4DVariant.IMRPOVE_XYZ)
-//    .combine(
-//      JNoise.newBuilder()
-//        .fastSimplex(seed++, Simplex2DVariant.CLASSIC, Simplex3DVariant.IMPROVE_XZ, Simplex4DVariant.IMRPOVE_XYZ)
-//        .scale(1 / 2048.0)
-//        .build(),
-//      { a, b -> a + b }
-//    )
-//    .combine(
-//      JNoise.newBuilder()
-//        .fastSimplex(seed++, Simplex2DVariant.CLASSIC, Simplex3DVariant.IMPROVE_XZ, Simplex4DVariant.IMRPOVE_XYZ)
-//        .scale(1 / 512.0)
-//        .addModifier { result -> result * 64 }
-//        .build(),
-//      { a, b -> a + b }
-//    )
-//    .combine(
-//      JNoise.newBuilder()
-//        .fastSimplex(seed++, Simplex2DVariant.CLASSIC, Simplex3DVariant.IMPROVE_XZ, Simplex4DVariant.IMRPOVE_XYZ)
-//        .scale(1 / 256.0)
-//        .addModifier { result -> result * 64 + 64 }
-//        .build(),
-//      { a, b -> a + b }
-//    )
-//    .combine(
-//      JNoise.newBuilder()
-//        .fastSimplex(seed++, Simplex2DVariant.CLASSIC, Simplex3DVariant.IMPROVE_XZ, Simplex4DVariant.IMRPOVE_XYZ)
-//        .scale(1 / 256.0)
-//        .addModifier { result -> result * 36 }
-//        .build(),
-//      { a, b -> a + b }
-//    )
-//    .combine(
-//      JNoise.newBuilder()
-//        .fastSimplex(seed++, Simplex2DVariant.CLASSIC, Simplex3DVariant.IMPROVE_XZ, Simplex4DVariant.IMRPOVE_XYZ)
-//        .scale(1 / 1024.0)
-//        .addModifier { result -> result * 12 }
-//        .build(),
-//      { a, b -> a + b }
-//    )
-//    .combine(
-//      JNoise.newBuilder()
-//        .fastSimplex(seed++, Simplex2DVariant.CLASSIC, Simplex3DVariant.IMPROVE_XZ, Simplex4DVariant.IMRPOVE_XYZ)
-//        .scale(1 / 128.0)
-//        .addModifier { result -> result * 8 }
-//        .build(),
-//      { a, b -> a + b }
-//    )
-//    .combine(
-//      JNoise.newBuilder()
-//        .fastSimplex(seed++, Simplex2DVariant.CLASSIC, Simplex3DVariant.IMPROVE_XZ, Simplex4DVariant.IMRPOVE_XYZ)
-//        .scale(1 / 64.0)
-//        .addModifier { result -> result * 12 }
-//        .build(),
-//      { a, b -> a + b }
-//    )
-//    .combine(
-//      JNoise.newBuilder()
-//        .fastSimplex(seed++, Simplex2DVariant.CLASSIC, Simplex3DVariant.IMPROVE_XZ, Simplex4DVariant.IMRPOVE_XYZ)
-//        .scale(1 / 16.0)
-//        .addModifier { result -> -result * 14 }
-//        .build(),
-//      { a, b -> a + b }
-//    )
-//    .combine(
-//      JNoise.newBuilder()
-//        .fastSimplex(seed++, Simplex2DVariant.CLASSIC, Simplex3DVariant.IMPROVE_XZ, Simplex4DVariant.IMRPOVE_XYZ)
-//        .scale(1 / 8.0)
-//        .addModifier { result -> -result * 16 }
-//        .build(),
-//      { a, b -> a + b }
-//    )
-//    .combine(
-//      JNoise.newBuilder()
-//        .fastSimplex(seed++, Simplex2DVariant.CLASSIC, Simplex3DVariant.IMPROVE_XZ, Simplex4DVariant.IMRPOVE_XYZ)
-//        .scale(1 / 8.0)
-//        .addModifier { result -> result * 16 }
-//        .build(),
-//      { a, b -> a + b }
-//    )
-//    .combine(
-//      JNoise.newBuilder()
-//        .fastSimplex(seed++, Simplex2DVariant.CLASSIC, Simplex3DVariant.IMPROVE_XZ, Simplex4DVariant.IMRPOVE_XYZ)
-//        .scale(1 / 4.0)
-//        .addModifier { result -> result * 8 }
-//        .build(),
-//      { a, b -> a + b }
-//    )
-//    .addModifier { result -> if ((result + 16) < 68) ((result + 16) - 68) / 1.5 + 68 else result + 16 }
-//    .addModifier { result -> if (result < 32) (result - 32) / 8 + 32 else result }
-//    .scale(1 / 16.0)
-//    .build()
-//    noise = JNoise.newBuilder()
-//                .fastSimplex(seed, Simplex2DVariant.CLASSIC, Simplex3DVariant.IMPROVE_XZ, Simplex4DVariant.IMRPOVE_XYZ)
-//                .combine(
-//                        // Smaller island generation
-//                        JNoise.newBuilder().fastSimplex(seed++, Simplex2DVariant.CLASSIC, Simplex3DVariant.IMPROVE_XZ, Simplex4DVariant.IMRPOVE_XYZ)
-//                                .scale(1 / 2048.0)
-//                                .build(),
-//                        { a, b -> a + b }
-//                ).combine(
-//                        JNoise.newBuilder().fastSimplex(seed++, Simplex2DVariant.CLASSIC, Simplex3DVariant.IMPROVE_XZ, Simplex4DVariant.IMRPOVE_XYZ)
-//                                .scale(1 / 512.0)
-//                                .addModifier(result -> result * 64)
-//                                .build(),
-//                        { a, b -> a + b }
-//                ).combine(
-//                        JNoise.newBuilder().fastSimplex(seed++, Simplex2DVariant.CLASSIC, Simplex3DVariant.IMPROVE_XZ, Simplex4DVariant.IMRPOVE_XYZ)
-//                                .scale(1 / 256.0)
-//                                .addModifier(result -> result * 64 + 64)
-//                                .build(),
-//                        { a, b -> a + b }
-//                ).combine(
-//                        // Smaller island generation
-//                        JNoise.newBuilder().fastSimplex(seed++, Simplex2DVariant.CLASSIC, Simplex3DVariant.IMPROVE_XZ, Simplex4DVariant.IMRPOVE_XYZ)
-//                                .scale(1 / 256.0)
-//                                .addModifier(result -> result * 36)
-//                                .build(),
-//                        { a, b -> a + b }
-//                ).combine(
-//                        // Smaller island generation
-//                        JNoise.newBuilder().fastSimplex(seed++, Simplex2DVariant.CLASSIC, Simplex3DVariant.IMPROVE_XZ, Simplex4DVariant.IMRPOVE_XYZ)
-//                                .scale(1 / 1024.0)
-//                                .addModifier(result -> result * 12)
-//                                .build(),
-//                        { a, b -> a + b }
-//                ).combine(
-//                        JNoise.newBuilder().fastSimplex(seed++, Simplex2DVariant.CLASSIC, Simplex3DVariant.IMPROVE_XZ, Simplex4DVariant.IMRPOVE_XYZ)
-//                                .scale(1 / 128.0)
-//                                .addModifier(result -> result * 8)
-//                                .build(),
-//                        { a, b -> a + b }
-//                ).combine(
-//                        JNoise.newBuilder().fastSimplex(seed++, Simplex2DVariant.CLASSIC, Simplex3DVariant.IMPROVE_XZ, Simplex4DVariant.IMRPOVE_XYZ)
-//                                .scale(1 / 64.0)
-//                                .addModifier(result -> result * 12)
-//                                .build(),
-//                        { a, b -> a + b }
-//                ).combine(
-//                        JNoise.newBuilder().fastSimplex(seed++, Simplex2DVariant.CLASSIC, Simplex3DVariant.IMPROVE_XZ, Simplex4DVariant.IMRPOVE_XYZ)
-//                                .scale(1 / 16.0)
-//                                .addModifier(result -> -result * 14)
-//                                .build(),
-//                        { a, b -> a + b }
-//                ).combine(
-//                        JNoise.newBuilder().fastSimplex(seed++, Simplex2DVariant.CLASSIC, Simplex3DVariant.IMPROVE_XZ, Simplex4DVariant.IMRPOVE_XYZ)
-//                                .scale(1 / 8.0)
-//                                .addModifier(result -> -result * 16)
-//                                .build(),
-//                        { a, b -> a + b }
-//                ).combine(
-//                        JNoise.newBuilder().fastSimplex(seed++, Simplex2DVariant.CLASSIC, Simplex3DVariant.IMPROVE_XZ, Simplex4DVariant.IMRPOVE_XYZ)
-//                                .scale(1 / 8.0)
-//                                .addModifier(result -> result * 16)
-//                                .build(),
-//                        { a, b -> a + b }
-//                ).combine(
-//                        JNoise.newBuilder().fastSimplex(seed++, Simplex2DVariant.CLASSIC, Simplex3DVariant.IMPROVE_XZ, Simplex4DVariant.IMRPOVE_XYZ)
-//                                .scale(1 / 4.0)
-//                                .addModifier(result -> result * 8)
-//                                .build(),
-//                        { a, b -> a + b }
-//                )
-//                .addModifier(result -> (result + 16) < 68 ? ((result + 16) - 68) / 1.5 + 68 : result + 16)
-//                .addModifier(result -> result < 32 ? (result - 32) / 8 + 32 : result)
-//                .scale(1 / 16.0).build();
-//}
+  // Function to create noise layers using the alternative Fast Simplex implementation
+  private fun createNoiseLayer(
+    seed: Long,
+    scale: Double,
+    multiplier: Double,
+    offset: Double = 0.0,
+    x: Double,
+    y: Double
+  ): Double {
+    val noise = FastSimplexNoiseGenerator.newBuilder().setSeed(seed).build()
+    return (noise.evaluateNoise(x * scale, y * scale) * multiplier) + offset
+  }
+
+  // Generating combined noise using the alternative implementation
+  private fun generateCombinedNoise(x: Double, y: Double): Double {
+    val x = x / 16
+    val y = y / 16
+    val noiseLayers = listOf(
+      createNoiseLayer(seed, 1 / 2048.0, 1.0, x = x, y = y),
+      createNoiseLayer(seed + 1, 1 / 512.0, 64.0, x = x, y = y),
+      createNoiseLayer(seed + 2, 1 / 256.0, 64.0, 64.0, x = x, y = y),
+      createNoiseLayer(seed + 3, 1 / 256.0, 36.0, x = x, y = y),
+      createNoiseLayer(seed + 4, 1 / 1024.0, 12.0, x = x, y = y),
+      createNoiseLayer(seed + 5, 1 / 128.0, 8.0, x = x, y = y),
+      createNoiseLayer(seed + 6, 1 / 64.0, 12.0, x = x, y = y),
+      createNoiseLayer(seed + 7, 1 / 16.0, -14.0, x = x, y = y),
+      createNoiseLayer(seed + 8, 1 / 8.0, -16.0, x = x, y = y),
+      createNoiseLayer(seed + 9, 1 / 8.0, 16.0, x = x, y = y),
+      createNoiseLayer(seed + 10, 1 / 4.0, 8.0, x = x, y = y)
+    )
+
+    val combinedNoise = noiseLayers.sum()
+
+    val adjusted = combinedNoise + 16
+    val finalResult = if (adjusted < 68) (adjusted - 68) / 1.5 + 68 else adjusted
+    return if (finalResult < 32) (finalResult - 32) / 8 + 32 else finalResult
+  }
 
   fun evaluateNoise(x: Int, z: Int): Double {
-    return 96.0
+    return generateCombinedNoise(x.toDouble(), z.toDouble())
   }
 
   val random = JavaRandom(System.nanoTime() xor MAGIC_NUMBER_L)

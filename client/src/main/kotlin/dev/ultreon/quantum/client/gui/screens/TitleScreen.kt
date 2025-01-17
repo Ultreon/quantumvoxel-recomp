@@ -2,13 +2,14 @@ package dev.ultreon.quantum.client.gui.screens
 
 import com.badlogic.gdx.Gdx
 import com.badlogic.gdx.scenes.scene2d.Stage
-import com.badlogic.gdx.scenes.scene2d.ui.Button
 import com.badlogic.gdx.scenes.scene2d.ui.Container
 import com.badlogic.gdx.scenes.scene2d.ui.Label
 import com.badlogic.gdx.utils.Align
-import dev.ultreon.quantum.client.quantum
 import dev.ultreon.quantum.client.globalBatch
-import ktx.actors.*
+import dev.ultreon.quantum.client.quantum
+import ktx.actors.onClick
+import ktx.actors.onExitEvent
+import ktx.actors.onTouchEvent
 import ktx.scene2d.Scene2DSkin
 import ktx.scene2d.actors
 import ktx.scene2d.button
@@ -34,7 +35,7 @@ class TitleScreen : GameScreen() {
           width = 100f
           height = 20f
         })
-        onTouchEvent { event, x, y ->
+        onTouchEvent { _, _, _ ->
           if (isPressed) {
             container.pad(1f, 3f, 3f, 1f)
             apply.setY(height / 2f - 2f, Align.center)
@@ -43,7 +44,7 @@ class TitleScreen : GameScreen() {
             apply.setY(height / 2f, Align.center)
           }
         }
-        onExitEvent { event, x, y ->
+        onExitEvent { _, _, _ ->
           container.pad(1f, 1f, 5f, 1f)
           apply.setY(height / 2f, Align.center)
         }

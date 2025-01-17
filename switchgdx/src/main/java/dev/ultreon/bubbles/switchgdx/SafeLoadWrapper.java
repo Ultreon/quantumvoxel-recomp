@@ -5,17 +5,9 @@ import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.utils.ScreenUtils;
-import dev.ultreon.quantum.Logger;
-import dev.ultreon.quantum.LoggerFactory;
 import dev.ultreon.quantum.LoggingKt;
 import dev.ultreon.quantum.client.QuantumClientKt;
 import dev.ultreon.quantum.client.QuantumVoxel;
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
-
-import java.util.ArrayList;
-import java.util.List;
-import java.util.concurrent.CopyOnWriteArrayList;
 
 public class SafeLoadWrapper implements ApplicationListener {
     private QuantumVoxel quantum;
@@ -30,87 +22,7 @@ public class SafeLoadWrapper implements ApplicationListener {
         font = new BitmapFont();
         try {
             QuantumClientKt.setGamePlatform(new SwitchPlatform());
-            LoggingKt.setFactory(new LoggerFactory() {
-                @Override
-                public @NotNull Logger getLogger(@NotNull String name) {
-                    return new Logger() {
-                        @Override
-                        public void trace(@NotNull String message, @Nullable Object obj) {
-                            log("[TRACE] ", message);
-                            sleep();
-                        }
-
-                        private void sleep() {
-                            try {
-                                Thread.sleep(100);
-                            } catch (InterruptedException e) {
-                                throw new RuntimeException(e);
-                            }
-                        }
-
-                        @Override
-                        public void debug(@NotNull String message, @Nullable Object obj) {
-                            log("[DEBUG] ", message);
-                            sleep();
-                        }
-
-                        @Override
-                        public void error(@NotNull String message, @Nullable Object obj) {
-                            log("[ERROR] ", message);
-                            sleep();
-                        }
-
-                        @Override
-                        public void warn(@NotNull String message, @Nullable Object obj) {
-                            log("[WARN] ", message);
-                            sleep();
-                        }
-
-                        @Override
-                        public void info(@NotNull String message, @Nullable Object obj) {
-                            log("[INFO] ", message);
-                            sleep();
-                        }
-
-                        @Override
-                        public void info(@NotNull String message) {
-                            log("[INFO] ", message);
-                            sleep();
-                        }
-
-                        @Override
-                        public void warn(@NotNull String message) {
-                            log("[WARN] ", message);
-                            sleep();
-                        }
-
-                        @Override
-                        public void error(@NotNull String message) {
-                            log("[ERROR] ", message);
-                            sleep();
-                        }
-
-                        @Override
-                        public void debug(@NotNull String message) {
-                            log("[DEBUG] ", message);
-                            sleep();
-                        }
-
-                        @Override
-                        public void trace(@NotNull String message) {
-                            log("[TRACE] ", message);
-                            sleep();
-                        }
-
-                        private void log(String prefix, String message) {
-                            String message1 = message;
-                            for (String line : message.split("\r\n|\r|\n")) {
-                                System.out.println("[" + name + "/" + Thread.currentThread().getName() + "] " + prefix + line);
-                            }
-                        }
-                    };
-                }
-            });
+            LoggingKt.setFactory(new SwitchLoggerFactory());
 
             quantum = new QuantumVoxel();
             quantum.create();
@@ -136,6 +48,7 @@ public class SafeLoadWrapper implements ApplicationListener {
         quantum = null;
     }
 
+    @SuppressWarnings("CallToPrintStackTrace")
     @Override
     public void render() {
         ScreenUtils.clear(0, 0, 0, 1);
@@ -160,7 +73,7 @@ public class SafeLoadWrapper implements ApplicationListener {
                 for (StackTraceElement element : crash) {
                     if (element == null) continue;
                     y -= (int) (font.getLineHeight() + 2);
-                    font.draw(batch, "    at " + element.getClassName().replace('/', '.') + "." + element.getMethodName() + " (" + element.getFileName().substring(element.getFileName().lastIndexOf("/") + 1) + ".class" + ":" + element.getLineNumber() + ")", 0, y);
+                    font.draw(batch, "    at " + element.getClassName().replace('/', '.') + "." + element.getMethodName() + " (" + (element.getFileName() != null ? element.getFileName().substring(element.getFileName().lastIndexOf("/") + 1) + ".class" : "<Unknown File>") + ":" + element.getLineNumber() + ")", 0, y);
                 }
                 batch.end();
                 return;
@@ -195,4 +108,5 @@ public class SafeLoadWrapper implements ApplicationListener {
             }
         }
     }
+
 }
