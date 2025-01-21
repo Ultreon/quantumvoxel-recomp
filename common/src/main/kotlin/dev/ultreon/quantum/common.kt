@@ -1,10 +1,14 @@
 package dev.ultreon.quantum
 
 import dev.ultreon.quantum.blocks.Block
+import dev.ultreon.quantum.blocks.Blocks
+import dev.ultreon.quantum.event.EventBus
 import dev.ultreon.quantum.item.Item
+import dev.ultreon.quantum.item.Items
 import dev.ultreon.quantum.math.Vector3D
 import dev.ultreon.quantum.registry.Registries
 import dev.ultreon.quantum.resource.ResourceId
+import dev.ultreon.quantum.resource.ResourceManager
 import dev.ultreon.quantum.util.NamespaceID
 
 val logger = LoggerFactory["QuantumVoxel"]
@@ -34,3 +38,12 @@ fun vec3d() = vec3d(0.0, 0.0, 0.0)
 fun vec3d(x: Float, y: Float, z: Float): Vector3D {
   return Vector3D(x.toDouble(), y.toDouble(), z.toDouble())
 }
+
+val commonResources = ResourceManager("common")
+
+fun doContentRegistration() {
+  Blocks.loadContent(commonResources)
+  Items.loadContent(commonResources)
+}
+
+val commonEventBus = EventBus()

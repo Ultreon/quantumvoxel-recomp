@@ -47,7 +47,7 @@ open class ClientDimension(private val material: Material) : Dimension() {
   override fun set(x: Int, y: Int, z: Int, block: Block, flags: BlockFlags) {
     val get = chunks[location(x.floorDiv(SIZE), y.floorDiv(SIZE), z.floorDiv(SIZE))]
     get?.let {
-      logger.info("Setting block at $x, $y, $z to $block")
+      logger.info("Setting blocks at $x, $y, $z to $block")
       it.set(x % SIZE, y % SIZE, z % SIZE, block, flags)
       it.rebuild()
       forChunksAround(it) { rebuild() }
@@ -243,8 +243,8 @@ open class ClientDimension(private val material: Material) : Dimension() {
 //    for (x in 0 until SIZE) {
 //      for (y in 0 until SIZE) {
 //        for (z in 0 until SIZE) {
-//          val block = generateBlock(wx + x, wy + y, wz + z)
-//          chunk.set(x, y, z, block, BlockFlags.NONE)
+//          val blockName = generateBlock(wx + x, wy + y, wz + z)
+//          chunk.set(x, y, z, blockName, BlockFlags.NONE)
 //        }
 //      }
 //    }

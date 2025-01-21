@@ -1,3 +1,5 @@
+import com.android.build.gradle.internal.res.LinkApplicationAndroidResourcesTask
+
 buildscript {
   repositories {
     mavenCentral()
@@ -17,7 +19,7 @@ android {
       aidl.setSrcDirs(['src/main/java', 'src/main/kotlin'])
       renderscript.setSrcDirs(['src/main/java', 'src/main/kotlin'])
       res.setSrcDirs(['res'])
-      assets.setSrcDirs(['../assets'])
+      assets.setSrcDirs(['../assets', '../build/modules'])
       jniLibs.setSrcDirs(['libs'])
     }
   }

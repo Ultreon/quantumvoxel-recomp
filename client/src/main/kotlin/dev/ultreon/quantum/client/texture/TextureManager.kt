@@ -50,7 +50,7 @@ class TextureManager(val resourceManager: ResourceManager) : Disposable {
    * in the texture management system.
    */
   fun init() {
-    texturesDir = resourceManager["textures"].asDirOrNull()?.asDirectoryOrNull() ?: run {
+    texturesDir = resourceManager["textures"]?.asDirOrNull()?.asDirectoryOrNull() ?: run {
       logger.error("Textures directory not found")
       return
     }

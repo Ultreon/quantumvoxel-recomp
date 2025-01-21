@@ -39,15 +39,15 @@ data class NamespaceID(
     fun validateDomain(domain: String): String {
       require(domain.isNotBlank()) { "Domain must not be blank" }
       require(domain.length <= 16) { "Domain must be less than 16 characters" }
-      require(domain.matches(Regex("[a-z0-9_\\-]+"))) { "Domain must only contain lowercase letters, numbers, underscores and dashes" }
+      require(domain.matches(Regex("[a-z0-9_\\-]+"))) { "Domain must only contain lowercase letters, numbers, underscores and dashes, $domain is not valid" }
       require(domain[0].isLetter()) { "Domain must start with a letter" }
       return domain
     }
 
     fun validatePath(path: String): String {
       require(path.isNotBlank()) { "Path must not be blank" }
-      require(path.length <= 32) { "Path must be less than 32 characters" }
-      require(path.matches(Regex("[a-z0-9_\\-/.]+"))) { "Path must only contain lowercase letters, numbers, underscores and dashes" }
+      require(path.length <= 256) { "Path must be less than 256 characters" }
+      require(path.matches(Regex("[a-z0-9_\\-/.]+"))) { "Path must only contain lowercase letters, numbers, underscores and dashes, $path is not valid" }
       return path
     }
 
@@ -81,7 +81,9 @@ data class NamespaceID(
       return if (domain == null || path == null) null else NamespaceID(domain, path)
     }
 
-    fun of(domain: String = "quantum", path: String): NamespaceID = NamespaceID(domain, path)
+    fun of(domain: String = "quantum", path: String): NamespaceID {
+      return NamespaceID(validateDomain(domain), validatePath(path))
+    }
   }
 
   override fun toString(): String = "$domain:$path"

@@ -46,6 +46,10 @@ dependencies {
   api "org.jetbrains.kotlinx:kotlinx-coroutines-core:$kotlinxCoroutinesVersion"
   api "space.earlygrey:shapedrawer:$shapeDrawerVersion"
 
+  // Javet
+  api "com.caoccao.javet:javet:4.1.1"
+  api "com.caoccao.javet:javenode:0.8.0"
+
   if (enableGraalNative == 'true') {
     implementation "io.github.berstanio:gdx-svmhelper-annotations:$graalHelperVersion"
   }

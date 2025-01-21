@@ -39,8 +39,8 @@ class LoadScreen : GameScreen() {
       try {
         message = "Loading textures..."
         textureManager.init()
-        message = "Loading block textures..."
-        textureManager.registerAtlas("block")
+        message = "Loading blocks textures..."
+        textureManager.registerAtlas("blocks")
         message = "Loading item textures..."
         textureManager.registerAtlas("font")
         message = "Loading GUI textures..."
@@ -100,7 +100,7 @@ class LoadScreen : GameScreen() {
 
           this.loaded = true
         }
-      } catch (e: Exception) {
+      } catch (e: Throwable) {
         e.printStackTrace()
         crash = e.stackTrace
       }

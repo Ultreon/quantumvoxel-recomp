@@ -150,27 +150,33 @@ class ClientChunk(x: Int, y: Int, z: Int, private val material: Material, val di
           ), this@ClientChunk.material
         )
       }.await()
-      for (x in 0..<SIZE) {
-        for (y in 0..<SIZE) {
-          for (z in 0..<SIZE) {
-            loadBlockInto(part1, x, y, z)
-          }
-        }
+//      for (x in 0..<SIZE) {
+//        for (y in 0..<SIZE) {
+//          for (z in 0..<SIZE) {
+//            loadBlockInto(part1, x, y, z)
+//          }
+//        }
+//      }
+//      for (x in 0..<SIZE) {
+//        for (y in 0..<SIZE) {
+//          for (z in 0..<SIZE) {
+//            loadBlockInto(part2, x, y, z, renderType = "water")
+//          }
+//        }
+//      }
+//      for (x in 0..<SIZE) {
+//        for (y in 0..<SIZE) {
+//          for (z in 0..<SIZE) {
+//            loadBlockInto(part3, x, y, z, renderType = "foliage")
+//          }
+//        }
+//      }
+
+      GreedyMesher().apply {
+        val meshChunk = meshChunk(this@ClientChunk)
+        buildMeshFromQuads(meshChunk, builder, this@ClientChunk.material)
       }
-      for (x in 0..<SIZE) {
-        for (y in 0..<SIZE) {
-          for (z in 0..<SIZE) {
-            loadBlockInto(part2, x, y, z, renderType = "water")
-          }
-        }
-      }
-      for (x in 0..<SIZE) {
-        for (y in 0..<SIZE) {
-          for (z in 0..<SIZE) {
-            loadBlockInto(part3, x, y, z, renderType = "foliage")
-          }
-        }
-      }
+
       async(MainDispatcher) {
         val model = builder.end()
         worldModel = model
@@ -182,25 +188,25 @@ class ClientChunk(x: Int, y: Int, z: Int, private val material: Material, val di
   }
 
   private suspend fun loadBlockInto(meshPartBuilder: MeshPartBuilder, x: Int, y: Int, z: Int, renderType: String = "default") = coroutineScope {
-    val block = get(x, y, z)
-    if (block != Blocks.air) {
-      val model = ModelRegistry[block]
-      if (renderType != block.renderType) {
-        return@coroutineScope
-      }
-      model.loadInto(
-        meshPartBuilder, x, y, z, FaceCull(
-          back = getSafe(x, y, z + 1).let { it != Blocks.air && it.renderType == block.renderType },
-          front = getSafe(x, y, z - 1).let { it != Blocks.air && it.renderType == block.renderType },
-          left = getSafe(x - 1, y, z).let { it != Blocks.air && it.renderType == block.renderType },
-          right = getSafe(x + 1, y, z).let { it != Blocks.air && it.renderType == block.renderType },
-          top = getSafe(x, y + 1, z).let { it != Blocks.air && it.renderType == block.renderType },
-          bottom = getSafe(x, y - 1, z).let { it != Blocks.air && it.renderType == block.renderType }
-        )
-      )
-
-      this@ClientChunk.hasBlocks = true
-    }
+//    val block = get(x, y, z)
+//    if (block != Blocks.air) {
+//      val model = ModelRegistry[block]
+//      if (renderType != block.renderType) {
+//        return@coroutineScope
+//      }
+//      model.loadInto(
+//        meshPartBuilder, x, y, z, FaceCull(
+//          back = getSafe(x, y, z + 1).let { it != Blocks.air && it.renderType == block.renderType },
+//          front = getSafe(x, y, z - 1).let { it != Blocks.air && it.renderType == block.renderType },
+//          left = getSafe(x - 1, y, z).let { it != Blocks.air && it.renderType == block.renderType },
+//          right = getSafe(x + 1, y, z).let { it != Blocks.air && it.renderType == block.renderType },
+//          top = getSafe(x, y + 1, z).let { it != Blocks.air && it.renderType == block.renderType },
+//          bottom = getSafe(x, y - 1, z).let { it != Blocks.air && it.renderType == block.renderType }
+//        )
+//      )
+//
+//      this@ClientChunk.hasBlocks = true
+//    }
   }
 
   fun getSafe(localX: Int, localY: Int, localZ: Int): Block {

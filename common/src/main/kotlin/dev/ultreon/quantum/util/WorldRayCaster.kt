@@ -2,7 +2,7 @@ package dev.ultreon.quantum.util
 
 import com.badlogic.gdx.math.GridPoint3
 import dev.ultreon.quantum.blocks.Block
-import dev.ultreon.quantum.blocks.BoundingBoxD
+import dev.ultreon.quantum.math.BoundingBoxD
 import dev.ultreon.quantum.math.Vector3D
 import dev.ultreon.quantum.vec3d
 import dev.ultreon.quantum.world.Chunk

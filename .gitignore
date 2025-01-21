@@ -169,6 +169,12 @@ Thumbs.db
 /modules/quantumjs.tgz
 /modules/*.mjs
 /modules/**/*.mjs
+/assets/scripts/quantum/node_modules/
+/assets/scripts/quantum/build/
+/assets/scripts/quantum/package-lock.json
+/assets/scripts/quantum/quantumjs.tgz
+/assets/scripts/quantum/*.mjs
+/assets/scripts/quantum/**/*.mjs
 /common/build/classes/kotlin/main/META-INF/common.kotlin_module
 /common/build/kotlin/compileKotlin/cacheable/caches-jvm/jvm/kotlin/inline-functions.tab
 /common/build/kotlin/compileKotlin/cacheable/caches-jvm/jvm/kotlin/inline-functions.tab.keystream
@@ -273,3 +279,5 @@ Thumbs.db
 /run/
 /lwjgl3/logs/
 /switchgdx/build/
+/assets/scripts/quantum-stubs/
+/assets/scripts/quantum/.vscode/

@@ -1,0 +1,13 @@
+{
+  // Block properties
+  properties: {
+    powered: {
+      type: boolean
+    }
+  }
+
+  // Default state
+  defaultState: {
+    powered: false
+  }
+}

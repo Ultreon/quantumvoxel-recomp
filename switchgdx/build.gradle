@@ -77,6 +77,11 @@ task transpile(dependsOn: 'build') {
     }
 
     copy {
+      from "$rootDir/build/modules"
+      into "$buildDir/dist/romfs"
+    }
+
+    copy {
       from "$projectDir/icon.jpg"
       into "$buildDir/dist"
     }

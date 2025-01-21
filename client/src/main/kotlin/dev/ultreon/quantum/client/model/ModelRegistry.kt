@@ -19,9 +19,9 @@ object ModelRegistry : Disposable {
   private val _fallbackModel: JsonModel = quantum.jsonModelLoader.load(
     ResourceId.of(RegistryKeys.blocks, NamespaceID.of(path = "error")), JsonReader().parse("""
     {
-      "parent": "block/cube_all",
+      "parent": "quantum:base/cube",
       "textures": {
-        "all": "block/error"
+        "all": "quantum:blocks/error"
       },
       "elements": [
         {
@@ -46,19 +46,19 @@ object ModelRegistry : Disposable {
   fun loadModels() {
     val jsonModelLoader = quantum.jsonModelLoader
     if (Registries.blocks.values.isEmpty()) logger.error("Where are my blocks?")
-    logger.debug("Loading block models")
+    logger.debug("Loading blocks models")
     Registries.blocks.values.forEach {
-      logger.debug("Loading block model for ${it.id}")
+      logger.debug("Loading blocks model for ${it.id}")
       if (it == Blocks.air) return@forEach
 
       val load: JsonModel? = jsonModelLoader.load(it)
 
-      logger.debug("Loaded block model for ${it.id}")
+      logger.debug("Loaded blocks model for ${it.id}")
       load?.let { model ->
-        logger.debug("Putting block model for ${it.id}")
+        logger.debug("Putting blocks model for ${it.id}")
         blockModels[it] = model
       } ?: run {
-        logger.warn("No block model for ${it.id}")
+        logger.warn("No blocks model for ${it.id}")
       }
     }
 //    Registries.items.values.forEach {

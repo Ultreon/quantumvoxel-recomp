@@ -132,7 +132,7 @@ fun main() {
           setWindowedMode(MINIMUM_WIDTH * 3 - 2, MINIMUM_HEIGHT * 3 - 2)
           setForegroundFPS(0)
           useVsync(false)
-          setOpenGLEmulation(OpenGLConfig.GLEmulation.ANGLE_GLES20, 4, 3)
+          setOpenGLEmulation(OpenGLConfig.GLEmulation.GL32, 4, 1)
           setWindowIcon(*(arrayOf(128, 64, 32, 16).map { "libgdx$it.png" }.toTypedArray()))
           setBackBufferConfig(4, 4, 4, 4, 8, 8, 0)
         })

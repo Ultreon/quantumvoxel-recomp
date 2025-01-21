@@ -13,8 +13,11 @@ import com.badlogic.gdx.graphics.g3d.utils.MeshBuilder
 import com.badlogic.gdx.graphics.g3d.utils.MeshPartBuilder
 import com.badlogic.gdx.graphics.g3d.utils.MeshPartBuilder.VertexInfo
 import com.badlogic.gdx.graphics.g3d.utils.ModelBuilder
+import com.badlogic.gdx.graphics.glutils.ShaderProgram
+import com.badlogic.gdx.graphics.glutils.ShapeRenderer
 import com.badlogic.gdx.math.Vector2
 import com.badlogic.gdx.math.Vector3
+import com.badlogic.gdx.utils.GdxRuntimeException
 import com.github.tommyettinger.textra.Font
 import dev.ultreon.quantum.InternalApi
 import dev.ultreon.quantum.math.Vector3D
@@ -23,6 +26,7 @@ import dev.ultreon.quantum.vec3d
 import ktx.math.mat4
 import ktx.math.unaryMinus
 import ktx.math.vec3
+import org.intellij.lang.annotations.Language
 
 /**
  * Creates and initializes a part within a 3D model using the specified parameters.
@@ -89,13 +93,13 @@ inline fun mesh(builder: MeshBuilder = MeshBuilder(), attributes: VertexAttribut
 }
 
 /**
- * Creates a `Texture` instance from the specified file and applies an optional initialization block.
+ * Creates a `Texture` instance from the specified file and applies an optional initialization blockName.
  *
  * This function simplifies the creation of a `Texture` by initializing it with the given file path.
  * Additionally, a lambda function can be provided to configure the `Texture` instance.
  *
  * @param path The file handle pointing to the texture file.
- * @param init An optional lambda expression used to configure the `Texture`. Defaults to an empty block.
+ * @param init An optional lambda expression used to configure the `Texture`. Defaults to an empty blockName.
  * @return The created and initialized `Texture` instance.
  */
 inline fun texture(path: FileHandle, crossinline init: Texture.() -> Unit = {}): Texture {
@@ -105,14 +109,14 @@ inline fun texture(path: FileHandle, crossinline init: Texture.() -> Unit = {}):
 }
 
 /**
- * Creates a `TextureRegion` from the specified texture path and applies an optional initialization block.
+ * Creates a `TextureRegion` from the specified texture path and applies an optional initialization blockName.
  *
  * This function simplifies the creation of a `TextureRegion` by utilizing a string path to identify the texture
  * and optionally initializing it through the provided lambda. It has been deprecated in favor of using `NamespaceID`
  * for texture identification.
  *
  * @param path The path to the texture file as a string.
- * @param init An optional lambda expression used to configure the `Texture`. Defaults to an empty block.
+ * @param init An optional lambda expression used to configure the `Texture`. Defaults to an empty blockName.
  * @return The created `TextureRegion` instance.
  *
  * @deprecated Use the `texture` function that accepts a `NamespaceID` instead.
@@ -210,14 +214,14 @@ class Vertex {
 var tmpVertex = Vertex()
 
 /**
- * Creates and initializes a `Vertex` instance using the specified configuration block.
+ * Creates and initializes a `Vertex` instance using the specified configuration blockName.
  *
  * This function provides a convenient way to configure a vertex by applying the given
  * lambda to a newly created `Vertex` instance. The resulting vertex attributes, such as
  * position, normal, color, and texture coordinates, are then transferred to a `VertexInfo`
  * object for further use in constructing meshes or 3D models.
  *
- * @param init A lambda block that is applied to the `Vertex` instance for configuring its attributes.
+ * @param init A lambda blockName that is applied to the `Vertex` instance for configuring its attributes.
  * @return A `VertexInfo` containing the configured attributes of the vertex.
  */
 inline fun vertex(init: Vertex.() -> Unit): VertexInfo {
@@ -291,7 +295,7 @@ fun MeshPartBuilder.cube(
   width: Float = 1f,
   height: Float = 1f,
   depth: Float = 1f,
-  textureRegion: TextureRegion = TextureRegion()
+  textureRegion: TextureRegion = TextureRegion(),
 ) {
   // North
   if (!Gdx.input.isKeyPressed(Keys.NUM_1)) {
@@ -543,7 +547,7 @@ fun MeshPartBuilder.quad(
   z: Float = 0f,
   width: Float = 1f,
   height: Float = 1f,
-  textureRegion: TextureRegion = TextureRegion()
+  textureRegion: TextureRegion = TextureRegion(),
 ) {
   val v00 = vertex {
     position(x, y, z)
@@ -615,3 +619,157 @@ fun Font.draw(spriteBatch: SpriteBatch, text: String, x: Float, y: Float) {
   spriteBatch.color = Color.WHITE
   this.drawMarkupText(spriteBatch, text, x, y)
 }
+
+fun spriteBatch(): SpriteBatch {
+  fun createDefaultShader(): ShaderProgram {
+    @Language("GLSL")
+    val vertexShader =
+      """
+        |#version 150
+        |
+        |#ifdef GL_ES
+        |precision mediump float;
+        |#endif
+        |
+        |in vec4 a_position;
+        |in vec4 a_color;
+        |in vec2 a_texCoord0;
+        |uniform mat4 u_projTrans;
+        |out vec4 v_color;
+        |out vec2 v_texCoords;
+        |
+        |void main()
+        |{
+        |   v_color = a_color;
+        |   v_color.a = v_color.a * (255.0/254.0);
+        |   v_texCoords = a_texCoord0;
+        |   gl_Position =  u_projTrans * a_position;
+        |}
+      """.trimMargin()
+
+    @Language("GLSL")
+    val fragmentShader =
+      """
+        |#version 150
+        |
+        |#ifdef GL_ES
+        |#define LOWP lowp
+        |precision mediump float;
+        |#else
+        |#define LOWP
+        |#endif
+        |in LOWP vec4 v_color;
+        |in vec2 v_texCoords;
+        |uniform sampler2D u_texture;
+        |
+        |out LOWP vec4 fragColor;
+        |void main()
+        |{
+        |  fragColor = v_color * texture(u_texture, v_texCoords);
+        |}
+      """.trimMargin()
+    val shader = ShaderProgram(vertexShader, fragmentShader)
+    require(shader.isCompiled) { "Error compiling shader: " + shader.log }
+    return shader
+  }
+
+  return SpriteBatch(
+    1000,
+    createDefaultShader()
+  )
+}
+
+fun shapeRenderer(): ShapeRenderer {
+  fun createVertexShader(hasNormals: Boolean, hasColors: Boolean, numTexCoords: Int): String {
+    var shader = """
+      #version 150
+
+      #ifdef GL_ES
+      precision mediump float;
+      #endif
+
+      in vec4 a_position;
+      ${if (hasNormals) "in vec3 a_normal;\n" else ""}${if (hasColors) "in vec4 a_color;\n" else ""}
+      """.trimIndent()
+
+    for (i in 0..<numTexCoords) {
+      shader += "in vec2 a_texCoord$i;\n"
+    }
+
+    shader = """
+      ${shader}uniform mat4 u_projModelView;
+      ${if (hasColors) "out vec4 v_col;\n" else ""}
+      """.trimIndent()
+
+    for (i in 0..<numTexCoords) {
+      shader += "out vec2 v_tex$i;\n"
+    }
+
+    shader = """${shader}void main() {
+   gl_Position = u_projModelView * a_position;
+"""
+    if (hasColors) {
+      shader = "$shader   v_col = a_color;\n   v_col.a *= 255.0 / 254.0;\n"
+    }
+
+    for (i in 0..<numTexCoords) {
+      shader = "$shader   v_tex$i = a_texCoord$i;\n"
+    }
+
+    shader = "$shader   gl_PointSize = 1.0;\n}\n"
+    return shader
+  }
+
+  fun createFragmentShader(hasNormals: Boolean, hasColors: Boolean, numTexCoords: Int): String {
+    var shader = """#version 150
+
+#ifdef GL_ES
+precision mediump float;
+#endif
+"""
+    if (hasColors) {
+      shader += "in vec4 v_col;\n"
+    }
+
+    for (i in 0..<numTexCoords) {
+      shader += "in vec2 v_tex$i;\n"
+      shader += "uniform sampler2D u_sampler$i;\n"
+    }
+
+    shader = """out vec4 fragColor;
+
+   ${shader}void main() {
+   fragColor = ${if (hasColors) "v_col" else "vec4(1, 1, 1, 1)"}"""
+    if (numTexCoords > 0) {
+      shader = "$shader * "
+    }
+
+    for (i in 0..<numTexCoords) {
+      shader = if (i == numTexCoords - 1) {
+        "$shader texture(u_sampler$i,  v_tex$i)"
+      } else {
+        "$shader texture(u_sampler$i,  v_tex$i) *"
+      }
+    }
+
+    shader = "$shader;\n}"
+    return shader
+  }
+
+  fun createDefaultShader(hasNormals: Boolean, hasColors: Boolean, numTexCoords: Int): ShaderProgram {
+    val vertexShader = createVertexShader(hasNormals, hasColors, numTexCoords)
+    val fragmentShader = createFragmentShader(hasNormals, hasColors, numTexCoords)
+    val program = ShaderProgram(vertexShader, fragmentShader)
+    if (!program.isCompiled) {
+      throw GdxRuntimeException("Error compiling shader: " + program.log)
+    } else {
+      return program
+    }
+  }
+
+  return ShapeRenderer(
+    5000,
+    createDefaultShader(hasNormals = false, hasColors = true, numTexCoords = 0),
+  )
+}
+

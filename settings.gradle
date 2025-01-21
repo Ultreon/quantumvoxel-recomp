@@ -3,4 +3,6 @@
 // if you want to temporarily disable a subproject.
 rootProject.name = "quantumvoxel"
 
-include 'lwjgl3', 'ios', 'switchgdx', 'android', 'teavm', 'server', 'common', 'client'
+include 'lwjgl3', 'ios', 'switchgdx', 'android', 'teavm', 'server', 'common', 'client', 'generator'
+include 'generator'
+

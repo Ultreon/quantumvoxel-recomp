@@ -4,12 +4,16 @@ package dev.ultreon.quantum.client
 
 import com.badlogic.gdx.Gdx
 import com.badlogic.gdx.Input
-import com.badlogic.gdx.graphics.g2d.SpriteBatch
 import com.badlogic.gdx.graphics.g3d.Environment
 import com.badlogic.gdx.graphics.g3d.ModelBatch
+import com.badlogic.gdx.graphics.g3d.Renderable
+import com.badlogic.gdx.graphics.g3d.Shader
 import com.badlogic.gdx.graphics.g3d.attributes.ColorAttribute
+import com.badlogic.gdx.graphics.g3d.shaders.DefaultShader
 import com.badlogic.gdx.graphics.g3d.utils.DefaultRenderableSorter
 import com.badlogic.gdx.graphics.g3d.utils.DefaultShaderProvider
+import com.badlogic.gdx.graphics.glutils.FrameBuffer
+import com.badlogic.gdx.graphics.glutils.ShaderProgram
 import com.badlogic.gdx.math.Matrix4
 import com.badlogic.gdx.math.Vector3
 import com.badlogic.gdx.scenes.scene2d.Stage
@@ -20,10 +24,7 @@ import dev.ultreon.quantum.blocks.Blocks
 import dev.ultreon.quantum.client.gui.screens.PauseScreen
 import dev.ultreon.quantum.client.input.KeyBinds
 import dev.ultreon.quantum.client.world.Skybox
-import dev.ultreon.quantum.entity.CollisionComponent
-import dev.ultreon.quantum.entity.InventoryComponent
 import dev.ultreon.quantum.entity.PositionComponent
-import dev.ultreon.quantum.entity.RunningComponent
 import dev.ultreon.quantum.logger
 import dev.ultreon.quantum.math.Vector3D
 import dev.ultreon.quantum.util.BlockHit
@@ -58,6 +59,7 @@ private val tmp1 = vec3()
  *              camera, player entity, and necessary assets.
  */
 class EnvironmentRenderer : Disposable {
+  private var time: Float = 0f
   private var lastHit: BlockHit? = null
   private val backupMatrix: Matrix4 = Matrix4()
   internal var lastRefreshPosition: Vector3D = vec3d()
@@ -69,7 +71,7 @@ class EnvironmentRenderer : Disposable {
     x = Gdx.graphics.width / guiScale / 2f - width / 2f
     y = 10f
   }
-  private val hud = Stage(quantum.guiViewport).apply {
+  private val hud = Stage(quantum.guiViewport, spriteBatch()).apply {
     actors {
       if (isTouch) {
         button {
@@ -91,12 +93,22 @@ class EnvironmentRenderer : Disposable {
     }
   }
   private val modelBatch = ModelBatch(
-    DefaultShaderProvider((quantum.resourceManager require NamespaceID.of(path = "shaders/default.vsh")).text,
-    (quantum.resourceManager require NamespaceID.of(path = "shaders/default.fsh")).text),
+    object : DefaultShaderProvider(
+      (quantum.clientResources require NamespaceID.of(path = "shaders/default.vsh")).text,
+      (quantum.clientResources require NamespaceID.of(path = "shaders/default.fsh")).text
+    ) {
+      override fun createShader(renderable: Renderable): Shader {
+        return DefaultShader(
+          renderable,
+          this.config,
+          "#version 150\n\n" + DefaultShader.createPrefix(renderable, config)
+        )
+      }
+    },
     DefaultRenderableSorter()
   )
   private val font = quantum.font
-  private val spriteBatch = SpriteBatch()
+  private val spriteBatch = spriteBatch()
   val camera = perspectiveCamera {
     position.set(0f, 1.6f, 0f)
     near = 0.01f
@@ -194,7 +206,8 @@ class EnvironmentRenderer : Disposable {
 
 
     backupMatrix.set(spriteBatch.transformMatrix)
-    spriteBatch.transformMatrix = spriteBatch.transformMatrix.scale(quantum.guiScale, quantum.guiScale, quantum.guiScale)
+    spriteBatch.transformMatrix =
+      spriteBatch.transformMatrix.scale(quantum.guiScale, quantum.guiScale, quantum.guiScale)
 
     try {
       spriteBatch.begin()

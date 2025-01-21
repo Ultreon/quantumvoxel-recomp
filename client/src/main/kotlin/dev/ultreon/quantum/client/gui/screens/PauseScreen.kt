@@ -42,8 +42,10 @@ class PauseScreen : GameScreen() {
         }
 
         onClick {
-          quantum.setScreen<TitleScreen>()
-          Gdx.input.isCursorCatched = true
+          quantum.stopWorld {
+            quantum.setScreen<TitleScreen>()
+            Gdx.input.isCursorCatched = false
+          }
         }
 
         setPosition(screenWidth / 2f - width / 2f, screenHeight / 2f - height / 2f - 40f)

@@ -365,8 +365,8 @@ class MaterialBuilderImpl : MaterialBuilder {
  * The builder provides methods to define various material properties such as diffuse, emissive,
  * ambient, specular textures or colors, ambient light, fog, and culling face options.
  *
- * This function simplifies the creation of a `Material` by using an inline lambda block.
- * Inside the block, you can call methods on the provided `MaterialBuilder` to configure the material's attributes.
+ * This function simplifies the creation of a `Material` by using an inline lambda blockName.
+ * Inside the blockName, you can call methods on the provided `MaterialBuilder` to configure the material's attributes.
  *
  * @param init A lambda with a receiver that configures the material using the `MaterialBuilder` API.
  * @return A new instance of the configured `Material`.

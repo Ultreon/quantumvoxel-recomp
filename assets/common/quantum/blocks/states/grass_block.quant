@@ -1,0 +1,23 @@
+
+{
+  states: {
+
+  }
+  behavior: {
+    breakSpeed: 1.5
+    tools: [
+      quantum:shovel
+    ]
+    drop: grass_block
+  }
+  interactions: {
+    // Experimental
+  }
+  physics: {
+    collision: solid
+    friction: 0.6
+  }
+  extra: {
+    // Experimental
+  }
+}

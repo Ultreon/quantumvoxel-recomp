@@ -71,16 +71,16 @@ value class FaceCull(val data: Int) {
 }
 
 class JsonModelLoader @JvmOverloads constructor(
-  private val resourceManager: ResourceManager = quantum.resourceManager,
+  private val resourceManager: ResourceManager = quantum.clientResources,
 ) {
   private var key: ResourceId<*>? = null
 
   @Throws(IOException::class)
   fun load(block: Block): JsonModel? {
-    val namespaceID: NamespaceID = block.id.mapPath { path -> "models/blocks/$path.json" }
+    val namespaceID: NamespaceID = block.id.mapPath { path -> "models/blocks/$path.quant" }
     try {
       val resource: Resource = resourceManager[namespaceID] ?: run {
-        logger.warn("No block model for ${block.id}")
+        logger.warn("No blocks model for ${block.id}")
         return null
       }
       logger.debug("Retrieved resource for ${block.id}")
@@ -89,23 +89,23 @@ class JsonModelLoader @JvmOverloads constructor(
       val inputStream = resource.inputStream()
       logger.debug("Opened resource stream for ${block.id}")
       val modelData = jsonReader.parse(inputStream)
-      logger.debug("Parsed block model json for ${block.id}")
+      logger.debug("Parsed blocks model json for ${block.id}")
       val key1 = block.key
-      logger.debug("Attempting to load block model for ${block.id}")
+      logger.debug("Attempting to load blocks model for ${block.id}")
       val load = this.load(key1, modelData)
-      logger.debug("Loaded block model for ${block.id}, closing stream")
+      logger.debug("Loaded blocks model for ${block.id}, closing stream")
       inputStream.close()
-      logger.debug("Returning block model for ${block.id}")
+      logger.debug("Returning blocks model for ${block.id}")
       return load
     } catch (e: IOException) {
-      logger.error("Couldn't load block model for ${block.id}: ${e.message}")
+      logger.error("Couldn't load blocks model for ${block.id}: ${e.message}")
       return null
     }
   }
 
   @Throws(IOException::class)
   fun load(item: Item): JsonModel? {
-    val namespaceID: NamespaceID = item.id.mapPath { path -> "models/items/$path.json" }
+    val namespaceID: NamespaceID = item.id.mapPath { path -> "models/items/$path.quant" }
     try {
       val resource: Resource = resourceManager[namespaceID] ?: run {
         logger.warn("No item model for ${item.id}")
@@ -126,7 +126,7 @@ class JsonModelLoader @JvmOverloads constructor(
   fun load(key: ResourceId<*>, modelData: JsonValue): JsonModel {
     require(
       !(key.parent!! != RegistryKeys.blocks && key.parent!! != RegistryKeys.items)
-    ) { "Invalid model key, must be block or item: $key" }
+    ) { "Invalid model key, must be blocks or item: $key" }
 
     val root: JsonValue = modelData
 
@@ -232,7 +232,7 @@ class JsonModelLoader @JvmOverloads constructor(
 
   fun load(key: ResourceId<*>, id: NamespaceID): BlockModel? {
     return try {
-      val resource: Resource = resourceManager[id.mapPath { path -> "models/${key.name.path}/$path.json" }] ?: return null
+      val resource: Resource = resourceManager[id.mapPath { path -> "models/${key.name.path}/$path.quant" }] ?: return null
       this.load(key, JsonReader().parse(resource.inputStream()))
     } catch (e: IOException) {
       null
@@ -370,7 +370,7 @@ class JsonModelLoader @JvmOverloads constructor(
       val v11 = VertexInfo()
       for ((direction, faceElement) in blockFaceFaceElementMap) {
         val texRef = faceElement.texture
-        val texture: NamespaceID? = if (texRef == "#missing") NamespaceID.of(path = "textures/block/error.png")
+        val texture: NamespaceID? = if (texRef == "#missing") NamespaceID.of(path = "textures/blocks/error.png")
         else if (texRef.startsWith("#")) textureElements[texRef.substring(1)]
         else NamespaceID.parse(texRef).mapPath { path -> "textures/$path.png" }
 
@@ -564,7 +564,7 @@ class JsonModelLoader @JvmOverloads constructor(
         if (dir1 != null && faceCull.face(dir1)) continue
 
         val texRef = faceElement.texture
-        val texture: NamespaceID? = if (texRef == "#missing") NamespaceID.of(path = "textures/block/error.png")
+        val texture: NamespaceID? = if (texRef == "#missing") NamespaceID.of(path = "textures/blocks/error.png")
         else if (texRef.startsWith("#")) textureElements[texRef.substring(1)]
         else NamespaceID.parse(texRef).mapPath { path -> "textures/$path.png" }
 

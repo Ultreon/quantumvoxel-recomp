@@ -18,7 +18,7 @@ apply plugin: 'org.jetbrains.kotlin.jvm'
 import io.github.fourlastor.construo.Target
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
-sourceSets.main.resources.srcDirs += [rootProject.file('assets').path]
+sourceSets.main.resources.srcDirs += [rootProject.file('assets').path, rootProject.file('build/modules').path]
 mainClassName = 'dev.ultreon.quantum.lwjgl3.Lwjgl3Launcher'
 application.setMainClass(mainClassName)
 eclipse.project.name = appName + '-lwjgl3'
@@ -173,43 +173,4 @@ startScripts.classpath = project.tasks.jar.outputs.files
 
 if (enableGraalNative == 'true') {
   apply from: file("nativeimage.gradle")
-}
-
-tasks.register('generateBindings', JavaExec) {
-  classpath = sourceSets.main.runtimeClasspath
-  mainClass = 'dev.ultreon.langgen.Main'
-  args = ['--js', '--stub', '--output=' + file("../modules")]
-
-  inputs.files(sourceSets.main.allSource)
-  outputs.dir(file("../modules"))
-
-  group = 'build'
-  description = 'Generate bindings'
-
-  finalizedBy('compileTypescript')
-}
-
-tasks.register('compileTypescript', Exec) {
-  group = 'build'
-  description = 'Compile typescript'
-
-  inputs.files(fileTree("../modules"))
-  outputs.files(fileTree("../modules"))
-
-  if (System.getProperty('os.name').toLowerCase().contains('windows')) {
-    commandLine 'cmd', '/c', 'npm', 'run', 'build'
-  } else {
-    commandLine 'bash', '-c', 'npm run build'
-  }
-  workingDir rootProject.file('modules')
-}
-
-classes.finalizedBy generateBindings
-
-tasks.register('runAnsiConsole', JavaExec) {
-  classpath = sourceSets.main.runtimeClasspath
-  mainClass = 'dev.ultreon.quantum.lwjgl3.ANSIConsole'
-
-  group = 'application'
-  description = 'Run ANSI console test'
 }

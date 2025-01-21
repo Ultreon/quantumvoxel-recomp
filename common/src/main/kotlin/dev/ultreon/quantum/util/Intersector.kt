@@ -1,6 +1,6 @@
 package dev.ultreon.quantum.util
 
-import dev.ultreon.quantum.blocks.BoundingBoxD
+import dev.ultreon.quantum.math.BoundingBoxD
 import dev.ultreon.quantum.math.Vector3D
 import dev.ultreon.quantum.vec3d
 

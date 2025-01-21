@@ -1,6 +1,6 @@
 package dev.ultreon.quantum.util
 
-import dev.ultreon.quantum.blocks.BoundingBoxD
+import dev.ultreon.quantum.math.BoundingBoxD
 
 object BoundingBoxUtils {
   fun offset(boundingBox: BoundingBoxD, dx: Double, dy: Double, dz: Double): BoundingBoxD {

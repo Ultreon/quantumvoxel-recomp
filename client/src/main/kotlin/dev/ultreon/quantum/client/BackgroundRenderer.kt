@@ -30,11 +30,11 @@ class BackgroundRenderer : Disposable {
     update()
   }
   private val modelBatch = ModelBatch(
-    (quantum.resourceManager require NamespaceID.of(path = "shaders/default.vsh")).text,
-    (quantum.resourceManager require NamespaceID.of(path = "shaders/default.fsh")).text
+    (quantum.clientResources require NamespaceID.of(path = "shaders/default.vsh")).text,
+    (quantum.clientResources require NamespaceID.of(path = "shaders/default.fsh")).text
   )
   private val skybox: Skybox = Skybox()
-  private var chunks = Array(3) { ClientChunk(it - 1, 0, 0, quantum.material, FakeDimension())}
+  private var chunks = Array(3) { ClientChunk(it - 1, 0, 0, quantum.material, FakeDimension()) }
 
   init {
     val selector = Random.nextInt(4)
@@ -47,14 +47,17 @@ class BackgroundRenderer : Disposable {
           }
         }
 
-        repeat(16) {
-          val x = Random.nextInt(0..SIZE)
-          val z = Random.nextInt(0..SIZE)
-          chunk.set(x, 1, z, Blocks.crate, BlockFlags.NONE)
+        Blocks.crate?.let { crate ->
+          repeat(16) {
+            val x = Random.nextInt(0..SIZE)
+            val z = Random.nextInt(0..SIZE)
+            chunk.set(x, 1, z, crate, BlockFlags.NONE)
+          }
         }
 
         chunk.rebuild()
       }
+
       1 -> {
         // Create a platform
         for (x in 0 until SIZE) {
@@ -65,16 +68,26 @@ class BackgroundRenderer : Disposable {
 
         chunk.rebuild()
       }
+
       2 -> {
         // Create a platform
-        for (x in 0 until SIZE) {
-          for (z in 0 until SIZE) {
-            chunk.set(x, 0, z, Blocks.iron, BlockFlags.NONE)
+        Blocks.iron?.let {
+          for (x in 0 until SIZE) {
+            for (z in 0 until SIZE) {
+              chunk.set(x, 0, z, it, BlockFlags.NONE)
+            }
+          }
+        } ?: run {
+          for (x in 0 until SIZE) {
+            for (z in 0 until SIZE) {
+              chunk.set(x, 0, z, Blocks.stone, BlockFlags.NONE)
+            }
           }
         }
 
         chunk.rebuild()
       }
+
       3 -> {
         // Create a platform
         for (x in 0 until SIZE) {
@@ -87,6 +100,7 @@ class BackgroundRenderer : Disposable {
 
         chunk.rebuild()
       }
+
       else -> {}
     }
   }

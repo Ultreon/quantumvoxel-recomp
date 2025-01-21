@@ -21,9 +21,13 @@ import com.badlogic.gdx.utils.Queue
 import com.badlogic.gdx.utils.async.AsyncExecutor
 import com.badlogic.gdx.utils.viewport.ScreenViewport
 import com.badlogic.gdx.utils.viewport.Viewport
+import com.caoccao.javet.interop.V8Host
+import com.caoccao.javet.interop.V8Runtime
+import com.caoccao.javet.javenode.JNEventLoop
 import com.github.tommyettinger.textra.Font
 import com.github.tommyettinger.textra.KnownFonts
 import dev.ultreon.quantum.blocks.Blocks
+import dev.ultreon.quantum.blocks.PropertyKeys
 import dev.ultreon.quantum.client.debug.DebugRenderer
 import dev.ultreon.quantum.client.gui.screens.PlaceholderScreen
 import dev.ultreon.quantum.client.input.*
@@ -32,6 +36,9 @@ import dev.ultreon.quantum.client.model.ModelRegistry
 import dev.ultreon.quantum.client.texture.TextureManager
 import dev.ultreon.quantum.client.world.ClientDimension
 import dev.ultreon.quantum.client.world.PlayerEntity
+import dev.ultreon.quantum.commonResources
+import dev.ultreon.quantum.doContentRegistration
+import dev.ultreon.quantum.event.EventBus
 import dev.ultreon.quantum.logger
 import dev.ultreon.quantum.resource.ResourceManager
 import dev.ultreon.quantum.util.NamespaceID
@@ -64,7 +71,7 @@ lateinit var gamePlatform: GamePlatform
  * - Manages game screens, world instance, and resources.
  * - Initializes and loads resources such as textures, shaders, and models.
  * - Handles application crashes by displaying the crash stack trace on the screen.
- * - Provides access to core components like the [resourceManager], [jsonModelLoader], [textureManager],
+ * - Provides access to core components like the [clientResources], [jsonModelLoader], [textureManager],
  *   and the game [world].
  *
  * Lifecycle:
@@ -78,6 +85,8 @@ class QuantumVoxel : KtxGame<KtxScreen>(clearScreen = false) {
     instance = this
   }
 
+  private lateinit var gen: Gen
+  private lateinit var v8Runtime: V8Runtime
   private var init: Boolean = false
   private var deferResize: Boolean = false
   private var loaded: Boolean = false
@@ -114,7 +123,7 @@ class QuantumVoxel : KtxGame<KtxScreen>(clearScreen = false) {
     set(value) {
       field = value.coerceAtLeast(0)
     }
-  private val texture by lazy { texture(NamespaceID.of(path = "textures/block/soil.png")) }
+  private val texture by lazy { texture(NamespaceID.of(path = "textures/blocks/soil.png")) }
   val material by lazy {
     material {
       diffuse(texture.texture)
@@ -138,7 +147,7 @@ class QuantumVoxel : KtxGame<KtxScreen>(clearScreen = false) {
    * Plays a key role in resource loading, initialization, and memory management.
    * Integrally involved in the application lifecycle to ensure all necessary assets are available.
    */
-  val resourceManager: ResourceManager by lazy { ResourceManager("client") }
+  val clientResources: ResourceManager by lazy { ResourceManager("client") }
 
   val bitmapFont by lazy {
     try {
@@ -169,7 +178,7 @@ class QuantumVoxel : KtxGame<KtxScreen>(clearScreen = false) {
    * Utilizes the provided `ResourceManager` to access and organize relevant resources needed for model generation.
    * Facilitates the integration of JSON-based assets into the application's resource pipeline.
    */
-  val jsonModelLoader: JsonModelLoader by lazy { JsonModelLoader(resourceManager) }
+  val jsonModelLoader: JsonModelLoader by lazy { JsonModelLoader(clientResources) }
 
   /**
    * An instance of `TextureManager` responsible for handling texture-related tasks within the application.
@@ -177,7 +186,7 @@ class QuantumVoxel : KtxGame<KtxScreen>(clearScreen = false) {
    * Works in conjunction with the `ResourceManager` to manage texture resources efficiently.
    * Plays a crucial role in maintaining texture data during the application's lifecycle.
    */
-  val textureManager: TextureManager by lazy { TextureManager(resourceManager) }
+  val textureManager: TextureManager by lazy { TextureManager(clientResources) }
 
   @JvmField
   var world: World? = null
@@ -190,7 +199,7 @@ class QuantumVoxel : KtxGame<KtxScreen>(clearScreen = false) {
 
     MainDispatcher.initiate()
 
-    globalBatch = SpriteBatch()
+    globalBatch = spriteBatch()
     shapes = ShapeDrawer(globalBatch, Pixmap(1, 1, Pixmap.Format.RGB888).let { pixmap ->
       pixmap.setColor(1f, 1f, 1f, 1f)
       pixmap.drawPixel(0, 0)
@@ -206,13 +215,27 @@ class QuantumVoxel : KtxGame<KtxScreen>(clearScreen = false) {
     height = Gdx.graphics.height.coerceAtLeast(MINIMUM_HEIGHT)
 
     Blocks.init()
+    PropertyKeys.init()
 
-    gamePlatform.loadResources(resourceManager)
+    gamePlatform.loadResources(clientResources)
+    gamePlatform.loadResources(commonResources)
+
+    doContentRegistration()
 
     guiCam = OrthographicCamera()
     guiViewport = ScreenViewport(guiCam)
 
     loaded = true
+
+    val host = V8Host.getNodeInstance()
+    this.v8Runtime = host.createV8Runtime()
+    this.gen = Gen(v8Runtime, JNEventLoop(v8Runtime)).apply { prepare() }
+
+    gen.importZip(Gdx.files.internal("internal/quantum.zip"))
+
+    for (file in Gdx.files.local("modules").list()) {
+      gen.loadDirectory(file.path())
+    }
 
     logger.debug("Quantum Voxel started!", this)
   }
@@ -393,8 +416,9 @@ class QuantumVoxel : KtxGame<KtxScreen>(clearScreen = false) {
     return min.coerceAtLeast(1)
   }
 
-  val guiScale: Float get() =
-    (if (setGuiScale <= 0) calcMaxGuiScale() else setGuiScale.coerceAtMost(calcMaxGuiScale())).toFloat()
+  val guiScale: Float
+    get() =
+      (if (setGuiScale <= 0) calcMaxGuiScale() else setGuiScale.coerceAtMost(calcMaxGuiScale())).toFloat()
 
   override fun resize(width: Int, height: Int) {
     if (!loaded) {
@@ -445,9 +469,17 @@ class QuantumVoxel : KtxGame<KtxScreen>(clearScreen = false) {
     private set
 
   companion object {
+    private val mainThread = Thread.currentThread()
+
+    private val isMainThread: Boolean
+      get() = Thread.currentThread() == mainThread
     lateinit var instance: QuantumVoxel
 
     fun <T> await(function: () -> T): T {
+      if (isMainThread) {
+        return function()
+      }
+
       val waiting = CompletableFuture<T>()
       quantum.submit {
         waiting.complete(function())
@@ -481,3 +513,5 @@ val globalBatch get() = quantum.globalBatch
 inline fun <reified T : KtxScreen> setScreen() {
   quantum.setScreen<T>()
 }
+
+val clientEventBus = EventBus()

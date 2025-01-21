@@ -44,7 +44,7 @@ open class BlockHit : Hit {
 //    normal.set(buffer.readVec3d())
 //    vec.set(buffer.readVec3i())
 //    this.blockMeta = buffer.readBlockState()
-//    this.block = Registries.BLOCK.byId(buffer.readVarInt())
+//    this.blockName = Registries.BLOCK.byId(buffer.readVarInt())
 //    this.isCollide = buffer.readBoolean()
 //    this.distance = buffer.readFloat()
 //  }
@@ -69,7 +69,7 @@ open class BlockHit : Hit {
 //    buffer.writeVec3d(this.normal)
 //    buffer.writeVec3i(this.getVec())
 //    buffer.writeBlockState(this.getBlockMeta())
-//    buffer.writeVarInt(Registries.BLOCK.getRawId(this.getBlock()))
+//    buffer.writeVarInt(Registries.BLOCK.getRawId(this.getBlockName()))
 //    buffer.writeBoolean(this.isCollide)
 //    buffer.writeFloat(this.distance)
 //  }

@@ -1,9 +1,11 @@
+#version 150
+
 #ifdef GL_ES
 precision mediump float;
 #endif
 
-varying vec3 v_position;
-attribute vec3 a_position;
+out vec3 v_position;
+in vec3 a_position;
 uniform mat4 u_projViewTrans;
 uniform mat4 u_worldTrans;
 

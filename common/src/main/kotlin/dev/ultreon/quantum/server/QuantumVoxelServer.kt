@@ -1,5 +1,6 @@
 package dev.ultreon.quantum.server
 
+import dev.ultreon.quantum.event.EventBus
 import dev.ultreon.quantum.network.Networker
 import dev.ultreon.quantum.world.Dimension
 
@@ -28,3 +29,5 @@ abstract class QuantumVoxelServer {
 
   abstract val isDedicatedServer: Boolean
 }
+
+val serverEventBus = EventBus()

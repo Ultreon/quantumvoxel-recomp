@@ -1,4 +1,6 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import com.android.build.gradle.internal.res.LinkApplicationAndroidResourcesTask
+
 
 buildscript {
   repositories {
@@ -13,7 +15,6 @@ buildscript {
   dependencies {
     classpath "com.android.tools.build:gradle:8.5.2"
     classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlinVersion"
-
   }
 }
 
@@ -51,6 +52,10 @@ configure(subprojects - project(':android')) {
     // convert it to a relative path
     // and append it to the file assets.txt
     fileTree(assetsFolder).collect { assetsFolder.relativePath(it) }.sort().each {
+      if ("node_modules" == it) return
+      if (it.endsWith(".lock")) return
+      if (it.endsWith(".DS_Store")) return
+      if (it.startsWith("._")) return
       assetsFile.append(it + "\n")
     }
   }
@@ -82,3 +87,73 @@ subprojects {
 }
 
 eclipse.project.name = 'QuantumVoxel' + '-parent'
+
+tasks.register('generateBindings', JavaExec) {
+  classpath = files(project(":client").jar.outputs.files + project(":common").jar.outputs.files + project(":server").jar.outputs.files
+    + project(":client").sourceSets.main.runtimeClasspath + project(":common").sourceSets.main.runtimeClasspath + project(":server").sourceSets.main.runtimeClasspath
+    + project(":generator").sourceSets.main.runtimeClasspath)
+  mainClass = 'dev.ultreon.langgen.Main'
+  args = ['--js', '--stub', '--output=' + file("modules/quantum")]
+
+  inputs.files(project(":client").sourceSets.main.java.srcDirs, project(":common").sourceSets.main.java.srcDirs, project(":server").sourceSets.main.java.srcDirs)
+  outputs.dir(file("modules/quantum"))
+
+  group = 'build'
+  description = 'Generate bindings'
+
+  finalizedBy('compileTypescript')
+
+  dependsOn(':client:compileJava', ':common:compileJava', ':server:compileJava', ':generator:compileJava')
+  dependsOn(':client:compileKotlin', ':common:compileKotlin', ':server:compileKotlin', ':generator:compileKotlin')
+  dependsOn(':client:processResources', ':common:processResources', ':server:processResources', ':generator:processResources')
+  dependsOn(':client:jar', ':common:jar', ':server:jar')
+  project(":lwjgl3").processResources.dependsOn generateBindings
+}
+
+tasks.register('compileTypescript', Exec) {
+  group = 'build'
+  description = 'Compile typescript'
+
+  inputs.files(fileTree("modules/quantum").include("**/*.mts"))
+  outputs.upToDateWhen { false }
+  outputs.files(fileTree("dist/quantum").include("**/*.mjs"))
+
+  if (System.getProperty('os.name').toLowerCase().contains('windows')) {
+    commandLine 'cmd', '/c', 'npm', 'run', 'build'
+  } else {
+    commandLine 'bash', '-c', 'npm run build'
+  }
+  workingDir file('modules/quantum')
+
+  dependsOn('generateBindings')
+}
+
+tasks.register('packageQuantumJS', Zip) {
+  group = 'build'
+  description = 'Package Quantum.JS module'
+
+  from(fileTree("dist/quantum").include("**/*.mjs"))
+  outputs.upToDateWhen { false }
+
+  archiveFileName = 'quantum.zip'
+  destinationDirectory = file('build/modules/internal')
+
+  dependsOn('compileTypescript')
+}
+
+afterEvaluate {
+  project(":lwjgl3").processResources.dependsOn packageQuantumJS
+  project(":switchgdx").processResources.dependsOn packageQuantumJS
+  project(":android").tasks.withType(LinkApplicationAndroidResourcesTask).collect { it.dependsOn packageQuantumJS }
+  project(":android").tasks.withType(LinkApplicationAndroidResourcesTask).collect { it.dependsOn packageQuantumJS }
+  project(":ios").processResources.dependsOn packageQuantumJS
+}
+
+tasks.register('runAnsiConsole', JavaExec) {
+  classpath = project(":lwjgl3").sourceSets.main.runtimeClasspath
+  mainClass = 'dev.ultreon.quantum.lwjgl3.ANSIConsole'
+
+  group = 'application'
+  description = 'Run ANSI console test'
+}
+

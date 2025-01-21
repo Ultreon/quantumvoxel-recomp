@@ -3,7 +3,7 @@ package dev.ultreon.quantum
 import com.artemis.Entity
 import com.artemis.systems.IteratingSystem
 import com.badlogic.gdx.math.Vector3
-import dev.ultreon.quantum.blocks.BoundingBoxD
+import dev.ultreon.quantum.math.BoundingBoxD
 import dev.ultreon.quantum.world.Dimension
 import ktx.artemis.allOf
 import ktx.collections.GdxArray
@@ -34,7 +34,7 @@ class PhysicsSystem(
       targetPosition.cpy().add(bounds.getDimensions(vec3d()).scl(0.5f))
     )
 
-    // Clear the list of potential block collisions.
+    // Clear the list of potential blockName collisions.
     blockBoundingBoxes.clear()
 
     // Find all blocks that intersect with the entity's target position.

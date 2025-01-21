@@ -1,0 +1,22 @@
+
+{
+  states: {
+
+  }
+  behavior: {
+    breakSpeed: 6.0
+  }
+  interactions: {
+    // Experimental
+  }
+  physics: {
+    collision: liquid
+    friction: 0.6
+  }
+  rendering: {
+    render_type: water
+  }
+  extra: {
+    // Experimental
+  }
+}

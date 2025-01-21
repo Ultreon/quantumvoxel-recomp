@@ -12,8 +12,8 @@ import ktx.graphics.use
 private val background = color(0f, 0f, 0f, 0.5f)
 
 abstract class GameScreen : KtxScreen {
-  val stage: Stage = Stage(guiViewport).apply {
-    isDebugAll = true
+  val stage: Stage = Stage(guiViewport, spriteBatch()).apply {
+
   }
 
   var screenWidth: Int = (stage.viewport.worldWidth.toInt() / guiScale).toInt()

@@ -28,8 +28,8 @@ class ResourceManager(
    * @return The `ResourceCategory` associated with the given name.
    * @throws NoSuchResourceDirectoryException If no category with the specified name is found.
    */
-  operator fun get(name: String): ResourceNode {
-    return root[name] ?: throw NoSuchResourceDirectoryException(name)
+  operator fun get(name: String): ResourceNode? {
+    return root[name]
   }
 
   /**
@@ -260,7 +260,7 @@ class ResourceManager(
   fun loadFromAssetsTxt(internal: FileHandle) {
     val fileList = internal.readString().split('\n')
     if (fileList.isEmpty()) {
-      logger.warn("No files in directory: ${internal.path()}")
+      logger.warn("No files in assets.txt: ${internal.path()}")
       return
     }
 

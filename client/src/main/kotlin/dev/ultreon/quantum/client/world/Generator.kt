@@ -94,14 +94,23 @@ class Generator {
           random.setSeed(blockSeed)
 
           if (height in 65.5..160.0) {
-            if (random.nextInt(2) == 0 && height > 64.5) {
-              if (y == height.toInt() + 1) chunk[x, y, z] = Blocks.shortGrass
-            } else if (random.nextInt(50) == 0 && height > 64.5) {
-//              chunk.set(x, height.toInt() + 1, z, Block.POPPY)
-            } else if (random.nextInt(50) == 0 && height > 64.5) {
-//              chunk.set(x, height.toInt() + 1, z, Block.DANDELION)
-            } else if (random.nextInt(50) == 0 && height > 64.5) {
-//              generateTree(unit, x, height.toInt() + 1, z, random)
+            when {
+              random.nextInt(2) == 0 && height > 64.5 ->
+                if (y == height.toInt() + 1) {
+                  val shortGrass = Blocks.shortGrass
+                  if (shortGrass != null) {
+                    chunk[x, y, z] = shortGrass
+                  }
+                }
+              random.nextInt(50) == 0 && height > 64.5 -> {
+          //              chunk.set(x, height.toInt() + 1, z, Block.POPPY)
+              }
+              random.nextInt(50) == 0 && height > 64.5 -> {
+          //              chunk.set(x, height.toInt() + 1, z, Block.DANDELION)
+              }
+              random.nextInt(50) == 0 && height > 64.5 -> {
+          //              generateTree(unit, x, height.toInt() + 1, z, random)
+              }
             }
           } else if (height in 160.0..192.0) {
             for (y in (height - 6).toInt()..height.toInt()) {
@@ -113,14 +122,22 @@ class Generator {
                   else Blocks.soil
                 else Blocks.soil
 
-                else -> chunk[x, y, z] = Blocks.cobblestone
+                else -> {
+                  val cobblestone = Blocks.cobblestone
+                  if (cobblestone != null) {
+                    chunk[x, y, z] = cobblestone
+                  } else {
+                    chunk[x, y, z] = Blocks.stone
+                  }
+                }
 //                3 -> chunk.set(x, y, z, Blocks.MOSSY_COBBLESTONE)
 //                else -> chunk.set(x, y, z, Block.COBBLESTONE)
               }
             }
-            if (height.toInt() in 192..1500) {
+            val snowyGrass = Blocks.snowyGrass
+            if (height.toInt() in 192..1500 && snowyGrass != null) {
 //              chunk.set(x, height.toInt() - 1, z, Block.SNOW_BLOCK)
-              chunk[x, height.toInt(), z] = Blocks.snowyGrass
+              chunk[x, height.toInt(), z] = snowyGrass
 //              chunk.set(x, height.toInt() + 1, z, Block.)
             }
           }
@@ -129,78 +146,3 @@ class Generator {
     }
   }
 }
-//class Generator {
-//  fun generate(chunk: ClientChunk) {
-//    for (int xo = 0; xo < size.x(); xo++) {
-//      for (int zo = 0; zo < size.z(); zo++) {
-//          int x = (int) (start.x() + xo);
-//          int z = (int) (start.z() + zo);
-//
-//          double height = evaluateNoise(x, z);
-//          if (height < -64) height = -60;
-//
-//          for (int y = (int) start.y(); y < start.y() + size.y(); y++) {
-//              if (height < 56) biomeSetter.setBiome(x, y, z, Biome.OCEAN);
-//              if (height < 50) biomeSetter.setBiome(x, y, z, Biome.DEEP_OCEAN);
-//              if (y == size.y()) {
-//                  chunk.set(x, y, z, Block.BEDROCK);
-//                  continue;
-//              }
-//              if (height < 64.0) {
-//                  if (y < 64.0 && y > height) {
-//                      chunk.set(x, y, z, Block.WATER);
-//                  } else if (y < 64.0 && y > height - 3) {
-//                      chunk.set(x, y, z, Block.SAND);
-//                  } else if (y < 64.0) {
-//                      chunk.set(x, y, z, Block.STONE);
-//                  }
-//                  continue;
-//              }
-//              if (y < height && height > 64.0 && height < 64.5) {
-//                  chunk.set(x, y, z, Block.SAND);
-//                  continue;
-//              }
-//              if (y == (int) height) {
-//                  chunk.set(x, y, z, Block.GRASS_BLOCK);
-//              } else if (y < height && y > height - 4) {
-//                  chunk.set(x, y, z, Block.DIRT);
-//              } else if (y <= height - 4) {
-//                  chunk.set(x, y, z, Block.STONE);
-//              }
-//          }
-//
-//          // Generate decorations
-//          long blockSeed = (x + Double.doubleToLongBits(start.x())) * QuantServer.MAGIC_NUMBER ^ (z + Double.doubleToLongBits(start.z())) * QuantServer.MAGIC_NUMBER ^ server.getWorldSeed();
-//          random.setSeed(blockSeed);
-//
-//          if (height < 160) {
-//              if (random.nextInt(2) == 0 && height > 64.5) {
-//                  chunk.set(x, (int) height + 1, z, Block.SHORT_GRASS);
-//              } else if (random.nextInt(50) == 0 && height > 64.5) {
-//                  chunk.set(x, (int) height + 1, z, Block.POPPY);
-//              } else if (random.nextInt(50) == 0 && height > 64.5) {
-//                  chunk.set(x, (int) height + 1, z, Block.DANDELION);
-//              } else if (random.nextInt(50) == 0 && height > 64.5) {
-//                  generateTree(unit, x, (int) height + 1, z, random);
-//              }
-//          } else {
-//              for (int y = (int) (height - 6); y <= height; y++) {
-//                  int i = random.nextInt(6);
-//                  if (i == 0) chunk.set(x, y, z, Block.STONE);
-//                  else if (i == 1)
-//                      chunk.set(x, y, z, y == (int) height ? (random.nextInt(2) == 0 ? Block.GRASS_BLOCK : Block.COARSE_DIRT) : Block.DIRT);
-//                  else if (i == 2) chunk.set(x, y, z, Block.ANDESITE);
-//                  else if (i == 3) chunk.set(x, y, z, Block.MOSSY_COBBLESTONE);
-//                  else chunk.set(x, y, z, Block.COBBLESTONE);
-//              }
-//
-//              if (height > 192) {
-//                  chunk.set(x, (int) height - 1, z, Block.SNOW_BLOCK);
-//                  chunk.set(x, (int) height, z, Block.SNOW_BLOCK);
-//                  chunk.set(x, (int) height + 1, z, Block.SNOW);
-//              }
-//          }
-//      }
-//    }
-//  }
-//}

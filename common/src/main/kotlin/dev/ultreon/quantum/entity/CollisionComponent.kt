@@ -1,7 +1,7 @@
 package dev.ultreon.quantum.entity
 
 import com.artemis.Component
-import dev.ultreon.quantum.blocks.BoundingBoxD
+import dev.ultreon.quantum.math.BoundingBoxD
 import dev.ultreon.quantum.util.BoundingBoxUtils
 import dev.ultreon.quantum.util.Tickable
 import dev.ultreon.quantum.vec3d

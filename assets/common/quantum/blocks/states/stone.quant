@@ -1,0 +1,29 @@
+
+{
+  states: {
+
+  }
+  behavior: {
+    breakSpeed: 6.0
+    tools: [
+      quantum:pickaxe
+    ]
+    break_conditions: [
+      {
+        condition: tool_material
+        material: >=wood
+      }
+    ]
+    drop: stone
+  }
+  interactions: {
+    // Experimental
+  }
+  physics: {
+    collision: solid
+    friction: 0.6
+  }
+  extra: {
+    // Experimental
+  }
+}

@@ -1,0 +1,29 @@
+{
+  states: {
+    powered: {
+      true: {
+        model: blocks/switch_on
+      }
+      false: {
+        model: blocks/switch_off
+      }
+    }
+  }
+  behavior: {
+    breakSpeed: 1.5
+    tools: [
+      quantum:shovel
+    ]
+    drop: quantum:grass_block
+  }
+  interactions: {
+    // Experimental
+  }
+  physics: {
+    collision: solid
+    friction: 0.6
+  }
+  extra: {
+    // Experimental
+  }
+}
