@@ -121,7 +121,9 @@ class ResourceManager(
    */
   fun load(file: FileHandle) {
     when {
-      file.isDirectory -> loadDirectory(file)
+      file.isDirectory -> {
+        loadDirectory(file)
+      }
       file.extension() == "zip" -> ZipInputStream(file.read()).use { loadZip(it) }
       else -> logger.error("Unknown file type: ${file.extension()}")
     }
@@ -152,10 +154,11 @@ class ResourceManager(
         if (name.startsWith("$assetRoot/")) {
           val domain = name.substring(assetRoot.length + 1)
           val domainId = domain.substring(0, domain.indexOf('/'))
-                    val path = domain.substring(domain.indexOf('/') + 1).split('/')
-                    val categories = path.dropLast(1)
-                    val filename = path.last()
-                    loadDirectory(zip, categories.toMutableList(), filename, domainId)
+          val path = domain.substring(domain.indexOf('/') + 1).split('/')
+          val categories = path.dropLast(1)
+          val filename = path.last()
+          logger.debug("Loading directory: ${entry.name}")
+          loadDirectory(zip, categories.toMutableList(), filename, domainId)
         }
       }
     }
@@ -187,7 +190,12 @@ class ResourceManager(
         byteArrayOutputStream.write(b)
         b = zip.read()
       }
-      resourceNode?.asLeafOrNull()?.addResource(StaticResource(NamespaceID.of(domain, if (path == "") filename else "$path/$filename"), byteArrayOutputStream.toByteArray())) ?: throw ResourceOverwriteException("$domain:$path/$filename")
+      resourceNode?.asLeafOrNull()?.addResource(
+        StaticResource(
+          NamespaceID.of(domain, if (path == "") filename else "$path/$filename"),
+          byteArrayOutputStream.toByteArray()
+        )
+      ) ?: throw ResourceOverwriteException("$domain:$path/$filename")
     } else {
       val categoryName = pathElements.removeAt(0)
 
@@ -218,28 +226,57 @@ class ResourceManager(
     list.forEach {
       if (it.isDirectory) {
         val domain = it.name()
-                it.list().forEach last@{ category ->
+        logger.debug("Loading domain: $domain")
+        it.list().forEach last@{ category ->
           if (category.isDirectory) {
-            val domainName = root
-            loadDirectory(category, domain, domainName, category.name())
+            logger.debug("Loading directory: ${it.name()}/${category.name()}")
+            root.mkdir(category.name())
+            val domainName = root[category.name()]!!.asDir().asDirectory()
+            loadDirectory(category, domain, domainName, category.name() + "/")
           }
         }
+      } else {
+        val domain = it.name().substring(0, it.name().indexOf('/'))
+        val path = it.name().substring(it.name().indexOf('/') + 1).split('/')
+        val categories = path.dropLast(1)
+        val filename = path.last()
+        logger.debug("Loading resource: ${it.name()}")
+        loadResource(
+          it,
+          root,
+          domain,
+          if (categories.isEmpty()) filename else "${categories.joinToString("/")}/$filename"
+        )
       }
     }
   }
 
   private fun loadDirectory(file: FileHandle, domain: String, dir: ResourceDir, path: String) {
-    file.list().forEach {
+    file.list().forEach { child ->
       when {
-        it.isDirectory -> loadDirectory(
-          it,
-          domain,
-          ResourceDirectory(it.name(), domain, dir),
-          "$path${it.name()}/"
-        )
+        child.isDirectory -> {
+          logger.debug("Parent: $dir")
+          logger.debug("Going to load directory: ${child.name()}")
+          if (child.name() !in dir) {
+            dir.mkdir(child.name())
+          }
+          loadDirectory(
+            child,
+            domain,
+            dir[child.name()]?.asDir()?.asDirectory() ?: throw NoSuchResourceDirectoryException(path),
+            "$path${child.name()}/"
+          )
+        }
 
-        dir != null -> loadResource(it, dir, domain, path + it.name())
-        else -> logger.warn("No category for file: $it")
+        dir != null -> {
+          logger.debug("Parent: $dir")
+          logger.debug("Going to load resource: ${child.name()}")
+          loadResource(child, dir, domain, path + child.name())
+        }
+
+        else -> {
+          logger.warn("No category for file: $child")
+        }
       }
     }
   }
@@ -250,11 +287,20 @@ class ResourceManager(
       logger.warn("Empty file: $file")
     }
 
+    logger.debug("Parent: $directory")
+    logger.debug("Loading resource: ${file.path()} -> $domain:$path")
     if (file.name() !in directory) {
-      directory[file.name()] = ResourceDirectory(file.name(), domain, directory)
+      if (file.name() !in directory) {
+        directory[file.name()] = ResourceLeaf(directory, file.name()).also {
+          logger.debug("Created resource leaf: $it")
+        }
+      }
+      directory[file.name()]!!.asLeaf().addResource(StaticResource(NamespaceID.of(domain, path), readBytes)).also {
+        logger.debug("Added resource: ${NamespaceID.of(domain, path)}")
+      }
+    } else {
+      logger.warn("Could not add resource: $domain:$path")
     }
-
-    directory[file.name()]?.asLeafOrNull()?.addResource(StaticResource(NamespaceID.of(domain, path), readBytes))
   }
 
   fun loadFromAssetsTxt(internal: FileHandle) {
@@ -288,7 +334,14 @@ class ResourceManager(
           resourceLeaf
         }
 
-        resourceNode?.asLeafOrNull()?.addResource(StaticResource(NamespaceID.of(domainId, if (categories.isEmpty()) filename else "${categories.joinToString("/")}/$filename"), Gdx.files.internal(file).readBytes()))
+        resourceNode?.asLeafOrNull()?.addResource(
+          StaticResource(
+            NamespaceID.of(
+              domainId,
+              if (categories.isEmpty()) filename else "${categories.joinToString("/")}/$filename"
+            ), Gdx.files.internal(file).readBytes()
+          )
+        )
       }
     }
   }

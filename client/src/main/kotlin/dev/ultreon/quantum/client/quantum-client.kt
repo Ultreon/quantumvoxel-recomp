@@ -3,6 +3,9 @@
 
 package dev.ultreon.quantum.client
 
+//import com.caoccao.javet.interop.V8Host
+//import com.caoccao.javet.interop.V8Runtime
+//import com.caoccao.javet.javenode.JNEventLoop
 import com.artemis.Component
 import com.artemis.World
 import com.artemis.utils.Bag
@@ -21,9 +24,6 @@ import com.badlogic.gdx.utils.Queue
 import com.badlogic.gdx.utils.async.AsyncExecutor
 import com.badlogic.gdx.utils.viewport.ScreenViewport
 import com.badlogic.gdx.utils.viewport.Viewport
-import com.caoccao.javet.interop.V8Host
-import com.caoccao.javet.interop.V8Runtime
-import com.caoccao.javet.javenode.JNEventLoop
 import com.github.tommyettinger.textra.Font
 import com.github.tommyettinger.textra.KnownFonts
 import dev.ultreon.quantum.blocks.Blocks
@@ -38,7 +38,6 @@ import dev.ultreon.quantum.client.world.ClientDimension
 import dev.ultreon.quantum.client.world.PlayerEntity
 import dev.ultreon.quantum.commonResources
 import dev.ultreon.quantum.doContentRegistration
-import dev.ultreon.quantum.event.EventBus
 import dev.ultreon.quantum.logger
 import dev.ultreon.quantum.resource.ResourceManager
 import dev.ultreon.quantum.util.NamespaceID
@@ -50,7 +49,12 @@ import ktx.assets.disposeSafely
 import ktx.async.MainDispatcher
 import space.earlygrey.shapedrawer.ShapeDrawer
 import java.io.FileNotFoundException
+import java.util.*
 import java.util.concurrent.CompletableFuture
+import java.util.concurrent.Executor
+import java.util.concurrent.ExecutorService
+import java.util.concurrent.Executors
+import java.util.concurrent.atomic.AtomicReference
 import kotlin.math.min
 
 const val MINIMUM_WIDTH = 550
@@ -85,8 +89,8 @@ class QuantumVoxel : KtxGame<KtxScreen>(clearScreen = false) {
     instance = this
   }
 
-  private lateinit var gen: Gen
-  private lateinit var v8Runtime: V8Runtime
+//  private lateinit var gen: Gen
+//  private lateinit var v8Runtime: V8Runtime
   private var init: Boolean = false
   private var deferResize: Boolean = false
   private var loaded: Boolean = false
@@ -227,15 +231,15 @@ class QuantumVoxel : KtxGame<KtxScreen>(clearScreen = false) {
 
     loaded = true
 
-    val host = V8Host.getNodeInstance()
-    this.v8Runtime = host.createV8Runtime()
-    this.gen = Gen(v8Runtime, JNEventLoop(v8Runtime)).apply { prepare() }
-
-    gen.importZip(Gdx.files.internal("internal/quantum.zip"))
-
-    for (file in Gdx.files.local("modules").list()) {
-      gen.loadDirectory(file.path())
-    }
+//    val host = V8Host.getNodeInstance()
+//    this.v8Runtime = host.createV8Runtime()
+//    this.gen = Gen(v8Runtime, JNEventLoop(v8Runtime)).apply { prepare() }
+//
+//    gen.importZip(Gdx.files.internal("internal/quantum.zip"))
+//
+//    for (file in Gdx.files.local("modules").list()) {
+//      gen.loadDirectory(file.path())
+//    }
 
     logger.debug("Quantum Voxel started!", this)
   }
@@ -357,7 +361,6 @@ class QuantumVoxel : KtxGame<KtxScreen>(clearScreen = false) {
       }
     }
 
-    Gdx.gl.glViewport(0, 0, Gdx.graphics.width, Gdx.graphics.height)
     environmentRenderer?.apply {
       render(Gdx.graphics.deltaTime)
       val screen = getScreen<PlaceholderScreen>()
@@ -469,23 +472,30 @@ class QuantumVoxel : KtxGame<KtxScreen>(clearScreen = false) {
     private set
 
   companion object {
+    val executor: AsyncExecutor = AsyncExecutor((Runtime.getRuntime().availableProcessors() * 2).coerceAtLeast(8).also {
+      logger.info("Quantum Client will be using $it threads")
+    })
     private val mainThread = Thread.currentThread()
 
     private val isMainThread: Boolean
-      get() = Thread.currentThread() == mainThread
+      get() = Thread.currentThread().id == mainThread.id
     lateinit var instance: QuantumVoxel
 
-    fun <T> await(function: () -> T): T {
+    fun <T : Any?> await(function: () -> T): T {
       if (isMainThread) {
         return function()
       }
 
-      val waiting = CompletableFuture<T>()
+      var waiting = Optional.empty<AtomicReference<T>>()
       quantum.submit {
-        waiting.complete(function())
+        waiting = Optional.of(AtomicReference(function()))
       }
 
-      return waiting.join()
+      while (waiting.isEmpty) {
+        Thread.yield()
+      }
+
+      return waiting.get().get()
     }
   }
 }
@@ -514,4 +524,4 @@ inline fun <reified T : KtxScreen> setScreen() {
   quantum.setScreen<T>()
 }
 
-val clientEventBus = EventBus()
+//val clientEventBus = EventBus()

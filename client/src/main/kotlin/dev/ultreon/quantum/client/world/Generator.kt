@@ -3,10 +3,12 @@ package dev.ultreon.quantum.client.world
 import de.articdive.jnoise.generators.noisegen.opensimplex.FastSimplexNoiseGenerator
 import dev.ultreon.quantum.blocks.Blocks
 import dev.ultreon.quantum.world.SIZE
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.yield
 import java.util.Random as JavaRandom
 
-const val MAGIC_NUMBER = 0x24D2A6E6;
-const val MAGIC_NUMBER_L = 0x24D2A6E648C3A8E9L;
+const val MAGIC_NUMBER = 0x24D2A6E6
+const val MAGIC_NUMBER_L = 0x24D2A6E648C3A8E9L
 
 private var seed = MAGIC_NUMBER_L xor java.lang.Double.doubleToLongBits(System.nanoTime().toDouble())
 
@@ -26,20 +28,20 @@ class Generator {
 
   // Generating combined noise using the alternative implementation
   private fun generateCombinedNoise(x: Double, y: Double): Double {
-    val x = x / 16
-    val y = y / 16
+    val sx = x / 16
+    val sy = y / 16
     val noiseLayers = listOf(
-      createNoiseLayer(seed, 1 / 2048.0, 1.0, x = x, y = y),
-      createNoiseLayer(seed + 1, 1 / 512.0, 64.0, x = x, y = y),
-      createNoiseLayer(seed + 2, 1 / 256.0, 64.0, 64.0, x = x, y = y),
-      createNoiseLayer(seed + 3, 1 / 256.0, 36.0, x = x, y = y),
-      createNoiseLayer(seed + 4, 1 / 1024.0, 12.0, x = x, y = y),
-      createNoiseLayer(seed + 5, 1 / 128.0, 8.0, x = x, y = y),
-      createNoiseLayer(seed + 6, 1 / 64.0, 12.0, x = x, y = y),
-      createNoiseLayer(seed + 7, 1 / 16.0, -14.0, x = x, y = y),
-      createNoiseLayer(seed + 8, 1 / 8.0, -16.0, x = x, y = y),
-      createNoiseLayer(seed + 9, 1 / 8.0, 16.0, x = x, y = y),
-      createNoiseLayer(seed + 10, 1 / 4.0, 8.0, x = x, y = y)
+      createNoiseLayer(seed, 1 / 2048.0, 1.0, x = sx, y = sy),
+      createNoiseLayer(seed + 1, 1 / 512.0, 64.0, x = sx, y = sy),
+      createNoiseLayer(seed + 2, 1 / 256.0, 64.0, 64.0, x = sx, y = sy),
+      createNoiseLayer(seed + 3, 1 / 256.0, 36.0, x = sx, y = sy),
+      createNoiseLayer(seed + 4, 1 / 1024.0, 12.0, x = sx, y = sy),
+      createNoiseLayer(seed + 5, 1 / 128.0, 8.0, x = sx, y = sy),
+      createNoiseLayer(seed + 6, 1 / 64.0, 12.0, x = sx, y = sy),
+      createNoiseLayer(seed + 7, 1 / 16.0, -14.0, x = sx, y = sy),
+      createNoiseLayer(seed + 8, 1 / 8.0, -16.0, x = sx, y = sy),
+      createNoiseLayer(seed + 9, 1 / 8.0, 16.0, x = sx, y = sy),
+      createNoiseLayer(seed + 10, 1 / 4.0, 8.0, x = sx, y = sy)
     )
 
     val combinedNoise = noiseLayers.sum()
@@ -56,6 +58,10 @@ class Generator {
   val random = JavaRandom(System.nanoTime() xor MAGIC_NUMBER_L)
 
   fun generate(chunk: ClientChunk) {
+    generateAsync(chunk)
+  }
+
+  fun generateAsync(chunk: ClientChunk) {
     val start = chunk.start
     val size = SIZE
 
@@ -69,22 +75,22 @@ class Generator {
           var height = evaluateNoise(x, z)
           if (height < -64) height = -60.0
 
-          for (y in start.y until (start.y + size)) {
-//          if (height < 56) biomeSetter.setBiome(x, y, z, Biome.OCEAN)
-//          if (height < 50) biomeSetter.setBiome(x, y, z, Biome.DEEP_OCEAN)
+          for (dy in start.y until (start.y + size)) {
+//          if (height < 56) biomeSetter.setBiome(x, dy, z, Biome.OCEAN)
+//          if (height < 50) biomeSetter.setBiome(x, dy, z, Biome.DEEP_OCEAN)
             if (height < 64.0) {
               when {
-                y < 64.0 && y > height -> chunk[x, y, z] = Blocks.water
-                y < 64.0 && y > height - 3 -> chunk[x, y, z] = Blocks.sand
-                y < 64.0 -> chunk[x, y, z] = Blocks.stone
+                dy < 64.0 && dy > height -> chunk[x, dy, z] = Blocks.water
+                dy < 64.0 && dy > height - 3 -> chunk[x, dy, z] = Blocks.sand
+                dy < 64.0 -> chunk[x, dy, z] = Blocks.stone
               }
               continue
             }
             when {
-              y < height && height > 64.0 && height < 64.5 -> chunk[x, y, z] = Blocks.sand
-              y == height.toInt() -> chunk[x, y, z] = Blocks.grass
-              y < height && y > height - 4 -> chunk[x, y, z] = Blocks.soil
-              y <= height - 4 -> chunk[x, y, z] = Blocks.stone
+              dy < height && height > 64.0 && height < 64.5 -> chunk[x, dy, z] = Blocks.sand
+              dy == height.toInt() -> chunk[x, dy, z] = Blocks.grass
+              dy < height && dy > height - 4 -> chunk[x, dy, z] = Blocks.soil
+              dy <= height - 4 -> chunk[x, dy, z] = Blocks.stone
             }
           }
 
@@ -113,11 +119,11 @@ class Generator {
               }
             }
           } else if (height in 160.0..192.0) {
-            for (y in (height - 6).toInt()..height.toInt()) {
+            for (dy in (height - 6).toInt()..height.toInt()) {
               val i = random.nextInt(4)
               when (i) {
-                0 -> chunk[x, y, z] = Blocks.stone
-                1 -> chunk[x, y, z] = if (y == height.toInt())
+                0 -> chunk[x, dy, z] = Blocks.stone
+                1 -> chunk[x, dy, z] = if (dy == height.toInt())
                   if (random.nextInt(2) == 0) Blocks.grass
                   else Blocks.soil
                 else Blocks.soil
@@ -125,13 +131,13 @@ class Generator {
                 else -> {
                   val cobblestone = Blocks.cobblestone
                   if (cobblestone != null) {
-                    chunk[x, y, z] = cobblestone
+                    chunk[x, dy, z] = cobblestone
                   } else {
-                    chunk[x, y, z] = Blocks.stone
+                    chunk[x, dy, z] = Blocks.stone
                   }
                 }
-//                3 -> chunk.set(x, y, z, Blocks.MOSSY_COBBLESTONE)
-//                else -> chunk.set(x, y, z, Block.COBBLESTONE)
+//                3 -> chunk.set(x, dy, z, Blocks.MOSSY_COBBLESTONE)
+//                else -> chunk.set(x, dy, z, Block.COBBLESTONE)
               }
             }
             val snowyGrass = Blocks.snowyGrass

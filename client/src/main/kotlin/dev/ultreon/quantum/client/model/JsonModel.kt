@@ -6,6 +6,7 @@ import com.badlogic.gdx.graphics.g3d.utils.ModelBuilder
 import com.badlogic.gdx.math.Vector3
 import dev.ultreon.quantum.client.model.JsonModelLoader.ModelElement
 import dev.ultreon.quantum.util.NamespaceID
+import kotlinx.coroutines.yield
 import ktx.assets.disposeSafely
 import java.util.function.Consumer
 
@@ -40,6 +41,18 @@ class JsonModel(
       modelElement.loadInto(i, faceCull, x, y, z, builder, textureElements)
       i++
     }
+  }
+
+  override suspend fun loadIntoAsync(builder: MeshPartBuilder, x: Int, y: Int, z: Int, faceCull: FaceCull) {
+    var i = 0
+    val modelElementsSize = modelElements.size
+    while (i < modelElementsSize) {
+      val modelElement: ModelElement = modelElements[i]
+      modelElement.loadInto(i, faceCull, x, y, z, builder, textureElements)
+      i++
+    }
+
+    yield()
   }
 
   fun load() {

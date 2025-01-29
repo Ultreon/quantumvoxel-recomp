@@ -7,6 +7,8 @@ import dev.ultreon.quantum.world.Dimension
 
 class PlayerEntity(val dimension: Dimension, position: Vector3D) {
   fun tick() {
+    val chunkPosition = positionComponent.chunkPosition
+    if (dimension.chunkAt(chunkPosition.x, chunkPosition.y, chunkPosition.z) == null) return
     collisionComponent.tick()
   }
 

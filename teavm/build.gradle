@@ -17,8 +17,6 @@ java.targetCompatibility = "11"
 // This should probably be equal to targetCompatibility, above. This only affects the TeaVM module.
 java.sourceCompatibility = "11"
 
-compileKotlin.kotlinOptions.jvmTarget = "11"
-
 dependencies {
   implementation "com.github.xpenatan.gdx-teavm:backend-teavm:$gdxTeaVMVersion"
   implementation "com.github.xpenatan.gdx-teavm:gdx-freetype-teavm:$gdxTeaVMVersion"
@@ -33,10 +31,17 @@ dependencies {
 }
 
 tasks.register('buildJavaScript', JavaExec) {
-  dependsOn classes, "zipAssets"
   setDescription("Transpile bytecode to JavaScript via TeaVM")
   mainClass.set(project.mainClassName)
   setClasspath(sourceSets.main.runtimeClasspath)
+
+  doLast {
+    copy {
+      from "build/dist/webapp/assets/assets.txt"
+      into "build/dist/webapp/assets"
+      rename "assets.txt", "resources.txt"
+    }
+  }
 }
 build.dependsOn buildJavaScript
 
@@ -46,9 +51,4 @@ tasks.register("run") {
 }
 
 buildJavaScript {
-}
-
-tasks.register("zipAssets", Zip) {
-  from file("../assets")
-  archiveFile.set file("build/assets/quantum.zip")
 }

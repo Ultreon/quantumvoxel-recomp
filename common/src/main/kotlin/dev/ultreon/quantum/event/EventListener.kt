@@ -1,5 +1,5 @@
 package dev.ultreon.quantum.event
 
-interface EventListener {
-  fun onEvent(event: Event)
-}
+//interface EventListener {
+//  fun onEvent(event: Event)
+//}

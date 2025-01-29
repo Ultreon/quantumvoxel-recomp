@@ -1,5 +1,6 @@
 package dev.ultreon.quantum.client.world
 
+import com.badlogic.gdx.graphics.PerspectiveCamera
 import com.badlogic.gdx.graphics.g3d.Material
 import com.badlogic.gdx.graphics.g3d.ModelBatch
 import com.badlogic.gdx.math.GridPoint3
@@ -13,11 +14,7 @@ import dev.ultreon.quantum.util.RayD
 import dev.ultreon.quantum.world.BlockFlags
 import dev.ultreon.quantum.world.Dimension
 import dev.ultreon.quantum.world.SIZE
-import kotlinx.coroutines.async
-import kotlinx.coroutines.coroutineScope
-import ktx.assets.disposeSafely
-import ktx.async.MainDispatcher
-import ktx.async.newAsyncContext
+import kotlinx.coroutines.yield
 import ktx.collections.GdxArray
 import ktx.collections.GdxSet
 import java.util.concurrent.ConcurrentHashMap
@@ -35,13 +32,9 @@ open class ClientDimension(private val material: Material) : Dimension() {
   private var toRemove = listOf<ClientChunk>()
   private var toRebuild = listOf<ClientChunk>()
 
-  val context = newAsyncContext((Runtime.getRuntime().availableProcessors()) * 4, "ChunkBuilder")
-
   override fun get(x: Int, y: Int, z: Int): Block {
-    synchronized(chunks) {
-      return chunks[location(x.floorDiv(SIZE), y.floorDiv(SIZE), z.floorDiv(SIZE))]
-        ?.get(x.mod(SIZE), y.mod(SIZE), z.mod(SIZE)) ?: Blocks.air
-    }
+    return chunks[location(x.floorDiv(SIZE), y.floorDiv(SIZE), z.floorDiv(SIZE))]
+      ?.get(x.mod(SIZE), y.mod(SIZE), z.mod(SIZE)) ?: Blocks.air
   }
 
   override fun set(x: Int, y: Int, z: Int, block: Block, flags: BlockFlags) {
@@ -68,37 +61,53 @@ open class ClientDimension(private val material: Material) : Dimension() {
     return chunkAt(x.floorDiv(SIZE), y.floorDiv(SIZE), z.floorDiv(SIZE))
   }
 
-  fun put(chunk: ClientChunk) {
+  fun put(chunk: ClientChunk): Boolean {
     val location = location(chunk.chunkPos.x, chunk.chunkPos.y, chunk.chunkPos.z)
-    if (location in chunks) {
-      remove(chunks[location] ?: return)
+    val oldChunk = chunks[location]
+    if (oldChunk != null) {
+      if (remove(oldChunk)) {
+        if (chunk.loading) {
+          throw AssertionError("Sanity check failed")
+        }
+        chunk.disposeChunk()
+        return true
+      }
       logger.warn("Overridden chunk at ${chunk.chunkPos}")
     }
-    chunks.put(location, chunk)
+    chunks[location] = chunk
+    return false
   }
 
-  fun remove(chunk: ClientChunk) {
-    if (chunk.disposeChunk()) {
-      return
+  fun remove(chunk: ClientChunk): Boolean {
+    if (!chunk.disposeChunk()) {
+      return true
     }
     if (chunks.remove(location(chunk.chunkPos.x, chunk.chunkPos.y, chunk.chunkPos.z)) == null) {
       logger.warn("Tried to remove nonexistent chunk at ${chunk.chunkPos}")
     }
 
     forChunksAround(chunk) { rebuild() }
+    return false
   }
 
   fun loadChunk(cx: Int, cy: Int, cz: Int, build: Boolean = true) {
     val chunk = ClientChunk(cx, cy, cz, material, this)
-    put(chunk.apply {
-      generate(this)
-    })
+    if (put(chunk.apply {
+        generate(this)
+      })) return
     chunk.apply {
       if (build) {
         rebuild()
-        forChunksAround(this) { rebuild() }
       }
     }
+  }
+
+  suspend fun loadChunkAsync(cx: Int, cy: Int, cz: Int, build: Boolean = true) {
+    val chunk = ClientChunk(cx, cy, cz, material, this)
+    if (put(chunk.apply {
+        generateAsync(this)
+      })) return
+    chunk.buildModel()
   }
 
   inline fun forChunksAround(chunk: ClientChunk, crossinline action: ClientChunk.() -> Unit) {
@@ -135,29 +144,30 @@ open class ClientDimension(private val material: Material) : Dimension() {
       return true
     }
 
-  fun pollChunkLoad() {
+  suspend fun pollChunkLoad() {
     if (chunksToLoad.isEmpty) return
     val toLoad = chunksToLoad.removeIndex(0)
-    val chunkPos = chunks[toLoad.second]?.chunkPos
-    when (chunkPos) {
+    when (val chunkPos = chunks[toLoad.second]?.chunkPos) {
       toLoad.first -> return
-      null -> loadChunk(toLoad.first.x, toLoad.first.y, toLoad.first.z)
+      null -> loadChunkAsync(toLoad.first.x, toLoad.first.y, toLoad.first.z)
       else -> logger.warn("Attempted override for ${toLoad.first} at already existing location $chunkPos")
     }
   }
 
-  fun pollAllChunks() {
+  suspend fun pollAllChunks() {
     logger.debug("About to load ${chunksToLoad.size} chunks!")
 
     measureTimeMillis {
       var lastLogTime = System.currentTimeMillis()
       while (!chunksToLoad.isEmpty) {
         val toLoad = chunksToLoad.removeIndex(0)
-        loadChunk(toLoad.first.x, toLoad.first.y, toLoad.first.z, build = false)
+        loadChunkAsync(toLoad.first.x, toLoad.first.y, toLoad.first.z, build = false)
         if (System.currentTimeMillis() - lastLogTime > 1000) {
           logger.debug("${chunksToLoad.size} chunks remaining!")
           lastLogTime = System.currentTimeMillis()
         }
+
+        yield()
       }
     }.also {
       logger.debug("Loaded ${chunks.size} chunks in $it ms!")
@@ -168,13 +178,14 @@ open class ClientDimension(private val material: Material) : Dimension() {
     logger.debug("Rebuilt all chunks!")
   }
 
-  fun rebuildAll() {
+  suspend fun rebuildAll() {
     for (chunk in chunks.values) {
-      chunk.rebuild()
+      chunk.rebuildAsync()
+      yield()
     }
   }
 
-  suspend fun refreshChunks(position: Vector3D) = coroutineScope {
+  suspend fun refreshChunks(position: Vector3D) {
     val requiredChunks: MutableList<Pair<GridPoint3, Long>> = arrayListOf()
     val cx = position.x.toInt().floorDiv(SIZE)
     val cy = position.y.toInt().floorDiv(SIZE)
@@ -190,6 +201,8 @@ open class ClientDimension(private val material: Material) : Dimension() {
           if (chunk == null) {
             requiredChunks.add(GridPoint3(dcx, dcy, dcz) to location(dcx, dcy, dcz))
           }
+
+          yield()
         }
       }
     }
@@ -200,29 +213,29 @@ open class ClientDimension(private val material: Material) : Dimension() {
 
     val toRemove = GdxArray<ClientChunk>()
     val toRebuild = GdxSet<ClientChunk>()
-    val await = coroutineScope { async(MainDispatcher) { chunks.map { it.value } } }.await()
+    val await = chunks.map { it.value }
     for (chunk in await) {
       if (chunk.chunkPos.dst(cx, cy, cz) > renderDistance) {
         toRemove.add(chunk)
         toRebuild.remove(chunk)
         forChunksAround(chunk) { toRebuild.add(this) }
       }
+
+      yield()
     }
 
-    async(MainDispatcher) {
-      this@ClientDimension.toRemove = toRemove.toList()
-    }.await()
+    this@ClientDimension.toRemove = toRemove.toList()
+    this@ClientDimension.toRebuild = toRebuild.toList()
 
-    async(MainDispatcher) {
-      this@ClientDimension.toRebuild = toRebuild.toList()
-    }.await()
+    for (chunk in requiredChunks) {
+      loadChunkAsync(chunk.first.x, chunk.first.y, chunk.first.z, build = true)
+      yield()
+    }
 
-    async(MainDispatcher) {
-      chunksToLoad.clear()
-      for (chunk in requiredChunks) {
-        this@ClientDimension.chunksToLoad.add(chunk)
-      }
-    }.await()
+    for (chunk in toRemove.toList()) {
+      remove(chunk)
+      yield()
+    }
   }
 
   fun pollChunks() {
@@ -236,20 +249,11 @@ open class ClientDimension(private val material: Material) : Dimension() {
   }
 
   private fun generate(chunk: ClientChunk) {
-//    val wx = chunk.chunkPos.x * SIZE
-//    val wy = chunk.chunkPos.y * SIZE
-//    val wz = chunk.chunkPos.z * SIZE
-//
-//    for (x in 0 until SIZE) {
-//      for (y in 0 until SIZE) {
-//        for (z in 0 until SIZE) {
-//          val blockName = generateBlock(wx + x, wy + y, wz + z)
-//          chunk.set(x, y, z, blockName, BlockFlags.NONE)
-//        }
-//      }
-//    }
-
     generator.generate(chunk)
+  }
+
+  private fun generateAsync(chunk: ClientChunk) {
+    generator.generateAsync(chunk)
   }
 
   private fun generateBlock(wx: Int, wy: Int, wz: Int): Block {
@@ -261,15 +265,14 @@ open class ClientDimension(private val material: Material) : Dimension() {
     }
   }
 
-  fun render(modelBatch: ModelBatch) {
+  fun render(modelBatch: ModelBatch, camera: PerspectiveCamera) {
     for (chunk: ClientChunk in chunks.values) {
+      chunk.reposition(player.positionComponent.position)
       modelBatch.render(chunk)
     }
   }
 
   override fun dispose() {
-    context.disposeSafely()
-
     for (chunk in chunks.values) {
       val disposeChunk = chunk.disposeChunk()
       if (!disposeChunk) {

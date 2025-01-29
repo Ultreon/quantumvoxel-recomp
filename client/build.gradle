@@ -3,11 +3,10 @@ import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 [compileJava, compileTestJava]*.options*.encoding = 'UTF-8'
 
 java.sourceCompatibility = 8
-java.targetCompatibility = 11
+java.targetCompatibility = 8
 if (JavaVersion.current().isJava9Compatible()) {
   compileJava.options.release.set(11)
 }
-kotlin.compilerOptions.jvmTarget.set(JvmTarget.JVM_11)
 
 eclipse.project.name = appName + '-client'
 
@@ -43,12 +42,12 @@ dependencies {
   api "io.github.libktx:ktx-vis:$ktxVersion"
   api "net.onedaybeard.artemis:artemis-odb:$artemisOdbVersion"
   api "org.jetbrains.kotlin:kotlin-stdlib-jdk8:$kotlinVersion"
-  api "org.jetbrains.kotlinx:kotlinx-coroutines-core:$kotlinxCoroutinesVersion"
+//  api "org.jetbrains.kotlinx:kotlinx-coroutines-core:$kotlinxCoroutinesVersion"
   api "space.earlygrey:shapedrawer:$shapeDrawerVersion"
 
   // Javet
-  api "com.caoccao.javet:javet:4.1.1"
-  api "com.caoccao.javet:javenode:0.8.0"
+//  api "com.caoccao.javet:javet:4.1.1"
+//  api "com.caoccao.javet:javenode:0.8.0"
 
   if (enableGraalNative == 'true') {
     implementation "io.github.berstanio:gdx-svmhelper-annotations:$graalHelperVersion"

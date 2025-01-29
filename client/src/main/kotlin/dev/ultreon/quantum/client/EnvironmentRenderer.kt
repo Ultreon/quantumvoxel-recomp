@@ -2,6 +2,9 @@
 
 package dev.ultreon.quantum.client
 
+//import kotlinx.coroutines.DelicateCoroutinesApi
+//import kotlinx.coroutines.GlobalScope
+//import kotlinx.coroutines.launch
 import com.badlogic.gdx.Gdx
 import com.badlogic.gdx.Input
 import com.badlogic.gdx.graphics.g3d.Environment
@@ -12,8 +15,6 @@ import com.badlogic.gdx.graphics.g3d.attributes.ColorAttribute
 import com.badlogic.gdx.graphics.g3d.shaders.DefaultShader
 import com.badlogic.gdx.graphics.g3d.utils.DefaultRenderableSorter
 import com.badlogic.gdx.graphics.g3d.utils.DefaultShaderProvider
-import com.badlogic.gdx.graphics.glutils.FrameBuffer
-import com.badlogic.gdx.graphics.glutils.ShaderProgram
 import com.badlogic.gdx.math.Matrix4
 import com.badlogic.gdx.math.Vector3
 import com.badlogic.gdx.scenes.scene2d.Stage
@@ -30,12 +31,11 @@ import dev.ultreon.quantum.math.Vector3D
 import dev.ultreon.quantum.util.BlockHit
 import dev.ultreon.quantum.util.NamespaceID
 import dev.ultreon.quantum.vec3d
-import kotlinx.coroutines.DelicateCoroutinesApi
-import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import ktx.actors.onClick
 import ktx.app.clearScreen
 import ktx.assets.disposeSafely
+import ktx.async.KtxAsync
 import ktx.math.vec3
 import ktx.scene2d.actors
 import ktx.scene2d.button
@@ -59,6 +59,7 @@ private val tmp1 = vec3()
  *              camera, player entity, and necessary assets.
  */
 class EnvironmentRenderer : Disposable {
+  private var refreshing: Boolean = false
   private var time: Float = 0f
   private var lastHit: BlockHit? = null
   private val backupMatrix: Matrix4 = Matrix4()
@@ -93,17 +94,24 @@ class EnvironmentRenderer : Disposable {
     }
   }
   private val modelBatch = ModelBatch(
-    object : DefaultShaderProvider(
-      (quantum.clientResources require NamespaceID.of(path = "shaders/default.vsh")).text,
-      (quantum.clientResources require NamespaceID.of(path = "shaders/default.fsh")).text
-    ) {
-      override fun createShader(renderable: Renderable): Shader {
-        return DefaultShader(
-          renderable,
-          this.config,
-          "#version 150\n\n" + DefaultShader.createPrefix(renderable, config)
-        )
+    if (gamePlatform.isWebGL3 || gamePlatform.isGL30 || gamePlatform.isGLES3) {
+      object : DefaultShaderProvider(
+        (quantum.clientResources require NamespaceID.of(path = "shaders/default.vsh")).text,
+        (quantum.clientResources require NamespaceID.of(path = "shaders/default.fsh")).text
+      ) {
+        override fun createShader(renderable: Renderable): Shader {
+          return DefaultShader(
+            renderable,
+            this.config,
+            "#version 300 es\n\n" + DefaultShader.createPrefix(renderable, config)
+          )
+        }
       }
+    } else {
+      DefaultShaderProvider(
+        (quantum.clientResources require NamespaceID.of(path = "shaders/legacy/default.vsh")).text,
+        (quantum.clientResources require NamespaceID.of(path = "shaders/legacy/default.fsh")).text
+      )
     },
     DefaultRenderableSorter()
   )
@@ -135,11 +143,7 @@ class EnvironmentRenderer : Disposable {
   val skybox = Skybox()
 
   init {
-//    world.inject(player)
-
-    GlobalScope.launch(dimension!!.context) {
-      dimension!!.refreshChunks(player!!.positionComponent.position)
-    }
+    KtxAsync.launch { dimension!!.refreshChunks(player!!.positionComponent.position) }
   }
 
   /**
@@ -148,7 +152,6 @@ class EnvironmentRenderer : Disposable {
    *
    * @param delta A `Float` value representing the time elapsed since the last frame, used to scale time-dependent calculations.
    */
-  @OptIn(DelicateCoroutinesApi::class)
   fun render(delta: Float) {
     val player = player
     val dimension = dimension
@@ -162,14 +165,12 @@ class EnvironmentRenderer : Disposable {
     Gdx.gl.glDepthMask(false)
     skybox.render(camera, position.xRot)
 
-    dimension.updateLocations(position.position)
-
     Gdx.gl.glDepthMask(true)
 
     modelBatch.begin(camera)
-    dimension.render(modelBatch)
+    dimension.render(modelBatch, camera)
     modelBatch.end()
-//    dimension.pollChunks()
+    dimension.pollChunks()
 
     vel.set(0f, 0f, 0f)
 
@@ -187,23 +188,24 @@ class EnvironmentRenderer : Disposable {
 
     move(position, delta)
 
-    if (lastPollTime + 10 < System.currentTimeMillis()) {
-      dimension.pollChunkLoad()
-      lastPollTime = System.currentTimeMillis()
-    }
+    KtxAsync.launch {
+      if (lastPollTime + 10 < System.currentTimeMillis()) {
+        dimension.pollChunkLoad()
+        lastPollTime = System.currentTimeMillis()
+      }
 
-    if (lastRefreshTime + 100 < System.currentTimeMillis()) {
-      if (position.position != lastRefreshPosition) {
-        GlobalScope.launch(quantum.dimension!!.context) {
+      if (!refreshing && lastRefreshTime + 1000 < System.currentTimeMillis()) {
+        if (position.position != lastRefreshPosition) {
+          this@EnvironmentRenderer.refreshing = true
           dimension.refreshChunks(player.positionComponent.position)
+          lastRefreshTime = System.currentTimeMillis()
+          lastRefreshPosition = position.position.copy()
+          this@EnvironmentRenderer.refreshing = false
+        } else {
+          lastRefreshTime = System.currentTimeMillis()
         }
-        lastRefreshTime = System.currentTimeMillis()
-        lastRefreshPosition = position.position.copy()
-      } else {
-        lastRefreshTime = System.currentTimeMillis()
       }
     }
-
 
     backupMatrix.set(spriteBatch.transformMatrix)
     spriteBatch.transformMatrix =
@@ -322,7 +324,9 @@ class EnvironmentRenderer : Disposable {
       KeyBinds.runningKey.isPressed()
 
     if (Gdx.input.isKeyJustPressed(Input.Keys.F1)) {
-      dimension!!.rebuildAll()
+      KtxAsync.launch {
+        dimension!!.rebuildAll()
+      }
     }
   }
 

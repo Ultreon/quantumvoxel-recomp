@@ -5,7 +5,6 @@ package dev.ultreon.quantum.teavm
 import com.badlogic.gdx.Gdx
 import com.github.xpenatan.gdx.backends.teavm.TeaApplication
 import com.github.xpenatan.gdx.backends.teavm.TeaApplicationConfiguration
-import com.github.xpenatan.gdx.backends.teavm.TeaInput
 import dev.ultreon.quantum.Logger
 import dev.ultreon.quantum.LoggerFactory
 import dev.ultreon.quantum.client.GamePlatform
@@ -13,11 +12,9 @@ import dev.ultreon.quantum.client.QuantumVoxel
 import dev.ultreon.quantum.client.gamePlatform
 import dev.ultreon.quantum.factory
 import dev.ultreon.quantum.resource.ResourceManager
-import org.teavm.jso.JSBody
 import org.teavm.jso.JSObject
 
 /** Launches the TeaVM/HTML application. */
-@Deprecated("TeaVM backend is deprecated")
 fun main() {
   val config = TeaApplicationConfiguration("canvas").apply {
     //// If width and height are each greater than 0, then the app will use a fixed size.
@@ -34,26 +31,32 @@ fun main() {
     this.padHorizontal = 0
     this.usePhysicalPixels = true
     this.powerPreference = "high-performance"
+
+    this.useGL30 = true
   }
 
   factory = TeaVMFactory()
   gamePlatform = object : GamePlatform {
+    override val isWebGL3: Boolean
+      get() = Gdx.gl30 != null
+
+    override val isWebGL2: Boolean
+      get() = Gdx.gl20 != null
+
     override fun loadResources(resourceManager: ResourceManager) {
-      resourceManager.load(Gdx.files.internal("quantum.zip"))
+      resourceManager.load(Gdx.files.internal("."))
     }
 
     override val isMobile: Boolean
       get() = TeaApplication.isMobileDevice()
   }
-  TeaApplication(QuantumVoxel, config)
+  dev.ultreon.quantum.teavm.TeaApplication(QuantumVoxel(), config)
 }
 
-@Deprecated("TeaVM backend is deprecated")
 class TeaVMFactory : LoggerFactory {
   override fun getLogger(name: String): Logger = TeaVMLogger(name)
 }
 
-@Deprecated("TeaVM backend is deprecated")
 class TeaVMLogger(val name: String) : Logger, JSObject {
   override fun info(message: String) {
     TeaVMConsole.info("$name: $message")

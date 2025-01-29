@@ -2,7 +2,7 @@ package dev.ultreon.quantum
 
 import dev.ultreon.quantum.blocks.Block
 import dev.ultreon.quantum.blocks.Blocks
-import dev.ultreon.quantum.event.EventBus
+//import dev.ultreon.quantum.event.EventBus
 import dev.ultreon.quantum.item.Item
 import dev.ultreon.quantum.item.Items
 import dev.ultreon.quantum.math.Vector3D
@@ -46,4 +46,4 @@ fun doContentRegistration() {
   Items.loadContent(commonResources)
 }
 
-val commonEventBus = EventBus()
+//val commonEventBus = EventBus()

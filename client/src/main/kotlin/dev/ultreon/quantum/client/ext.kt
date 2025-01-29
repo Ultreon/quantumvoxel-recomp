@@ -621,11 +621,185 @@ fun Font.draw(spriteBatch: SpriteBatch, text: String, x: Float, y: Float) {
 }
 
 fun spriteBatch(): SpriteBatch {
+  if (gamePlatform.isWebGL3) {
+    fun createDefaultShader(): ShaderProgram {
+      @Language("GLSL")
+      val vertexShader =
+        """
+        |#version 300 es
+        |
+        |#ifdef GL_ES
+        |precision mediump float;
+        |#endif
+        |
+        |in vec4 a_position;
+        |in vec4 a_color;
+        |in vec2 a_texCoord0;
+        |uniform mat4 u_projTrans;
+        |out vec4 v_color;
+        |out vec2 v_texCoords;
+        |
+        |void main()
+        |{
+        |   v_color = a_color;
+        |   v_color.a = v_color.a * (255.0/254.0);
+        |   v_texCoords = a_texCoord0;
+        |   gl_Position =  u_projTrans * a_position;
+        |}
+      """.trimMargin()
+
+      @Language("GLSL")
+      val fragmentShader =
+        """
+        |#version 300 es
+        |
+        |#ifdef GL_ES
+        |#define LOWP lowp
+        |precision mediump float;
+        |#else
+        |#define LOWP
+        |#endif
+        |in LOWP vec4 v_color;
+        |in vec2 v_texCoords;
+        |uniform sampler2D u_texture;
+        |
+        |out LOWP vec4 fragColor;
+        |void main()
+        |{
+        |  fragColor = v_color * texture(u_texture, v_texCoords);
+        |}
+      """.trimMargin()
+      val shader = ShaderProgram(vertexShader, fragmentShader)
+      require(shader.isCompiled) { "Error compiling shader: " + shader.log }
+      return shader
+    }
+
+    return SpriteBatch(
+      1000,
+      createDefaultShader()
+    )
+  }
+  if (gamePlatform.isWebGL2) {
+    fun createDefaultShader(): ShaderProgram {
+      @Language("GLSL")
+      val vertexShader =
+        """
+        |#ifdef GL_ES
+        |precision mediump float;
+        |#endif
+        |
+        |attribute vec4 a_position;
+        |attribute vec4 a_color;
+        |attribute vec2 a_texCoord0;
+        |uniform mat4 u_projTrans;
+        |varying vec4 v_color;
+        |varying vec2 v_texCoords;
+        |
+        |void main()
+        |{
+        |   v_color = a_color;
+        |   v_color.a = v_color.a * (255.0/254.0);
+        |   v_texCoords = a_texCoord0;
+        |   gl_Position =  u_projTrans * a_position;
+        |}
+      """.trimMargin()
+
+      @Language("GLSL")
+      val fragmentShader =
+        """
+        |#ifdef GL_ES
+        |#define LOWP lowp
+        |precision mediump float;
+        |#else
+        |#define LOWP
+        |#endif
+        |varying LOWP vec4 v_color;
+        |varying vec2 v_texCoords;
+        |uniform sampler2D u_texture;
+        |
+        |void main()
+        |{
+        |  gl_FragColor = v_color * texture2D(u_texture, v_texCoords);
+        |}
+      """.trimMargin()
+      val shader = ShaderProgram(vertexShader, fragmentShader)
+      require(shader.isCompiled) { "Error compiling shader: " + shader.log }
+      return shader
+    }
+
+    return SpriteBatch(
+      1000,
+      createDefaultShader()
+    )
+  }
+
+  if (!gamePlatform.isGLES3) {
+    if (gamePlatform.isGLES2) {
+      fun createDefaultShader(): ShaderProgram {
+        @Language("GLSL")
+        val vertexShader =
+          """
+        |#version 200 es
+        |
+        |#ifdef GL_ES
+        |precision mediump float;
+        |#endif
+        |
+        |in vec4 a_position;
+        |in vec4 a_color;
+        |in vec2 a_texCoord0;
+        |uniform mat4 u_projTrans;
+        |out vec4 v_color;
+        |out vec2 v_texCoords;
+        |
+        |void main()
+        |{
+        |   v_color = a_color;
+        |   v_color.a = v_color.a * (255.0/254.0);
+        |   v_texCoords = a_texCoord0;
+        |   gl_Position =  u_projTrans * a_position;
+        |}
+      """.trimMargin()
+
+        @Language("GLSL")
+        val fragmentShader =
+          """
+        |#version 200 es
+        |
+        |#ifdef GL_ES
+        |#define LOWP lowp
+        |precision mediump float;
+        |#else
+        |#define LOWP
+        |#endif
+        |in LOWP vec4 v_color;
+        |in vec2 v_texCoords;
+        |uniform sampler2D u_texture;
+        |
+        |out LOWP vec4 fragColor;
+        |void main()
+        |{
+        |  fragColor = v_color * texture(u_texture, v_texCoords);
+        |}
+      """.trimMargin()
+        val shader = ShaderProgram(vertexShader, fragmentShader)
+        require(shader.isCompiled) { "Error compiling shader: " + shader.log }
+        return shader
+      }
+
+      return SpriteBatch(
+        1000,
+        createDefaultShader()
+      )
+    }
+    return SpriteBatch()
+  }
+
   fun createDefaultShader(): ShaderProgram {
     @Language("GLSL")
     val vertexShader =
       """
-        |#version 150
+        |#version 300 es
         |
         |#ifdef GL_ES
         |precision mediump float;
@@ -650,7 +824,7 @@ fun spriteBatch(): SpriteBatch {
     @Language("GLSL")
     val fragmentShader =
       """
-        |#version 150
+        |#version 300 es
         |
         |#ifdef GL_ES
         |#define LOWP lowp
@@ -682,7 +856,7 @@ fun spriteBatch(): SpriteBatch {
 fun shapeRenderer(): ShapeRenderer {
   fun createVertexShader(hasNormals: Boolean, hasColors: Boolean, numTexCoords: Int): String {
     var shader = """
-      #version 150
+      #version 300 es
 
       #ifdef GL_ES
       precision mediump float;
@@ -721,7 +895,7 @@ fun shapeRenderer(): ShapeRenderer {
   }
 
   fun createFragmentShader(hasNormals: Boolean, hasColors: Boolean, numTexCoords: Int): String {
-    var shader = """#version 150
+    var shader = """#version 300 es
 
 #ifdef GL_ES
 precision mediump float;

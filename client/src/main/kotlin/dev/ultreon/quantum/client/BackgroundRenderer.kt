@@ -30,8 +30,16 @@ class BackgroundRenderer : Disposable {
     update()
   }
   private val modelBatch = ModelBatch(
-    (quantum.clientResources require NamespaceID.of(path = "shaders/default.vsh")).text,
-    (quantum.clientResources require NamespaceID.of(path = "shaders/default.fsh")).text
+    if (gamePlatform.isGL30 || gamePlatform.isGLES3 || gamePlatform.isWebGL3) {
+      (quantum.clientResources require NamespaceID.of(path = "shaders/default.vsh")).text
+    } else {
+      (quantum.clientResources require NamespaceID.of(path = "shaders/legacy/default.vsh")).text
+    },
+    if (gamePlatform.isGL30 || gamePlatform.isGLES3 || gamePlatform.isWebGL3) {
+      (quantum.clientResources require NamespaceID.of(path = "shaders/default.fsh")).text
+    } else {
+      (quantum.clientResources require NamespaceID.of(path = "shaders/legacy/default.fsh")).text
+    }
   )
   private val skybox: Skybox = Skybox()
   private var chunks = Array(3) { ClientChunk(it - 1, 0, 0, quantum.material, FakeDimension()) }

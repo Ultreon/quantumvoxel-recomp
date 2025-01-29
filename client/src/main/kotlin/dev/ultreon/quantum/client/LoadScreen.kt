@@ -35,7 +35,7 @@ class LoadScreen : GameScreen() {
       logger.warn("LoadScreen was already initialized!")
       return
     }
-    t = thread {
+    t = Thread {
       try {
         message = "Loading textures..."
         textureManager.init()
@@ -104,6 +104,8 @@ class LoadScreen : GameScreen() {
         e.printStackTrace()
         crash = e.stackTrace
       }
+    }.also {
+      it.start()
     }
 
     super.show()

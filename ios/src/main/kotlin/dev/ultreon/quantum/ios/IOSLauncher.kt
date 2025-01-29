@@ -16,6 +16,12 @@ import org.robovm.apple.uikit.UIApplication
 class IOSLauncher : IOSApplication.Delegate() {
   override fun createApplication(): IOSApplication {
     gamePlatform = object : GamePlatform {
+      override val isGLES3: Boolean
+        get() = Gdx.gl30 != null
+
+      override val isGLES2: Boolean
+        get() = Gdx.gl20 != null
+
       override fun loadResources(resourceManager: ResourceManager) {
         resourceManager.load(Gdx.files.internal("quantum.zip"))
       }
@@ -24,9 +30,9 @@ class IOSLauncher : IOSApplication.Delegate() {
         get() = true
     }
 
-    return IOSApplication(QuantumVoxel, IOSApplicationConfiguration().apply
+    return IOSApplication(QuantumVoxel(), IOSApplicationConfiguration().apply
       {
-        // Configure your application here.
+        useGL30 = true
       })
   }
 
