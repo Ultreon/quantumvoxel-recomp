@@ -1,0 +1,13 @@
+{
+  ticker: {
+    // This often is a script, but for simpler tasks it can be as function object.
+    type: script
+    module: @ultreon/quantum-dlc-extended/quarry.ts
+    export: tick
+    args: [quantum:world, quantum:pos, quantum:block_entity]
+  }
+  valid-for: [
+    // A list of block IDs
+    quantum:quarry
+  ]
+}

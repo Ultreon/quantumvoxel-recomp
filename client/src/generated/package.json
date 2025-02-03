@@ -1,0 +1,26 @@
+{
+  "name": "@ultreon/quantum-voxel",
+  "version": "1.0.0",
+  "description": "Quantum Voxel API",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ultreon/quantumvoxel-recomp.git"
+  },
+  "author": "XyperCode",
+  "license": "APACHE-2.0",
+  "bugs": {
+    "url": "https://github.com/ultreon/quantumvoxel-recomp/issues"
+  },
+  "homepage": "https://github.com/ultreon/quantumvoxel-recomp#readme",
+  "dependencies": {
+    "@ultreon/quantum-voxel": "file:../../generated/quantum-voxel.tgz",
+    "typescript": "^4.9.4"
+  },
+  "devDependencies": {
+    "@types/node": "^18.11.18"
+  }
+}

@@ -13,6 +13,7 @@ import dev.ultreon.quantum.resource.ResourceManager
 import dev.ultreon.quantum.resource.asDirOrNull
 import dev.ultreon.quantum.resource.asDirectoryOrNull
 import dev.ultreon.quantum.util.NamespaceID
+import dev.ultreon.quantum.util.asIdOrNull
 import dev.ultreon.quantum.util.id
 import dev.ultreon.quantum.vec3d
 import ktx.collections.GdxArray
@@ -28,6 +29,7 @@ class Block {
     get() = this == Blocks.air
   var isFluid: Boolean = false
   var renderType: String = "default"
+  var ambientOcclusion: Boolean = !isFluid && !isAir
   var hasCollider: Boolean = true
   val bounds: GdxArray<BoundingBox> = gdxArrayOf(
     BoundingBox(
@@ -68,6 +70,7 @@ class Block {
       block.hasCollider = collision == BlockPhysics.Collision.SOLID
       block.isFluid = collision == BlockPhysics.Collision.LIQUID
       block.renderType = parseBlockState.rendering.renderType
+      block.ambientOcclusion = parseBlockState.rendering.ambientOcclusion
 
       return block
     }
@@ -96,7 +99,7 @@ object Blocks : GameContent<Block>(Registries.blocks) {
   val iron = register("iron_block", Block())
 
    */
-  val air = register("air", Block().apply { hasCollider = false })
+  val air = register("air", Block().apply { hasCollider = false; ambientOcclusion = false })
   val soil by key(Registries.blocks, NamespaceID.of(path = "soil"))
   val grass by key(Registries.blocks, id(path = "grass_block"))
   val stone by key(Registries.blocks, id(path = "stone"))
@@ -105,6 +108,8 @@ object Blocks : GameContent<Block>(Registries.blocks) {
   val crate by optionalKey(Registries.blocks, id(path = "crate"))
   val cobblestone by optionalKey(Registries.blocks, id(path = "cobblestone"))
   val snowyGrass by optionalKey(Registries.blocks, id(path = "snowy_grass"))
+  val sandstone by optionalKey(Registries.blocks, id(path = "sandstone"))
+  val snowBlock by optionalKey(Registries.blocks, id(path = "snow_block"))
   val shortGrass by optionalKey(Registries.blocks, id(path = "short_grass"))
   val iron by optionalKey(Registries.blocks, id(path = "iron_block"))
 
@@ -122,6 +127,14 @@ object Blocks : GameContent<Block>(Registries.blocks) {
     resources["blocks"]?.asDirOrNull()?.get("statedefs")?.asDirOrNull()?.asDirectoryOrNull()?.walk {
       // TODO
     }
+  }
+
+  operator fun get(id: NamespaceID): Block? {
+    return Registries.blocks[id]
+  }
+
+  fun get(name: String): Block? {
+    return Registries.blocks[name.asIdOrNull() ?: return null]
   }
 }
 

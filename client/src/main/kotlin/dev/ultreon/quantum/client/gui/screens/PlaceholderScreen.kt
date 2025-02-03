@@ -1,3 +1,7 @@
 package dev.ultreon.quantum.client.gui.screens
 
-class PlaceholderScreen : GameScreen()
+object PlaceholderScreen : Screen() {
+  override fun setup() {
+    // Nope
+  }
+}

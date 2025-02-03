@@ -3,7 +3,7 @@ package dev.ultreon.quantum.client.input
 import com.badlogic.gdx.scenes.scene2d.ui.Touchpad
 import ktx.math.vec2
 
-class TouchMovement(val touchpad: Touchpad) : PlayerMovement {
+class TouchMovement(val touchpad: Touchpad?) : PlayerMovement {
   var up = false
   var down = false
 
@@ -13,15 +13,15 @@ class TouchMovement(val touchpad: Touchpad) : PlayerMovement {
   override var movement = vec2()
 
   override fun update() {
-    motionX = touchpad.knobPercentX
-    motionZ = touchpad.knobPercentY
+    motionX = touchpad?.knobPercentX ?: 0F
+    motionZ = touchpad?.knobPercentY ?: 0F
 
     movement.set(motionX, motionZ).nor()
   }
 
   override fun reset() {
-    motionX = 0f
-    motionZ = 0f
+    motionX = 0F
+    motionZ = 0F
     up = false
     down = false
   }

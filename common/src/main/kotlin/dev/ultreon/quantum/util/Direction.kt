@@ -62,6 +62,20 @@ enum class Direction(val normal: Vector3) {
     }
   }
 
+  val isNegative: Boolean
+    get() = when (this) {
+      UP -> false
+      EAST -> false
+      SOUTH -> false
+      DOWN -> true
+      WEST -> true
+      NORTH -> true
+      else -> false
+    }
+
+  val isPositive: Boolean
+    get() = !isNegative
+
   @ExperimentalQuantumApi
   fun counterClockwise(axis: Axis): Direction {
     return clockwise(axis.opposite())

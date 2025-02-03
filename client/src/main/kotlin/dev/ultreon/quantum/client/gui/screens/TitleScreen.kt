@@ -1,65 +1,93 @@
 package dev.ultreon.quantum.client.gui.screens
 
-import com.badlogic.gdx.Gdx
-import com.badlogic.gdx.scenes.scene2d.Stage
-import com.badlogic.gdx.scenes.scene2d.ui.Container
-import com.badlogic.gdx.scenes.scene2d.ui.Label
-import com.badlogic.gdx.utils.Align
 import dev.ultreon.quantum.client.globalBatch
 import dev.ultreon.quantum.client.quantum
-import ktx.actors.onClick
-import ktx.actors.onExitEvent
-import ktx.actors.onTouchEvent
-import ktx.scene2d.Scene2DSkin
-import ktx.scene2d.actors
-import ktx.scene2d.button
+import dev.ultreon.quantum.logger
+import dev.ultreon.quantum.resource.*
+import dev.ultreon.quantum.util.NamespaceID
 
-class TitleScreen : GameScreen() {
+class IdScreen(screenId: NamespaceID) : Screen() {
   private val batch = globalBatch
 
-  override fun Stage.init() {
-    actors {
-      button {
-        val apply = Label("Quantum Voxel", Scene2DSkin.defaultSkin).apply {
-          setAlignment(Align.center)
-          setOrigin(Align.center)
-          setPosition(50f, 10f, Align.center)
-          onClick {
-            quantum.startWorld()
-          }
-        }
-        val container = Container(apply)
-        addActor(container.clip().apply {
-          pad(1f, 1f, 5f, 1f)
-        }.apply {
-          width = 100f
-          height = 20f
-        })
-        onTouchEvent { _, _, _ ->
-          if (isPressed) {
-            container.pad(1f, 3f, 3f, 1f)
-            apply.setY(height / 2f - 2f, Align.center)
+  val screenId = screenId.mapPath { path ->
+    return@mapPath path.substringAfter("gui/screens/").substringBeforeLast('.')
+  }
+
+  init {
+    this.id = screenId.toString()
+
+    run {
+      val resource: Resource = quantum.clientResources[screenId] ?: return@run
+      val json = resource.json()
+      val titleVar = json["title"]
+
+      if (titleVar.isString || titleVar.isNull || titleVar.isNumber) {
+        this.title = titleVar.asString()
+      } else if (titleVar.isObject) {
+        // TODO
+        this.title = titleVar.toString()
+      } else {
+        this.title = titleVar.toString()
+      }
+
+      val widgetsVal = json["widgets"]
+      if (widgetsVal.isArray) {
+        for ((i, widget) in widgetsVal.withIndex()) {
+          if (widget.isObject) {
+            val widgetType = widget["type"]
+            if (widgetType.isString) {
+              val type = widgetType.asString()
+              when (type) {
+                "button" -> {
+                  val button = TextButton(this, widget)
+                  this.add(button)
+                }
+                "text" -> {
+                  val text = Text(this, widget)
+                  this.add(text)
+                }
+                else -> {
+                  logger.error("Unknown widget type: $type in ($screenId).widgets.$i")
+                }
+              }
+            } else {
+              logger.error("Widget type must be a string in ($screenId).widgets.$i")
+            }
           } else {
-            container.pad(1f, 1f, 5f, 1f)
-            apply.setY(height / 2f, Align.center)
+            logger.error("Widget must be an object in ($screenId).widgets.$i")
           }
         }
-        onExitEvent { _, _, _ ->
-          container.pad(1f, 1f, 5f, 1f)
-          apply.setY(height / 2f, Align.center)
+      } else {
+        logger.error("Widgets must be an array in ($screenId)")
+      }
+    }
+  }
+
+  override fun setup() {
+
+  }
+
+  companion object {
+    private val screens = HashMap<NamespaceID, IdScreen>()
+
+    fun add(screen: IdScreen) {
+      screens[screen.screenId] = screen
+    }
+
+    fun get(screenId: NamespaceID): IdScreen? {
+      return screens[screenId]
+    }
+
+    fun load(clientResources: ResourceManager) {
+      clientResources["gui"]?.asDirOrNull()?.let { dir ->
+        dir["screens"]?.asDirOrNull()?.asDirectoryOrNull()?.walk { resource ->
+          val idScreen = IdScreen(resource.location)
+          add(idScreen)
+        } ?: run {
+          logger.warn("No GUI screens found in resources.")
         }
-
-        width = 100f
-        height = 20f
-
-        onClick {
-          quantum.startWorld()
-        }
-
-        setOrigin(Align.center)
-        align(Align.center)
-
-        setPosition(Gdx.graphics.width / 2f - width / 2f, Gdx.graphics.height / 2f - height / 2f)
+      } ?: run {
+        logger.warn("No GUI elements found in resources.")
       }
     }
   }

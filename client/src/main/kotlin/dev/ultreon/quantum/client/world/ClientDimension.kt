@@ -108,6 +108,7 @@ open class ClientDimension(private val material: Material) : Dimension() {
         generateAsync(this)
       })) return
     chunk.buildModel()
+    forChunksAround(chunk) { rebuild() }
   }
 
   inline fun forChunksAround(chunk: ClientChunk, crossinline action: ClientChunk.() -> Unit) {
@@ -180,7 +181,7 @@ open class ClientDimension(private val material: Material) : Dimension() {
 
   suspend fun rebuildAll() {
     for (chunk in chunks.values) {
-      chunk.rebuildAsync()
+      chunk.rebuild(blocking = true)
       yield()
     }
   }

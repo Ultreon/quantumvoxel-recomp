@@ -1,0 +1,46 @@
+{
+  title: Title Screen
+
+  widgets: [
+    {
+      type: text,
+      id: title,
+      text: Title Screen,
+
+      appearance: {
+        color: #ffffff
+      }
+
+      position: {
+        type: relative
+        relative-to: {
+          type: screen-center
+        }
+        y: 100
+      }
+    }
+
+    {
+      type: button,
+      id: play,
+      text: Play,
+
+      position: {
+        type: relative
+        relative-to: {
+          type: widget
+          id: title
+        }
+        y: -100
+      }
+
+      interaction: {
+        on-click: {
+          action: {
+            type: enter-dev-world
+          }
+        }
+      }
+    }
+  ]
+}

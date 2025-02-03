@@ -1,4 +1,3 @@
-
 {
   states: {
 
@@ -15,6 +14,7 @@
   }
   rendering: {
     render_type: water
+    ambient_occlusion: false
   }
   extra: {
     // Experimental

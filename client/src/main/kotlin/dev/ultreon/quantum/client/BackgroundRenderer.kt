@@ -31,14 +31,14 @@ class BackgroundRenderer : Disposable {
   }
   private val modelBatch = ModelBatch(
     if (gamePlatform.isGL30 || gamePlatform.isGLES3 || gamePlatform.isWebGL3) {
-      (quantum.clientResources require NamespaceID.of(path = "shaders/default.vsh")).text
+      (quantum.clientResources require NamespaceID.of(path = "shaders/programs/default.vsh")).text
     } else {
-      (quantum.clientResources require NamespaceID.of(path = "shaders/legacy/default.vsh")).text
+      (quantum.clientResources require NamespaceID.of(path = "shaders/programs/legacy/default.vsh")).text
     },
     if (gamePlatform.isGL30 || gamePlatform.isGLES3 || gamePlatform.isWebGL3) {
-      (quantum.clientResources require NamespaceID.of(path = "shaders/default.fsh")).text
+      (quantum.clientResources require NamespaceID.of(path = "shaders/programs/default.fsh")).text
     } else {
-      (quantum.clientResources require NamespaceID.of(path = "shaders/legacy/default.fsh")).text
+      (quantum.clientResources require NamespaceID.of(path = "shaders/programs/legacy/default.fsh")).text
     }
   )
   private val skybox: Skybox = Skybox()

@@ -1,0 +1,22 @@
+{
+  states: {
+
+  }
+  behavior: {
+    breakSpeed: 4.0
+    tools: [
+      quantum:shovel
+    ]
+    drop: sandstone
+  }
+  interactions: {
+    // Experimental
+  }
+  physics: {
+    collision: solid
+    friction: 0.6
+  }
+  extra: {
+    // Experimental
+  }
+}

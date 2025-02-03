@@ -1,0 +1,76 @@
+// ! WARNING: Custom widgets are experimental and may change in the future, or be removed.
+// ! WARNING: This feature is not implemented yet.
+
+{
+  inputs: [
+    // Inputs are defined to allow the widget to be used in a screen or container widget.
+    // This makes it possible to use the same widget in multiple places with different values.
+    // For example, a button has a text, color and a callback.
+    {
+      id: text
+      type: string
+    }
+    {
+      id: color
+      type: color
+    }
+    {
+      // Functions are special, they allow for user interaction. For example, a user pressing a button.
+      // There's one special aspect of functions, they can be defined with JavaScript to allow advanced functionality.
+      id: on-click
+      type: function
+    }
+  ]
+
+  render: [
+    {
+      // Draw a dark button texture behind the text
+      type: texture
+
+      texture: {
+        type: nine-patch,
+        texture: quantum:textures/gui/buttons/dark.png
+        patch: [ 7, 7, 7, 7 ]
+      }
+    }
+    /*
+    {
+      // Shaders are used to apply effects to the widget
+      type: shader
+
+      shader: {
+        // This is an example, blur doesn't exist as of writing this.
+        type: quantum:shaders/blur
+        attributes: {
+          radius: 5
+        }
+      }
+    }
+    */
+    {
+      // Draw the text in the center of the button
+      type: text
+
+      text: @(text)
+      alignment: center
+
+      position: {
+        type: relative
+        relative-to: {
+          type: widget-center
+        }
+      }
+      appearance: {
+        color: @(color)
+      }
+      font: default
+    }
+  ]
+
+  interactions: [
+    {
+      type: click
+      callback: @(on-click)
+    }
+  ]
+}

@@ -1,4 +1,43 @@
-import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import com.github.gradle.node.npm.task.NpmTask
+
+plugins {
+  id "com.github.node-gradle.node" version "7.0.1"
+}
+
+node {
+  version.set("18.0.0") // Set Node.js version
+  npmVersion.set("9.0.0") // Set npm version
+  download.set(true) // Auto-download Node.js
+}
+
+tasks.register("npmDlcCoreInstall", NpmTask) {
+  dependsOn("package")
+
+  workingDir.set(file("src/dlc-core/typescript"))
+  args.set(["install"])
+
+}
+
+tasks.register("npmDlcExtendedInstall", NpmTask) {
+  dependsOn("package")
+
+  workingDir.set(file("src/dlc-extended/typescript"))
+  args.set(["install"])
+}
+
+tasks.register("compileDlcCoreTypeScript", NpmTask) {
+  dependsOn("npmDlcCoreInstall") // Ensure dependencies are installed before compiling
+
+  workingDir.set(file("src/dlc-core/typescript"))
+  args.set(["run", "build"]) // Assumes you have a `build` script in package.json
+}
+
+tasks.register("compileDlcExtendedTypeScript", NpmTask) {
+  dependsOn("npmDlcExtendedInstall") // Ensure dependencies are installed before compiling
+
+  workingDir.set(file("src/dlc-extended/typescript"))
+  args.set(["run", "build"]) // Assumes you have a `build` script in package.json
+}
 
 [compileJava, compileTestJava]*.options*.encoding = 'UTF-8'
 
@@ -11,13 +50,57 @@ if (JavaVersion.current().isJava9Compatible()) {
 eclipse.project.name = appName + '-client'
 
 tasks.register("zipDlcCore", Zip) {
-  from processDlcCoreResources.inputs
+  from processDlcCoreResources.inputs.files
   archiveFileName = "dlc-core.qvcontent"
+
+  dependsOn("compileDlcCoreTypeScript")
 }
 
 tasks.register("zipDlcExtended", Zip) {
-  from processDlcExtendedResources.inputs
+  from processDlcExtendedResources.inputs.files
   archiveFileName = "dlc-extended.qvcontent"
+
+  dependsOn("compileDlcExtendedTypeScript")
+}
+
+tasks.register("generateTypeScript", JavaExec) {
+  classpath = configurations["compileClasspath"] + configurations["runtimeClasspath"] + compileJava.outputs.files + compileKotlin.outputs.files
+  mainClass = "dev.ultreon.quantum.generator.MainKt"
+  args = [".", "@ultreon/quantum-voxel"]
+
+  workingDir = file("src/generated")
+}
+
+tasks.register("package", Tar) {
+  dependsOn("generateTypeScript")
+
+  outputs.upToDateWhen { false }
+
+  archiveFileName = "quantum-voxel.tgz"
+
+  from("src/generated") {
+    exclude("*.tgz")
+    into("package")
+  }
+
+  doLast {
+    copy {
+      from tasks.named("package").get().archivePath
+      into file("src/generated")
+
+      rename { "quantum-voxel.tgz" }
+    }
+
+    copy {
+      from tasks.named("package").get().archivePath
+      into file("src/dlc-core/typescript")
+    }
+
+    copy {
+      from tasks.named("package").get().archivePath
+      into file("src/dlc-extended/typescript")
+    }
+  }
 }
 
 processResources {
@@ -35,8 +118,17 @@ processResources {
 }
 
 sourceSets {
-  create("dlc-core")
-  create("dlc-extended")
+  "dlc-core" {
+    println(it.getClass())
+    println(it.getClass().getInterfaces())
+    println(it.getClass().getSuperclass())
+    println(it.getClass().getSuperclass().getInterfaces())
+    println(it.getClass().getSuperclass().getSuperclass())
+  }
+
+  "dlc-extended" {
+
+  }
 }
 
 dependencies {
@@ -73,6 +165,9 @@ dependencies {
   api "org.jetbrains.kotlin:kotlin-stdlib-jdk8:$kotlinVersion"
 //  api "org.jetbrains.kotlinx:kotlinx-coroutines-core:$kotlinxCoroutinesVersion"
   api "space.earlygrey:shapedrawer:$shapeDrawerVersion"
+
+  implementation 'com.caoccao.javet:javet:4.1.1'
+  implementation 'com.caoccao.javet:javenode:0.8.0'
 
   // Javet
 //  api "com.caoccao.javet:javet:4.1.1"

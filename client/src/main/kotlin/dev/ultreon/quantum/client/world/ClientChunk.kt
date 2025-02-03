@@ -111,7 +111,6 @@ class ClientChunk(x: Int, y: Int, z: Int, private val material: Material, val di
 
   fun rebuild(blocking: Boolean = false) {
     dirty = false
-    allLoading++
     loading = true
 
     if (blocking) {
@@ -127,7 +126,6 @@ class ClientChunk(x: Int, y: Int, z: Int, private val material: Material, val di
 
   suspend fun rebuildAsync() {
     dirty = false
-    allLoading++
     loading = true
 
     buildModel()
@@ -226,7 +224,7 @@ class ClientChunk(x: Int, y: Int, z: Int, private val material: Material, val di
           right = getSafe(x + 1, y, z).let { it != Blocks.air && it.renderType == block.renderType },
           top = getSafe(x, y + 1, z).let { it != Blocks.air && it.renderType == block.renderType },
           bottom = getSafe(x, y - 1, z).let { it != Blocks.air && it.renderType == block.renderType }
-        )
+        ), AOArray.calculate(this, x, y, z)
       )
 
       this.hasBlocks = true

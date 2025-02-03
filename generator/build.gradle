@@ -45,13 +45,13 @@ dependencies {
   implementation "de.tomgrill.gdxdialogs:gdx-dialogs-desktop:$dialogsVersion"
   compileOnly project(':client')
 
-  implementation 'com.caoccao.javet:javet:4.1.1'
+  implementation api('com.caoccao.javet:javet:4.1.1')
+  implementation api('com.caoccao.javet:javenode:0.8.0')
   implementation 'com.caoccao.javet:javet-node-linux-arm64:4.1.1'
   implementation 'com.caoccao.javet:javet-node-linux-x86_64:4.1.1'
   implementation 'com.caoccao.javet:javet-node-macos-arm64:4.1.1'
   implementation 'com.caoccao.javet:javet-node-macos-x86_64:4.1.1'
   implementation 'com.caoccao.javet:javet-node-windows-x86_64:4.1.1'
-  implementation 'com.caoccao.javet:javenode:0.8.0'
 
   // ByteBuddy
   implementation "net.bytebuddy:byte-buddy:$byteBuddyVersion"

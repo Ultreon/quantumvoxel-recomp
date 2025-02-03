@@ -1,0 +1,72 @@
+{
+  title: Game Menu
+
+  widgets: [
+    {
+      type: text,
+      id: title,
+      text: Game Menu,
+
+      appearance: {
+        color: #ffffff
+      }
+
+      position: {
+        type: relative
+        relative-to: {
+          type: screen-top
+        }
+        y: -150
+      }
+    }
+
+    {
+      type: button,
+      id: return-to-world,
+      text: Return to World,
+
+      size: [150, 21]
+
+      position: {
+        type: relative
+        relative-to: {
+          type: widget
+          id: title
+        }
+        y: 130
+      }
+
+      interaction: {
+        on-click: {
+          action: {
+            type: close-screen
+          }
+        }
+      }
+    }
+    {
+      type: button,
+      id: exit,
+      text: Exit World,
+
+      size: [150, 21]
+
+      position: {
+        type: relative
+        relative-to: {
+          type: widget
+          id: title
+        }
+        y: -10
+      }
+
+      interaction: {
+        on-click: {
+          action: {
+            type: exit-world
+          }
+        }
+      }
+    }
+  ]
+}

@@ -23,6 +23,7 @@ private val jsonReader = JsonReader()
 
 data class BlockRendering @JvmOverloads constructor(
   private val renderTypeName: String = "default",
+  val ambientOcclusion: Boolean = true,
   // TODO Add more rendering properties
 ) {
   val renderType get() = renderTypeName
@@ -177,13 +178,14 @@ fun parseBlockState(json: JsonValue): BlockStateData {
     } ?: BlockInteractions(),
     physics = json["physics"].run {
       BlockPhysics(
-        collisionTypeName = get("collision").asString(),
-        friction = get("friction").asFloat(),
+        collisionTypeName = get("collision")?.asString() ?: "solid",
+        friction = get("friction")?.asFloat() ?: 0.6f,
       )
     },
     rendering = json["rendering"]?.run {
       BlockRendering(
-        renderTypeName = get("render_type").asString(),
+        renderTypeName = get("render_type")?.asString() ?: "default",
+        ambientOcclusion = get("ambient_occlusion")?.asBoolean() ?: true,
       )
     } ?: BlockRendering()
   )

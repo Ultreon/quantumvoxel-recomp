@@ -21,6 +21,7 @@ import com.badlogic.gdx.utils.JsonReader
 import com.badlogic.gdx.utils.JsonValue
 import dev.ultreon.quantum.blocks.Block
 import dev.ultreon.quantum.client.quantum
+import dev.ultreon.quantum.client.world.AOArray
 import dev.ultreon.quantum.id
 import dev.ultreon.quantum.item.Item
 import dev.ultreon.quantum.key
@@ -402,10 +403,10 @@ class JsonModelLoader @JvmOverloads constructor(
         var dir: Byte = -1
         when (direction) {
           UP -> {
-            v00.setPos(to.x, to.y, from.z)
-            v01.setPos(to.x, to.y, to.z)
-            v10.setPos(from.x, to.y, from.z)
-            v11.setPos(from.x, to.y, to.z)
+            v01.setPos(to.x, to.y, from.z)
+            v00.setPos(to.x, to.y, to.z)
+            v11.setPos(from.x, to.y, from.z)
+            v10.setPos(from.x, to.y, to.z)
             dir = 0
           }
 
@@ -504,6 +505,8 @@ class JsonModelLoader @JvmOverloads constructor(
       return rotateVector(position, originVec, degrees, axis.toVector(), out)
     }
 
+    private val aoColor: Color = Color(0.5f, 0.5f, 0.5f, 1f)
+
     // Reusable instances
     private val tempVector: Vector3 = Vector3()
 
@@ -548,6 +551,7 @@ class JsonModelLoader @JvmOverloads constructor(
     fun loadInto(
       i: Int,
       faceCull: FaceCull,
+      aoArray: AOArray,
       x: Int,
       y: Int,
       z: Int,
@@ -563,15 +567,17 @@ class JsonModelLoader @JvmOverloads constructor(
         val dir1 = faceElement.cullfaceDir()
         if (dir1 != null && faceCull.face(dir1)) continue
 
+        val ao = aoArray.aoForSide(direction)
+
         val texRef = faceElement.texture
         val texture: NamespaceID? = if (texRef == "#missing") NamespaceID.of(path = "textures/blocks/error.png")
         else if (texRef.startsWith("#")) textureElements[texRef.substring(1)]
         else NamespaceID.parse(texRef).mapPath { path -> "textures/$path.png" }
 
-        v00.setCol(Color.WHITE)
-        v01.setCol(Color.WHITE)
-        v10.setCol(Color.WHITE)
-        v11.setCol(Color.WHITE)
+        v00.setCol(if (ao.hasAoCorner00) aoColor else Color.WHITE)
+        v01.setCol(if (ao.hasAoCorner01) aoColor else Color.WHITE)
+        v10.setCol(if (ao.hasAoCorner10) aoColor else Color.WHITE)
+        v11.setCol(if (ao.hasAoCorner11) aoColor else Color.WHITE)
 
         v00.setNor(direction.normal)
         v01.setNor(direction.normal)
@@ -594,10 +600,10 @@ class JsonModelLoader @JvmOverloads constructor(
         var dir: Byte = -1
         when (direction) {
           UP -> {
-            v00.setPos(to.x, to.y, from.z)
-            v01.setPos(to.x, to.y, to.z)
-            v10.setPos(from.x, to.y, from.z)
-            v11.setPos(from.x, to.y, to.z)
+            v00.setPos(from.x, to.y, to.z)
+            v01.setPos(from.x, to.y, from.z)
+            v10.setPos(to.x, to.y, to.z)
+            v11.setPos(to.x, to.y, from.z)
             dir = 0
           }
 

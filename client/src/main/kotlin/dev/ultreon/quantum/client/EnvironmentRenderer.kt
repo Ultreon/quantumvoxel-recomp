@@ -22,7 +22,7 @@ import com.badlogic.gdx.utils.Align
 import com.badlogic.gdx.utils.Disposable
 import com.github.tommyettinger.textra.Layout
 import dev.ultreon.quantum.blocks.Blocks
-import dev.ultreon.quantum.client.gui.screens.PauseScreen
+import dev.ultreon.quantum.client.gui.screens.IdScreen
 import dev.ultreon.quantum.client.input.KeyBinds
 import dev.ultreon.quantum.client.world.Skybox
 import dev.ultreon.quantum.entity.PositionComponent
@@ -30,6 +30,7 @@ import dev.ultreon.quantum.logger
 import dev.ultreon.quantum.math.Vector3D
 import dev.ultreon.quantum.util.BlockHit
 import dev.ultreon.quantum.util.NamespaceID
+import dev.ultreon.quantum.util.id
 import dev.ultreon.quantum.vec3d
 import kotlinx.coroutines.launch
 import ktx.actors.onClick
@@ -81,7 +82,10 @@ class EnvironmentRenderer : Disposable {
             setOrigin(0.5f, 0.5f)
           }
           onClick {
-            quantum.setScreen<PauseScreen>()
+            quantum.showScreen(IdScreen.get(id(path = "pause")) ?: kotlin.run {
+              logger.error("Pause screen not found")
+              return@onClick
+            })
             Gdx.input.isCursorCatched = false
           }
           setPosition(Gdx.graphics.width / 2f - width / 2f, Gdx.graphics.height - height - 10f)
@@ -89,15 +93,14 @@ class EnvironmentRenderer : Disposable {
         }
       }
 
-      addActor(quantum.touchpad)
       addActor(hotbar)
     }
   }
   private val modelBatch = ModelBatch(
     if (gamePlatform.isWebGL3 || gamePlatform.isGL30 || gamePlatform.isGLES3) {
       object : DefaultShaderProvider(
-        (quantum.clientResources require NamespaceID.of(path = "shaders/default.vsh")).text,
-        (quantum.clientResources require NamespaceID.of(path = "shaders/default.fsh")).text
+        (quantum.clientResources require NamespaceID.of(path = "shaders/programs/default.vsh")).text,
+        (quantum.clientResources require NamespaceID.of(path = "shaders/programs/default.fsh")).text
       ) {
         override fun createShader(renderable: Renderable): Shader {
           return DefaultShader(
@@ -109,8 +112,8 @@ class EnvironmentRenderer : Disposable {
       }
     } else {
       DefaultShaderProvider(
-        (quantum.clientResources require NamespaceID.of(path = "shaders/legacy/default.vsh")).text,
-        (quantum.clientResources require NamespaceID.of(path = "shaders/legacy/default.fsh")).text
+        (quantum.clientResources require NamespaceID.of(path = "shaders/programs/legacy/default.vsh")).text,
+        (quantum.clientResources require NamespaceID.of(path = "shaders/programs/legacy/default.fsh")).text
       )
     },
     DefaultRenderableSorter()
@@ -189,11 +192,6 @@ class EnvironmentRenderer : Disposable {
     move(position, delta)
 
     KtxAsync.launch {
-      if (lastPollTime + 10 < System.currentTimeMillis()) {
-        dimension.pollChunkLoad()
-        lastPollTime = System.currentTimeMillis()
-      }
-
       if (!refreshing && lastRefreshTime + 1000 < System.currentTimeMillis()) {
         if (position.position != lastRefreshPosition) {
           this@EnvironmentRenderer.refreshing = true
@@ -303,7 +301,10 @@ class EnvironmentRenderer : Disposable {
 
     if (Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE) && !gamePlatform.isMobile) {
       if (Gdx.input.isCursorCatched) {
-        quantum.submit { quantum.setScreen<PauseScreen>() }
+        quantum.submit { quantum.showScreen(IdScreen.get(id(path = "pause")) ?: run {
+          logger.error("No pause screen found")
+          return@submit
+        }) }
         Gdx.input.isCursorCatched = false
       }
     }

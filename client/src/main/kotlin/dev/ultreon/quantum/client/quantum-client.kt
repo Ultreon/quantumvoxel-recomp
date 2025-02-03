@@ -29,7 +29,9 @@ import com.github.tommyettinger.textra.KnownFonts
 import dev.ultreon.quantum.blocks.Blocks
 import dev.ultreon.quantum.blocks.PropertyKeys
 import dev.ultreon.quantum.client.debug.DebugRenderer
+import dev.ultreon.quantum.client.gui.GuiRenderer
 import dev.ultreon.quantum.client.gui.screens.PlaceholderScreen
+import dev.ultreon.quantum.client.gui.screens.Screen
 import dev.ultreon.quantum.client.input.*
 import dev.ultreon.quantum.client.model.JsonModelLoader
 import dev.ultreon.quantum.client.model.ModelRegistry
@@ -42,18 +44,13 @@ import dev.ultreon.quantum.logger
 import dev.ultreon.quantum.resource.ResourceManager
 import dev.ultreon.quantum.util.NamespaceID
 import dev.ultreon.quantum.vec3d
-import ktx.app.KtxGame
-import ktx.app.KtxScreen
-import ktx.app.clearScreen
+import ktx.app.*
 import ktx.assets.disposeSafely
 import ktx.async.MainDispatcher
 import space.earlygrey.shapedrawer.ShapeDrawer
 import java.io.FileNotFoundException
 import java.util.*
 import java.util.concurrent.CompletableFuture
-import java.util.concurrent.Executor
-import java.util.concurrent.ExecutorService
-import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicReference
 import kotlin.math.min
 
@@ -84,12 +81,12 @@ lateinit var gamePlatform: GamePlatform
  * - The `render` method manages the drawing lifecycle, including handling and rendering crash details if any exception occurs.
  * - The `dispose` method cleans up resources and disposes of components safely when the game is terminated.
  */
-class QuantumVoxel : KtxGame<KtxScreen>(clearScreen = false) {
+class QuantumVoxel : KtxApplicationAdapter, KtxInputAdapter {
   init {
     instance = this
   }
 
-//  private lateinit var gen: Gen
+  //  private lateinit var gen: Gen
 //  private lateinit var v8Runtime: V8Runtime
   private var init: Boolean = false
   private var deferResize: Boolean = false
@@ -137,6 +134,9 @@ class QuantumVoxel : KtxGame<KtxScreen>(clearScreen = false) {
       depthTest(true, GL20.GL_LESS, 0.01f, 1000f)
     }
   }
+
+  lateinit var guiRenderer: GuiRenderer
+    private set
 
   private var width = 1
   private var height = 1
@@ -204,6 +204,7 @@ class QuantumVoxel : KtxGame<KtxScreen>(clearScreen = false) {
     MainDispatcher.initiate()
 
     globalBatch = spriteBatch()
+    guiRenderer = GuiRenderer(globalBatch)
     shapes = ShapeDrawer(globalBatch, Pixmap(1, 1, Pixmap.Format.RGB888).let { pixmap ->
       pixmap.setColor(1f, 1f, 1f, 1f)
       pixmap.drawPixel(0, 0)
@@ -230,6 +231,9 @@ class QuantumVoxel : KtxGame<KtxScreen>(clearScreen = false) {
     guiViewport = ScreenViewport(guiCam)
 
     loaded = true
+
+    Gdx.input.setCatchKey(Input.Keys.BACK, true)
+    Gdx.input.inputProcessor = this
 
 //    val host = V8Host.getNodeInstance()
 //    this.v8Runtime = host.createV8Runtime()
@@ -270,7 +274,7 @@ class QuantumVoxel : KtxGame<KtxScreen>(clearScreen = false) {
     environmentRenderer?.resize(width, height)
 
     Gdx.input.isCursorCatched = true
-    quantum.setScreen<PlaceholderScreen>()
+    quantum.showScreen(PlaceholderScreen)
   }
 
   fun stopWorld(after: () -> Unit) {
@@ -326,8 +330,7 @@ class QuantumVoxel : KtxGame<KtxScreen>(clearScreen = false) {
     }
 
     if (!init) {
-      addScreen(LoadScreen())
-      setScreen<LoadScreen>()
+      showScreen(LoadScreen())
     }
     this.init = true
 
@@ -363,20 +366,19 @@ class QuantumVoxel : KtxGame<KtxScreen>(clearScreen = false) {
 
     environmentRenderer?.apply {
       render(Gdx.graphics.deltaTime)
-      val screen = getScreen<PlaceholderScreen>()
-      screen.render(Gdx.graphics.deltaTime)
+      PlaceholderScreen.render(Gdx.graphics.deltaTime)
     } ?: run {
       clearScreen(0.1f, 0.1f, 0.1f, 1f)
       backgroundRenderer?.render()
     }
 
-    guiViewport.apply()
-
-    super.render()
-
     tmpTransform.set(globalBatch.transformMatrix)
-    globalBatch.transformMatrix.scale(guiScale, guiScale, 1f)
     try {
+      globalBatch.transformMatrix.scale(guiScale, guiScale, 1f)
+      guiRenderer.use {
+        screen?.render(Gdx.graphics.deltaTime)
+      }
+
       this.debugRenderer.render()
     } finally {
       globalBatch.transformMatrix = tmpTransform.cpy()
@@ -388,9 +390,7 @@ class QuantumVoxel : KtxGame<KtxScreen>(clearScreen = false) {
   private fun doTick() {
     dimension?.tick()
     bag.clear()
-    player?.let {
-      it.tick()
-    }
+    player?.tick()
   }
 
   /**
@@ -454,10 +454,15 @@ class QuantumVoxel : KtxGame<KtxScreen>(clearScreen = false) {
     return completableFuture
   }
 
-  override fun <Type : KtxScreen> setScreen(type: Class<Type>) {
-    logger.info("Switching to ${type.simpleName}")
+  fun showScreen(type: KtxScreen?) {
+    if (this.screen == type) {
+      return
+    }
 
-    super.setScreen(type)
+    this.screen?.hide()
+    this.screen = type
+
+    type?.show()
   }
 
   fun submit(function: () -> Unit) {
@@ -466,15 +471,38 @@ class QuantumVoxel : KtxGame<KtxScreen>(clearScreen = false) {
     }
   }
 
+  var screen: KtxScreen? = PlaceholderScreen
+
   internal lateinit var guiCam: OrthographicCamera
 
   lateinit var guiViewport: Viewport
     private set
 
+  override fun touchDown(screenX: Int, screenY: Int, pointer: Int, button: Int): Boolean {
+    val scr = screen
+    if (scr is Screen) {
+      return scr.touchDown(screenX / guiScale, screenY / guiScale, pointer, button)
+    }
+
+    return super.touchDown(screenX, screenY, pointer, button)
+  }
+
+  override fun touchUp(screenX: Int, screenY: Int, pointer: Int, button: Int): Boolean {
+    val scr = screen
+    var result = false
+    if (scr is Screen) {
+      result = result or scr.touchUp(screenX / guiScale, screenY / guiScale, pointer, button)
+    }
+
+    return result or super.touchUp(screenX, screenY, pointer, button)
+  }
+
   companion object {
-    val executor: AsyncExecutor = AsyncExecutor((Runtime.getRuntime().availableProcessors() * 2).coerceAtLeast(8).also {
-      logger.info("Quantum Client will be using $it threads")
-    })
+    val executor: AsyncExecutor by lazy {
+      AsyncExecutor((Runtime.getRuntime().availableProcessors() * 2).coerceAtLeast(8).also {
+        logger.info("Quantum Client will be using $it threads")
+      })
+    }
     private val mainThread = Thread.currentThread()
 
     private val isMainThread: Boolean
@@ -496,6 +524,16 @@ class QuantumVoxel : KtxGame<KtxScreen>(clearScreen = false) {
       }
 
       return waiting.get().get()
+    }
+
+    fun registerApis(typescriptModule: TypescriptModule) {
+      typescriptModule.register("client") {
+        createType("Vector3") {
+          property("x", TSType.NUMBER)
+          property("y", TSType.NUMBER)
+          property("z", TSType.NUMBER)
+        }
+      }
     }
   }
 }
@@ -520,8 +558,5 @@ val player get() = quantum.player
 val world get() = quantum.world
 val dimension get() = quantum.dimension
 val globalBatch get() = quantum.globalBatch
-inline fun <reified T : KtxScreen> setScreen() {
-  quantum.setScreen<T>()
-}
 
 //val clientEventBus = EventBus()

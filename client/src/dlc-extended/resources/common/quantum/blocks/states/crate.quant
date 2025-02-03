@@ -1,0 +1,52 @@
+{
+  states: {
+
+  }
+  behavior: {
+    breakSpeed: 2.0
+  }
+  interactions: {
+    // Experimental
+    /*
+    use: {
+      tools: [
+        quantum:bare_hand
+      ]
+      action: {
+        type: open-container
+        container: {
+          type: quantum:storage_3x10
+          from: {
+            type: attachment
+            attachment: quantum:block_entity
+          }
+        }
+      }
+    }
+    break: {
+      action: {
+        type: drop
+        from: [
+          {
+            type: quantum:container
+            from: {
+              type: attachment
+              attachment: quantum:block_entity
+            }
+          }
+        ]
+      }
+    }
+    */
+  }
+  physics: {
+    collision: none
+    friction: 0.6
+  }
+  rendering: {
+    ambient_occlusion: false
+  }
+  extra: {
+    // Experimental
+  }
+}

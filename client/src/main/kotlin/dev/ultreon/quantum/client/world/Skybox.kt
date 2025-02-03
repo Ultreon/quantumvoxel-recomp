@@ -30,12 +30,12 @@ class Skybox : Disposable {
   val shaderProgram: ShaderProgram = ShaderProgram(
     quantum.clientResources.require(NamespaceID.of(path =
       if (gamePlatform.isGL30 || gamePlatform.isWebGL3 || gamePlatform.isGLES3) {
-        "shaders/skybox.vert"
-      } else "shaders/legacy/skybox.vert")).text,
+        "shaders/programs/skybox.vert"
+      } else "shaders/programs/legacy/skybox.vert")).text,
     quantum.clientResources.require(NamespaceID.of(path =
       if (gamePlatform.isGL30 || gamePlatform.isWebGL3 || gamePlatform.isGLES3) {
-        "shaders/skybox.frag"
-      } else "shaders/legacy/skybox.frag")).text
+        "shaders/programs/skybox.frag"
+      } else "shaders/programs/legacy/skybox.frag")).text
   ).also {
     if(!it.isCompiled) {
       logger.error("Failed to compile skybox shader:\n${it.log}")
