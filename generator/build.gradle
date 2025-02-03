@@ -4,9 +4,6 @@ buildscript {
   }
   dependencies {
     classpath "io.github.fourlastor:construo:1.5.1"
-    if (enableGraalNative == 'true') {
-      classpath "org.graalvm.buildtools.native:org.graalvm.buildtools.native.gradle.plugin:0.9.28"
-    }
   }
 }
 plugins {
@@ -37,9 +34,13 @@ dependencies {
   implementation "com.badlogicgames.gdx:gdx-box2d-platform:$gdxVersion:natives-desktop"
   implementation "com.badlogicgames.gdx:gdx-freetype-platform:$gdxVersion:natives-desktop"
   implementation "com.badlogicgames.gdx:gdx-platform:$gdxVersion:natives-desktop"
-  implementation "org.lwjgl:lwjgl-opengles:3.3.4:natives-windows"
-  implementation "com.github.Dgzt:gdx-lwjgl3-angle-vulkan:1.1.0"
-  implementation "dev.ultreon:gdx-lwjgl3-metal-angle:6af9274bb1"
+  implementation "org.lwjgl:lwjgl-opengles:3.3.3:natives-windows"
+  implementation "com.github.Dgzt:gdx-lwjgl3-angle-vulkan:1.2.0"
+  implementation "dev.ultreon:gdx-lwjgl3-metal-angle:6af9274bb1", {
+    exclude group: "org.lwjgl", module: "lwjgl"
+    exclude group: "org.lwjgl", module: "lwjgl-opengles"
+    exclude group: "org.lwjgl", module: "lwjgl-egl"
+  }
   implementation "com.badlogicgames.gdx:gdx:$gdxVersion"
   implementation "de.tomgrill.gdxdialogs:gdx-dialogs-desktop:$dialogsVersion"
   compileOnly project(':client')
@@ -170,7 +171,3 @@ distributions {
 
 startScripts.dependsOn(':lwjgl3:jar')
 startScripts.classpath = project.tasks.jar.outputs.files
-
-if (enableGraalNative == 'true') {
-  apply from: file("nativeimage.gradle")
-}

@@ -34,7 +34,7 @@ allprojects {
 configure(subprojects - project(':android')) {
   apply plugin: 'java-library'
   apply plugin: 'kotlin'
-  sourceCompatibility = 8
+  sourceCompatibility = 11
   targetCompatibility = 11
 
   // From https://lyze.dev/2021/04/29/libGDX-Internal-Assets-List/
@@ -73,16 +73,24 @@ subprojects {
   version = '1.0'
   ext.appName = 'QuantumVoxel'
   repositories {
+    maven { url 'https://jitpack.io' }
     mavenCentral()
     maven { url 'https://s01.oss.sonatype.org' }
     // You may want to remove the following line if you have errors downloading dependencies.
     mavenLocal()
-    maven { url 'https://jitpack.io' }
     maven { url 'https://teavm.org/maven/repository/' }
     maven { url 'https://oss.sonatype.org/content/repositories/snapshots/' }
     maven { url 'https://oss.sonatype.org/content/repositories/releases/' }
     maven { url 'https://s01.oss.sonatype.org/content/repositories/snapshots/' }
     maven { url 'https://s01.oss.sonatype.org/content/repositories/releases/' }
+
+    maven {
+      url = uri("https://maven.pkg.github.com/Ultreon/quantumvoxel-recomp")
+      credentials {
+        username = project.findProperty("gpr.user") ?: System.getenv("USERNAME")
+        password = project.findProperty("gpr.key") ?: System.getenv("TOKEN")
+      }
+    }
   }
 }
 

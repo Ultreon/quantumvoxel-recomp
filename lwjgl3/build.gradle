@@ -5,7 +5,7 @@ buildscript {
   dependencies {
     classpath "io.github.fourlastor:construo:1.5.1"
     if (enableGraalNative == 'true') {
-      classpath "org.graalvm.buildtools.native:org.graalvm.buildtools.native.gradle.plugin:0.9.28"
+      classpath "org.graalvm.buildtools.native:org.graalvm.buildtools.native.gradle.plugin:0.10.4"
     }
   }
 }
@@ -14,6 +14,10 @@ plugins {
 }
 apply plugin: 'io.github.fourlastor.construo'
 apply plugin: 'org.jetbrains.kotlin.jvm'
+
+if (enableGraalNative) {
+  apply plugin: "org.graalvm.buildtools.native"
+}
 
 import io.github.fourlastor.construo.Target
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
@@ -37,9 +41,17 @@ dependencies {
   implementation "com.badlogicgames.gdx:gdx-box2d-platform:$gdxVersion:natives-desktop"
   implementation "com.badlogicgames.gdx:gdx-freetype-platform:$gdxVersion:natives-desktop"
   implementation "com.badlogicgames.gdx:gdx-platform:$gdxVersion:natives-desktop"
-  implementation "org.lwjgl:lwjgl-opengles:3.3.4:natives-windows"
-  implementation "com.github.Dgzt:gdx-lwjgl3-angle-vulkan:1.1.0"
-  implementation "dev.ultreon:gdx-lwjgl3-metal-angle:6af9274bb1"
+  implementation "org.lwjgl:lwjgl-opengles:3.3.3:natives-windows"
+  implementation "com.github.Dgzt:gdx-lwjgl3-angle-vulkan:1.2.0", {
+    exclude group: "org.lwjgl", module: "lwjgl"
+    exclude group: "org.lwjgl", module: "lwjgl-opengles"
+    exclude group: "org.lwjgl", module: "lwjgl-egl"
+  }
+  implementation "dev.ultreon:gdx-lwjgl3-metal-angle:6af9274bb1", {
+    exclude group: "org.lwjgl", module: "lwjgl"
+    exclude group: "org.lwjgl", module: "lwjgl-opengles"
+    exclude group: "org.lwjgl", module: "lwjgl-egl"
+  }
   implementation "com.badlogicgames.gdx:gdx:$gdxVersion"
   implementation "de.tomgrill.gdxdialogs:gdx-dialogs-desktop:$dialogsVersion"
   implementation project(':client')
