@@ -64,10 +64,6 @@ dependencies {
   implementation 'com.caoccao.javet:javet-node-windows-x86_64:4.1.1'
   implementation 'com.caoccao.javet:javenode:0.8.0'
 
-  // ByteBuddy
-  implementation "net.bytebuddy:byte-buddy:$byteBuddyVersion"
-  implementation "net.bytebuddy:byte-buddy-agent:$byteBuddyVersion"
-
   // JNA
   implementation "net.java.dev.jna:jna:5.15.0"
   implementation "net.java.dev.jna:jna-platform:5.15.0"
@@ -77,9 +73,6 @@ dependencies {
 
   // Guava
   implementation "com.google.guava:guava:33.4.0-jre"
-
-  // Reflections Library
-  implementation("org.reflections:reflections:0.10.2")
 
   // JOptSimple
   implementation "net.sf.jopt-simple:jopt-simple:5.0.4"
@@ -97,6 +90,8 @@ run {
 
   workingDir = rootProject.file('run').path
   setIgnoreExitValue(false)
+
+  jvmArgs += "-agentlib:native-image-agent=config-output-dir=./config."
 
   if (os.contains('mac')) jvmArgs += "-XstartOnFirstThread"
 }

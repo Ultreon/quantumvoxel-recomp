@@ -15,8 +15,6 @@ import java.nio.file.StandardCopyOption
 import kotlin.io.path.Path
 import com.badlogic.gdx.backends.lwjgl3.Lwjgl3Application as OpenGLApp
 import com.badlogic.gdx.backends.lwjgl3.Lwjgl3ApplicationConfiguration as OpenGLConfig
-import com.github.dgzt.gdx.lwjgl3.Lwjgl3ApplicationConfiguration as VulkanConfig
-import com.github.dgzt.gdx.lwjgl3.Lwjgl3VulkanApplication as VulkanApp
 
 /** Launches the desktop (LWJGL3) application. */
 fun main() {
@@ -68,14 +66,14 @@ fun main() {
 //      }
 
       Os.Windows -> {
-        gamePlatform = VulkanPlatform(logger)
+        gamePlatform = OpenGLPlatform(logger)
 
-        VulkanApp(quantum, VulkanConfig().apply {
+        OpenGLApp(QuantumVoxel(), OpenGLConfig().apply {
           setTitle("Quantum Voxel")
-          setWindowedMode(MINIMUM_WIDTH * 2, MINIMUM_HEIGHT * 2)
+          setWindowedMode(MINIMUM_WIDTH * 3 - 2, MINIMUM_HEIGHT * 3 - 2)
           setForegroundFPS(0)
           useVsync(false)
-          setOpenGLEmulation(VulkanConfig.GLEmulation.ANGLE_GLES32, 4, 3)
+          setOpenGLEmulation(OpenGLConfig.GLEmulation.GL32, 3, 2)
           setWindowIcon(*(arrayOf(128, 64, 32, 16).map { "libgdx$it.png" }.toTypedArray()))
           setBackBufferConfig(4, 4, 4, 4, 8, 8, 0)
         })
@@ -144,16 +142,17 @@ abstract class DesktopPlatform(val logger: Logger) : GamePlatform {
     logger.info("Exiting...")
 
     // Loop through threads and interrupt them, unless they are the main thread
-    Thread.getAllStackTraces().keys.filter { it != Thread.currentThread() && it.isAlive && !it.isDaemon && it.name != "Finalizer" }.forEach {
-      if (it.id == Thread.currentThread().id) return@forEach
-      logger.warn("Interrupting thread ${it.name} due to it being stuck")
-      it.interrupt()
-      it.join(1000)
-      if (it.isAlive) {
-        logger.error("Thread ${it.name} is still running! Halting JVM...")
-        Runtime.getRuntime().halt(1)
+    Thread.getAllStackTraces().keys.filter { it != Thread.currentThread() && it.isAlive && !it.isDaemon && it.name != "Finalizer" }
+      .forEach {
+        if (it.id == Thread.currentThread().id) return@forEach
+        logger.warn("Interrupting thread ${it.name} due to it being stuck")
+        it.interrupt()
+        it.join(1000)
+        if (it.isAlive) {
+          logger.error("Thread ${it.name} is still running! Halting JVM...")
+          Runtime.getRuntime().halt(1)
+        }
       }
-    }
   }
 }
 

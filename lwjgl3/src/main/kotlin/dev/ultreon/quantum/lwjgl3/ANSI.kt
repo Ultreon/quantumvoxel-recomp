@@ -98,40 +98,6 @@ object ANSI {
    * and cursor control within the terminal.
    */
   fun enableWindowsAnsi() {
-    if (!System.getProperty("os.name").lowercase().contains("win")) return
 
-    val kernel32 = Kernel32.INSTANCE
-    val handle = kernel32.GetStdHandle(Kernel32.STD_OUTPUT_HANDLE)
-    val consoleMode = IntByReference()
-
-    if (!kernel32.GetConsoleMode(handle, consoleMode)) {
-      System.err.println("Failed to get console mode.")
-      return
-    }
-
-    val newMode = consoleMode.value or Kernel32.ENABLE_VIRTUAL_TERMINAL_PROCESSING
-    if (!kernel32.SetConsoleMode(handle, newMode)) {
-      System.err.println("Failed to set console mode.")
-    } else {
-      println("ANSI escape codes enabled for Windows terminal!")
-    }
-  }
-
-  /**
-   * Interface for interacting with native Kernel32 library functions used to access and modify console settings on Windows systems.
-   * This interface leverages the JNA (Java Native Access) library to bind Kernel32 DLL functions for enabling ANSI escape codes support.
-   *
-   * The companion object provides constants and an instance of the interface for accessing functionality without explicitly initializing the library.
-   */
-  private interface Kernel32 : com.sun.jna.Library {
-    companion object {
-      val INSTANCE: Kernel32 = Native.load("kernel32", Kernel32::class.java)
-      const val STD_OUTPUT_HANDLE = -11
-      const val ENABLE_VIRTUAL_TERMINAL_PROCESSING = 0x0004
-    }
-
-    fun GetStdHandle(nStdHandle: Int): Int
-    fun GetConsoleMode(hConsoleHandle: Int, lpMode: IntByReference): Boolean
-    fun SetConsoleMode(hConsoleHandle: Int, dwMode: Int): Boolean
   }
 }

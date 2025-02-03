@@ -1,0 +1,6 @@
+{
+    id: dlc-core
+    name: DLC: Core Content
+    description: Core content for Quantum Voxel
+    version: 1.0.0
+}

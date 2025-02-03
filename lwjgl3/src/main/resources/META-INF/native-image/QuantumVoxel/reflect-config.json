@@ -36,16 +36,31 @@
   "name":"[Lcom.badlogic.gdx.math.collision.BoundingBox;"
 },
 {
-  "name":"[Ldev.ultreon.quantum.client.entity.PlayerComponent;"
+  "name":"[Lcom.badlogic.gdx.scenes.scene2d.Actor;"
 },
 {
-  "name":"[Ldev.ultreon.quantum.client.entity.PositionComponent;"
+  "name":"[Lcom.badlogic.gdx.scenes.scene2d.Stage$TouchFocus;"
 },
 {
-  "name":"[Ldev.ultreon.quantum.client.entity.RunningComponent;"
+  "name":"[Ldev.ultreon.quantum.blocks.BlockHalf;"
+},
+{
+  "name":"[Ldev.ultreon.quantum.math.Axis;"
+},
+{
+  "name":"[Ldev.ultreon.quantum.math.BoundingBoxD;"
+},
+{
+  "name":"[Ldev.ultreon.quantum.util.Direction;"
+},
+{
+  "name":"[Ljava.lang.Boolean;"
 },
 {
   "name":"[Ljava.lang.Object;"
+},
+{
+  "name":"android.os.Build$VERSION"
 },
 {
   "name":"com.badlogic.gdx.graphics.g2d.GlyphLayout",
@@ -56,24 +71,24 @@
   "methods":[{"name":"<init>","parameterTypes":[] }]
 },
 {
-  "name":"dev.ultreon.gdx.lwjgl3.angle.Lwjgl3GLES32",
+  "name":"com.badlogic.gdx.math.Rectangle",
   "methods":[{"name":"<init>","parameterTypes":[] }]
 },
 {
-  "name":"dev.ultreon.quantum.client.entity.PlayerComponent",
+  "name":"com.badlogic.gdx.scenes.scene2d.InputEvent",
   "methods":[{"name":"<init>","parameterTypes":[] }]
 },
 {
-  "name":"dev.ultreon.quantum.client.entity.PositionComponent",
+  "name":"com.badlogic.gdx.scenes.scene2d.Stage$TouchFocus",
   "methods":[{"name":"<init>","parameterTypes":[] }]
 },
 {
-  "name":"dev.ultreon.quantum.client.entity.RunningComponent",
+  "name":"com.badlogic.gdx.scenes.scene2d.utils.ChangeListener$ChangeEvent",
   "methods":[{"name":"<init>","parameterTypes":[] }]
 },
 {
-  "name":"java.io.File",
-  "methods":[{"name":"canExecute","parameterTypes":[] }, {"name":"setExecutable","parameterTypes":["boolean","boolean"] }]
+  "name":"com.badlogic.gdx.utils.Array",
+  "methods":[{"name":"<init>","parameterTypes":[] }]
 },
 {
   "name":"java.nio.Buffer",
@@ -90,7 +105,8 @@
 },
 {
   "name":"java.nio.DirectCharBufferU",
-  "allDeclaredFields":true
+  "allDeclaredFields":true,
+  "unsafeAllocated":true
 },
 {
   "name":"java.nio.DirectDoubleBufferU",
@@ -118,8 +134,51 @@
   "allDeclaredFields":true
 },
 {
-  "name":"org.lwjgl.egl.EGL",
-  "methods":[{"name":"getFunctionProvider","parameterTypes":[] }]
+  "name":"java.util.concurrent.atomic.AtomicReference",
+  "fields":[{"name":"value"}]
+},
+{
+  "name":"kotlin.reflect.jvm.internal.ReflectionFactoryImpl"
+},
+{
+  "name":"kotlinx.coroutines.CompletedExceptionally",
+  "fields":[{"name":"_handled$volatile"}]
+},
+{
+  "name":"kotlinx.coroutines.EventLoopImplBase",
+  "fields":[{"name":"_delayed$volatile"}, {"name":"_isCompleted$volatile"}, {"name":"_queue$volatile"}]
+},
+{
+  "name":"kotlinx.coroutines.JobSupport",
+  "fields":[{"name":"_parentHandle$volatile"}, {"name":"_state$volatile"}]
+},
+{
+  "name":"kotlinx.coroutines.JobSupport$Finishing",
+  "fields":[{"name":"_exceptionsHolder$volatile"}, {"name":"_isCompleting$volatile"}, {"name":"_rootCause$volatile"}]
+},
+{
+  "name":"kotlinx.coroutines.internal.DispatchedContinuation",
+  "fields":[{"name":"_reusableCancellableContinuation$volatile"}]
+},
+{
+  "name":"kotlinx.coroutines.internal.LimitedDispatcher",
+  "fields":[{"name":"runningWorkers$volatile"}]
+},
+{
+  "name":"kotlinx.coroutines.internal.LockFreeLinkedListNode",
+  "fields":[{"name":"_next$volatile"}, {"name":"_prev$volatile"}, {"name":"_removedRef$volatile"}]
+},
+{
+  "name":"kotlinx.coroutines.internal.LockFreeTaskQueue",
+  "fields":[{"name":"_cur$volatile"}]
+},
+{
+  "name":"kotlinx.coroutines.internal.LockFreeTaskQueueCore",
+  "fields":[{"name":"_next$volatile"}, {"name":"_state$volatile"}]
+},
+{
+  "name":"kotlinx.coroutines.scheduling.CoroutineScheduler",
+  "fields":[{"name":"_isTerminated$volatile"}, {"name":"controlState$volatile"}, {"name":"parkedWorkersStack$volatile"}]
 },
 {
   "name":"org.lwjgl.glfw.GLFW",

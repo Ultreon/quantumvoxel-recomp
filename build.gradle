@@ -118,22 +118,25 @@ tasks.register('generateBindings', JavaExec) {
   project(":lwjgl3").processResources.dependsOn generateBindings
 }
 
-tasks.register('compileTypescript', Exec) {
-  group = 'build'
-  description = 'Compile typescript'
-
-  inputs.files(fileTree("modules/quantum").include("**/*.mts"))
-  outputs.upToDateWhen { false }
-  outputs.files(fileTree("dist/quantum").include("**/*.mjs"))
-
-  if (System.getProperty('os.name').toLowerCase().contains('windows')) {
-    commandLine 'cmd', '/c', 'npm', 'run', 'build'
-  } else {
-    commandLine 'bash', '-c', 'npm run build'
+tasks.register('compileTypescript'/*, Exec*/) {
+  doFirst {
+    println("Hello")
   }
-  workingDir file('modules/quantum')
-
-  dependsOn('generateBindings')
+//  group = 'build'
+//  description = 'Compile typescript'
+//
+//  inputs.files(fileTree("modules/quantum").include("**/*.mts"))
+//  outputs.upToDateWhen { false }
+//  outputs.files(fileTree("dist/quantum").include("**/*.mjs"))
+//
+//  if (System.getProperty('os.name').toLowerCase().contains('windows')) {
+//    commandLine 'cmd', '/c', 'npm', 'run', 'build'
+//  } else {
+//    commandLine 'bash', '-c', 'npm run build'
+//  }
+//  workingDir file('modules/quantum')
+//
+//  dependsOn('generateBindings')
 }
 
 tasks.register('packageQuantumJS', Zip) {

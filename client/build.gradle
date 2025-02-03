@@ -10,6 +10,35 @@ if (JavaVersion.current().isJava9Compatible()) {
 
 eclipse.project.name = appName + '-client'
 
+tasks.register("zipDlcCore", Zip) {
+  from processDlcCoreResources.inputs
+  archiveFileName = "dlc-core.qvcontent"
+}
+
+tasks.register("zipDlcExtended", Zip) {
+  from processDlcExtendedResources.inputs
+  archiveFileName = "dlc-extended.qvcontent"
+}
+
+processResources {
+  dependsOn("zipDlcCore", "zipDlcExtended")
+  doFirst {
+    copy {
+      from zipDlcCore.outputs
+      into rootProject.file("assets")
+    }
+    copy {
+      from zipDlcExtended.outputs
+      into rootProject.file("assets")
+    }
+  }
+}
+
+sourceSets {
+  create("dlc-core")
+  create("dlc-extended")
+}
+
 dependencies {
   api project(':common')
 

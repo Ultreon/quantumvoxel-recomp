@@ -1,0 +1,6 @@
+{
+    id: dlc-extended
+    name: DLC: Extended Content
+    description: Extended content for Quantum Voxel
+    version: 1.0.0
+}
