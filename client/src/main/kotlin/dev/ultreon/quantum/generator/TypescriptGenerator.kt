@@ -1,6 +1,6 @@
 package dev.ultreon.quantum.generator
 
-import dev.ultreon.quantum.client.TypescriptApiManager
+import dev.ultreon.quantum.client.scripting.TypescriptApiManager
 import kotlin.io.path.Path
 import kotlin.io.path.createDirectories
 import kotlin.io.path.exists
@@ -14,7 +14,7 @@ class TypescriptGenerator {
     val typescriptModule = TypescriptApiManager[module]
 
     typescriptModule.list().forEach { api ->
-      val generator = ApiGenerator(outputPath.resolve(module).resolve("${api.name}.d.ts"), api)
+      val generator = ApiGenerator(outputPath.resolve("${api.name}.d.ts"), api)
       generator.generate()
     }
 

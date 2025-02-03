@@ -12,17 +12,34 @@ node {
 
 tasks.register("npmDlcCoreInstall", NpmTask) {
   dependsOn("package")
+  mustRunAfter("package")
+
+  inputs.file("src/dlc-core/typescript/package.json")
+  inputs.files(fileTree(dir: "src/dlc-core/typescript", include: "**/*.ts"))
+  inputs.file("src/dlc-core/typescript/quantum-voxel.tgz")
+  outputs.dir("src/dlc-core/resources/scripts/@ultreon/quantum-dlc-core")
 
   workingDir.set(file("src/dlc-core/typescript"))
-  args.set(["install"])
+  args.set(["update"])
 
 }
 
 tasks.register("npmDlcExtendedInstall", NpmTask) {
   dependsOn("package")
+  mustRunAfter("package")
+
+  inputs.file("src/dlc-extended/typescript/package.json")
+  inputs.files(fileTree(dir: "src/dlc-extended/typescript", include: "**/*.ts"))
+  inputs.file("src/dlc-extended/typescript/quantum-voxel.tgz")
+  outputs.dir("src/dlc-extended/resources/scripts/@ultreon/quantum-dlc-extended")
 
   workingDir.set(file("src/dlc-extended/typescript"))
-  args.set(["install"])
+  args.set(["update"])
+}
+
+tasks.register("npmInstallAll") {
+  dependsOn("npmDlcCoreInstall")
+  dependsOn("npmDlcExtendedInstall")
 }
 
 tasks.register("compileDlcCoreTypeScript", NpmTask) {
@@ -64,6 +81,10 @@ tasks.register("zipDlcExtended", Zip) {
 }
 
 tasks.register("generateTypeScript", JavaExec) {
+  doFirst {
+    delete(fileTree(dir: "src/generated/", includes: ["**/*.ts"]).files)
+  }
+
   classpath = configurations["compileClasspath"] + configurations["runtimeClasspath"] + compileJava.outputs.files + compileKotlin.outputs.files
   mainClass = "dev.ultreon.quantum.generator.MainKt"
   args = [".", "@ultreon/quantum-voxel"]
@@ -82,6 +103,10 @@ tasks.register("package", Tar) {
     exclude("*.tgz")
     into("package")
   }
+
+  outputs.file(file("src/generated/quantum-voxel.tgz"))
+  outputs.file(file("src/dlc-core/typescript/quantum-voxel.tgz"))
+  outputs.file(file("src/dlc-extended/typescript/quantum-voxel.tgz"))
 
   doLast {
     copy {

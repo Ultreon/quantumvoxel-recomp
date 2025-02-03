@@ -1,7 +1,7 @@
 package dev.ultreon.quantum.generator
 
 import dev.ultreon.quantum.client.QuantumVoxel
-import dev.ultreon.quantum.client.TypescriptApiManager
+import dev.ultreon.quantum.client.scripting.TypescriptApiManager
 
 fun main(args: Array<String>) {
   QuantumVoxel.registerApis(TypescriptApiManager.register("@ultreon/quantum-voxel"))

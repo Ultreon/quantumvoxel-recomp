@@ -35,6 +35,8 @@ import dev.ultreon.quantum.client.gui.screens.Screen
 import dev.ultreon.quantum.client.input.*
 import dev.ultreon.quantum.client.model.JsonModelLoader
 import dev.ultreon.quantum.client.model.ModelRegistry
+import dev.ultreon.quantum.client.scripting.TSType
+import dev.ultreon.quantum.client.scripting.TypescriptModule
 import dev.ultreon.quantum.client.texture.TextureManager
 import dev.ultreon.quantum.client.world.ClientDimension
 import dev.ultreon.quantum.client.world.PlayerEntity

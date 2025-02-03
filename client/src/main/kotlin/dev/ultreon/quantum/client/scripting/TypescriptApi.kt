@@ -1,13 +1,15 @@
 @file:OptIn(ExperimentalContracts::class)
 
-package dev.ultreon.quantum.client
+package dev.ultreon.quantum.client.scripting
 
 import com.caoccao.javet.values.V8Value
+import dev.ultreon.quantum.client.scripting.TypescriptModule
 import kotlin.contracts.ExperimentalContracts
 import kotlin.contracts.contract
 
-class TypescriptApi(val name: String) {
+class TypescriptApi(val module: TypescriptModule, val name: String) {
   private val functions: MutableMap<String, TSFunction> = HashMap()
+  private val types: MutableMap<String, TSType> = HashMap()
 
   fun createFunction(name: String, params: TSParams, returnType: TSType, invoke: (args: Array<out V8Value>) -> V8Value): TypescriptApi {
     contract {
@@ -43,7 +45,7 @@ class TypescriptApi(val name: String) {
       returnsNotNull()
     }
 
-    TSType.fromName(name).register()
+    types[name] = TSType.fromName(name).also(register)
     return this
   }
 
@@ -60,10 +62,14 @@ class TypescriptApi(val name: String) {
   }
 
   fun compile(): String {
-    return """
-      declare namespace $name {
-        ${functions.values.joinToString("\n\n")}
-      }
-    """.trimIndent()
+    val content = """
+${functions.values.joinToString("\n\n") { it.toString() }}
+
+${types.values.joinToString("\n\n") { it.compile() }}
+""".trim()
+    return """declare module "${module.module}/${name}" {
+${content.prependIndent("  ")}
+}
+"""
   }
 }

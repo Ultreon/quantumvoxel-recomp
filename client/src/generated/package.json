@@ -17,7 +17,6 @@
   },
   "homepage": "https://github.com/ultreon/quantumvoxel-recomp#readme",
   "dependencies": {
-    "@ultreon/quantum-voxel": "file:../../generated/quantum-voxel.tgz",
     "typescript": "^4.9.4"
   },
   "devDependencies": {

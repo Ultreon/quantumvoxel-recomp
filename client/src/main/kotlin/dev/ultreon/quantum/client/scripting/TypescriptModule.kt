@@ -1,10 +1,10 @@
-package dev.ultreon.quantum.client
+package dev.ultreon.quantum.client.scripting
 
 class TypescriptModule(val module: String) {
   private val typescriptApis = mutableMapOf<String, TypescriptApi>()
 
   fun register(name: String): TypescriptApi {
-    return TypescriptApi(name).also {
+    return TypescriptApi(this, name).also {
       typescriptApis[name] = it
     }
   }
