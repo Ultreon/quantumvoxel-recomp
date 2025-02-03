@@ -48,6 +48,12 @@ dependencies {
   api "io.github.libktx:ktx-preferences:$ktxVersion"
   api "io.github.libktx:ktx-reflect:$ktxVersion"
 
+  // Javet
+  implementation 'com.caoccao.javet:javet:4.1.1'
+  implementation 'com.caoccao.javet:javenode:0.8.0'
+
+  implementation "org.jetbrains.kotlin:kotlin-reflect:2.1.0"
+
 //  api "net.sf.py4j:py4j:0.10.9.9"
 
 //  api 'io.socket:socket.io-client:2.1.1'

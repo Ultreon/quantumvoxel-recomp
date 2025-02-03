@@ -1,7 +1,11 @@
+@file:Suppress("LeakingThis")
+
 package dev.ultreon.quantum.world
 
 import com.badlogic.gdx.utils.Disposable
+import com.caoccao.javet.interop.proxy.IJavetDirectProxyHandler
 import dev.ultreon.quantum.blocks.Block
+import dev.ultreon.quantum.client.scripting.TSApi
 import dev.ultreon.quantum.math.BoundingBoxD
 import dev.ultreon.quantum.util.BlockHit
 import dev.ultreon.quantum.util.RayD
@@ -27,7 +31,9 @@ value class BlockFlags(val value: Int) {
   }
 }
 
-abstract class Dimension : Disposable {
+abstract class Dimension : Disposable, TSApi {
+  val entityManager: EntityManager = EntityManager(this)
+
   abstract operator fun get(x: Int, y: Int, z: Int): Block
   operator fun set(x: Int, y: Int, z: Int, block: Block) =
     set(x, y, z, block, BlockFlags.SYNC + BlockFlags.UPDATE)

@@ -201,4 +201,5 @@ dependencies {
   if (enableGraalNative == 'true') {
     implementation "io.github.berstanio:gdx-svmhelper-annotations:$graalHelperVersion"
   }
+  implementation "org.jetbrains.kotlin:kotlin-reflect:2.1.0"
 }

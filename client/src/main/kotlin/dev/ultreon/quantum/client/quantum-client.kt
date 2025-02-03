@@ -3,29 +3,36 @@
 
 package dev.ultreon.quantum.client
 
-//import com.caoccao.javet.interop.V8Host
-//import com.caoccao.javet.interop.V8Runtime
-//import com.caoccao.javet.javenode.JNEventLoop
 import com.artemis.Component
 import com.artemis.World
 import com.artemis.utils.Bag
 import com.badlogic.gdx.Gdx
 import com.badlogic.gdx.Input
-import com.badlogic.gdx.graphics.GL20
-import com.badlogic.gdx.graphics.OrthographicCamera
-import com.badlogic.gdx.graphics.Pixmap
-import com.badlogic.gdx.graphics.Texture
+import com.badlogic.gdx.graphics.*
 import com.badlogic.gdx.graphics.g2d.BitmapFont
 import com.badlogic.gdx.graphics.g2d.SpriteBatch
 import com.badlogic.gdx.graphics.g2d.TextureRegion
 import com.badlogic.gdx.math.Matrix4
+import com.badlogic.gdx.math.Vector3
 import com.badlogic.gdx.scenes.scene2d.ui.Touchpad
 import com.badlogic.gdx.utils.Queue
 import com.badlogic.gdx.utils.async.AsyncExecutor
 import com.badlogic.gdx.utils.viewport.ScreenViewport
 import com.badlogic.gdx.utils.viewport.Viewport
+import com.caoccao.javet.exceptions.JavetError
+import com.caoccao.javet.exceptions.JavetException
+import com.caoccao.javet.interop.V8Runtime
+import com.caoccao.javet.interop.callback.JavetCallbackContext
+import com.caoccao.javet.values.V8Value
+import com.caoccao.javet.values.primitive.V8ValueNumber
+import com.caoccao.javet.values.primitive.V8ValueString
+import com.caoccao.javet.values.reference.V8ValueArray
+import com.caoccao.javet.values.reference.V8ValueFunction
+import com.caoccao.javet.values.reference.V8ValueObject
 import com.github.tommyettinger.textra.Font
 import com.github.tommyettinger.textra.KnownFonts
+import dev.ultreon.quantum.*
+import dev.ultreon.quantum.blocks.Block
 import dev.ultreon.quantum.blocks.Blocks
 import dev.ultreon.quantum.blocks.PropertyKeys
 import dev.ultreon.quantum.client.debug.DebugRenderer
@@ -35,17 +42,21 @@ import dev.ultreon.quantum.client.gui.screens.Screen
 import dev.ultreon.quantum.client.input.*
 import dev.ultreon.quantum.client.model.JsonModelLoader
 import dev.ultreon.quantum.client.model.ModelRegistry
+import dev.ultreon.quantum.client.scripting.TSApi
+import dev.ultreon.quantum.client.scripting.TSParams
 import dev.ultreon.quantum.client.scripting.TSType
 import dev.ultreon.quantum.client.scripting.TypescriptModule
 import dev.ultreon.quantum.client.texture.TextureManager
 import dev.ultreon.quantum.client.world.ClientDimension
 import dev.ultreon.quantum.client.world.PlayerEntity
-import dev.ultreon.quantum.commonResources
-import dev.ultreon.quantum.doContentRegistration
-import dev.ultreon.quantum.logger
+import dev.ultreon.quantum.network.Player
+import dev.ultreon.quantum.registry.Registries
 import dev.ultreon.quantum.resource.ResourceManager
 import dev.ultreon.quantum.util.NamespaceID
-import dev.ultreon.quantum.vec3d
+import dev.ultreon.quantum.util.asIdOrNull
+import dev.ultreon.quantum.util.id
+import dev.ultreon.quantum.world.BlockFlags
+import dev.ultreon.quantum.world.Dimension
 import ktx.app.*
 import ktx.assets.disposeSafely
 import ktx.async.MainDispatcher
@@ -83,7 +94,7 @@ lateinit var gamePlatform: GamePlatform
  * - The `render` method manages the drawing lifecycle, including handling and rendering crash details if any exception occurs.
  * - The `dispose` method cleans up resources and disposes of components safely when the game is terminated.
  */
-class QuantumVoxel : KtxApplicationAdapter, KtxInputAdapter {
+class QuantumVoxel : KtxApplicationAdapter, KtxInputAdapter, TSApi {
   init {
     instance = this
   }
@@ -530,11 +541,20 @@ class QuantumVoxel : KtxApplicationAdapter, KtxInputAdapter {
 
     fun registerApis(typescriptModule: TypescriptModule) {
       typescriptModule.register("client") {
-        createType("Vector3") {
-          property("x", TSType.NUMBER)
-          property("y", TSType.NUMBER)
-          property("z", TSType.NUMBER)
-        }
+        createType<QuantumVoxel>("Client")
+        createType<ClientDimension>("ClientDimension")
+        createType<Dimension>("Dimension")
+        createType<World>("World")
+        createType<Player>("Player")
+        createType<Camera>("Camera")
+        createType<ShapeDrawer>("Shapes")
+        createType<DebugRenderer>("DebugRenderer")
+        createType<EnvironmentRenderer>("EnvironmentRenderer")
+        createType<BackgroundRenderer>("BackgroundRenderer")
+        createType<GuiRenderer>("GuiRenderer")
+        createType<SpriteBatch>("SpriteBatch")
+        createType<Block>("Block")
+        createType<BlockFlags>("BlockFlags")
       }
     }
   }

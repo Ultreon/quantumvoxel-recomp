@@ -17,8 +17,9 @@ abstract class GameContent<T : Any>(
     return block
   }
 
-  abstract fun loadContent(resources: ResourceManager)
   open fun init() {
     // No-op
   }
+
+  abstract fun loadContent(resources: ResourceManager)
 }
