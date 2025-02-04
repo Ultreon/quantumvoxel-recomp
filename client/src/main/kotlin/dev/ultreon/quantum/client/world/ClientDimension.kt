@@ -67,7 +67,7 @@ open class ClientDimension(private val material: Material) : Dimension() {
     if (oldChunk != null) {
       if (remove(oldChunk)) {
         if (chunk.loading) {
-          throw AssertionError("Sanity check failed")
+          return true
         }
         chunk.disposeChunk()
         return true

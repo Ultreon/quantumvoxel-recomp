@@ -70,7 +70,7 @@ configure(subprojects - project(':android')) {
 }
 
 subprojects {
-  version = '1.0'
+  version = projectVersion + (snapshot == "true" ? "-SNAPSHOT" : "")
   ext.appName = 'QuantumVoxel'
   repositories {
     maven { url 'https://jitpack.io' }
