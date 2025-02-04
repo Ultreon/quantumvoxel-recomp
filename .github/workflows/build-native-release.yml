@@ -36,5 +36,5 @@ jobs:
       - name: Upload Release Assets (for macOS)
         uses: softprops/action-gh-release@v2
         with:
-          files: lwjgl3/build/nativeConfig/**
+          files: lwjgl3/build/native/nativeCompile/**
           token: ${{ secrets.GITHUB_TOKEN }}
