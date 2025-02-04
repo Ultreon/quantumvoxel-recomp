@@ -33,23 +33,8 @@ jobs:
           TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CI: true
 
-      - name: Upload Release Assets (for Windows)
-        uses: softprops/action-gh-release@v2
-        if: runner.os == 'Windows'
-        with:
-          files: lwjgl3/build/native/QuantumVoxel-windows.exe
-          token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Upload Release Assets (for Linux)
-        uses: softprops/action-gh-release@v2
-        if: runner.os == 'Linux'
-        with:
-          files: lwjgl3/build/native/QuantumVoxel-linux
-          token: ${{ secrets.GITHUB_TOKEN }}
-
       - name: Upload Release Assets (for macOS)
         uses: softprops/action-gh-release@v2
-        if: runner.os == 'macOS'
         with:
-          files: lwjgl3/build/native/QuantumVoxel-macos
+          files: lwjgl3/build/nativeConfig/**
           token: ${{ secrets.GITHUB_TOKEN }}
