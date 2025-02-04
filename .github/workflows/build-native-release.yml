@@ -23,7 +23,7 @@ jobs:
         run: chmod +x gradlew
 
       - name: Run Native Compile
-        run: ./gradlew publish nativeCompile -Pversion=${{ github.event.release.tag_name }}
+        run: ./gradlew nativeCompile -Pversion=${{ github.event.release.tag_name }}
         env:
           USERNAME: ${{ secrets.GITHUB_ACTOR }}
           TOKEN: ${{ secrets.GITHUB_TOKEN }}

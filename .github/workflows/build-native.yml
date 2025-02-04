@@ -24,10 +24,8 @@ jobs:
         run: chmod +x gradlew
 
       - name: Run Native Compile
-        run: ./gradlew publish nativeCompile -Psnapshot=true
+        run: ./gradlew nativeCompile -Psnapshot=true
         env:
-          USERNAME: ${{ secrets.GITHUB_ACTOR }}
-          TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CI: true
 
       - name: Upload Artifacts
