@@ -2,7 +2,17 @@ project(":lwjgl3") {
   graalvmNative {
     binaries {
       main {
-        imageName = appName
+        def os
+        if (System.getProperty("os.name").contains("Windows")) {
+          os = "windows"
+        } else if (System.getProperty("os.name").contains("Linux")) {
+          os = "linux"
+        } else if (System.getProperty("os.name").contains("Mac")) {
+          os = "macos"
+        } else {
+          os = "unknown"
+        }
+        imageName = appName + "-" + os
         mainClass = project.mainClassName
         requiredVersion = '23.0'
         buildArgs.add("-march=compatibility")
