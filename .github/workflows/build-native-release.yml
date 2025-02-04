@@ -31,8 +31,15 @@ jobs:
         env:
           CI: true
 
-      - name: Upload Release Assets (for macOS)
+      - name: Upload Release Assets
         uses: softprops/action-gh-release@v2
         with:
           files: lwjgl3/build/native/nativeCompile/**
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload Release Assets
+        uses: softprops/action-gh-release@v2
+        if: runner.os == 'Linux'
+        with:
+          files: client/build/distributions/*.qvcontent
           token: ${{ secrets.GITHUB_TOKEN }}
