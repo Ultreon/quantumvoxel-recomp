@@ -23,7 +23,9 @@ jobs:
         run: chmod +x gradlew
 
       - name: Run Native Compile
-        run: ./gradlew publish nativeCompile -Pversion=${{ github.event.release.tag_name }}
+        run: ./gradlew nativeCompile -Pversion=${{ github.event.release.tag_name }}
+        env:
+          CI: true
 
       - name: Upload Release Assets
         uses: softprops/action-gh-release@v2
