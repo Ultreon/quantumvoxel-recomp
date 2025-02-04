@@ -5,14 +5,21 @@ import dev.ultreon.quantum.scripting.function.ContextAware
 import dev.ultreon.quantum.scripting.function.ContextParam
 import dev.ultreon.quantum.scripting.function.ContextType
 
-fun interface VirtualCondition : ContextAware {
+fun interface VirtualCondition : ContextAware<VirtualCondition> {
   fun test(callContext: CallContext): Boolean
 
-  override fun contextType(): ContextParam<*> {
-    return ContextParam.CONDITION
+  override fun contextType(): ContextType<VirtualCondition> {
+    return ContextType.condition
+  }
+
+  fun register(name: String): VirtualCondition {
+    registry[name] = this
+    return this
   }
 
   companion object {
+    private val registry = mutableMapOf<String, VirtualCondition>()
+
     val TRUE = VirtualCondition { true }.register("true")
     val FALSE = VirtualCondition { false }.register("false")
 
@@ -41,17 +48,17 @@ fun interface VirtualCondition : ContextAware {
     }.register("if")
 
     val IS_PRESENT = VirtualCondition { callContext ->
-      callContext.getAny("value") != null
+      callContext.getRaw("value") != null
     }.register("is-present")
 
     val IS_NOT_PRESENT = VirtualCondition { callContext ->
-      callContext.getAny("value") == null
+      callContext.getRaw("value") == null
     }.register("is-not-present")
 
     val IS_OF_TYPE = VirtualCondition { callContext ->
       val type = callContext.get(ContextType.type)
-      val value = callContext.getRaw("value")
-      value != null && value::class.simpleName == type
+      val value = callContext.getRaw("value") ?: return@VirtualCondition false
+      ContextType[value::class] == type
     }.register("is-of-type")
 
     fun and(vararg conditions: VirtualCondition): VirtualCondition {
@@ -64,6 +71,10 @@ fun interface VirtualCondition : ContextAware {
       return VirtualCondition { callContext ->
         conditions.any { it.test(callContext) }
       }
+    }
+
+    operator fun get(name: String): VirtualCondition? {
+      return registry[name]
     }
   }
 }

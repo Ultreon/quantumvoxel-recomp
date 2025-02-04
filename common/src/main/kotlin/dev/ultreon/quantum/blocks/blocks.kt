@@ -25,6 +25,7 @@ import ktx.math.vec3
 import kotlin.reflect.KProperty
 
 class Block : ContextAware<Block> {
+  val definition: BlockStateDefinition = BlockStateDefinition(GdxArray())
   val isOpaque: Boolean
     get() = renderType == "default"
   val isAir: Boolean

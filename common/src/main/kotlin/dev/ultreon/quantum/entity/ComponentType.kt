@@ -1,7 +1,9 @@
 package dev.ultreon.quantum.entity
 
+import com.badlogic.gdx.utils.JsonValue
 import dev.ultreon.quantum.scripting.function.CallContext
 import dev.ultreon.quantum.scripting.function.ContextParam
+import dev.ultreon.quantum.scripting.function.ContextType
 import dev.ultreon.quantum.server.player.ServerPlayerComponent
 
 class ComponentType<T : Component<T>>(
@@ -9,6 +11,10 @@ class ComponentType<T : Component<T>>(
   vararg val params: ContextParam<*>,
   val constructor: (context: CallContext) -> T
 ) : Comparable<ComponentType<*>> {
+  init {
+    registry[name] = this
+  }
+
   operator fun invoke(context: CallContext): T {
     return constructor(context)
   }
@@ -32,7 +38,26 @@ class ComponentType<T : Component<T>>(
     return name.hashCode()
   }
 
+  fun parse(value: JsonValue): Component<*> {
+    return constructor(CallContext.from(value))
+  }
+
   companion object {
+    private val registry = mutableMapOf<String, ComponentType<*>>()
+
+    fun parse(value: JsonValue): Component<*> {
+      val name = value.getString("type")
+      return values().firstOrNull() { it.name == name }?.parse(value) ?: throw IllegalArgumentException("Unknown component type: $name")
+    }
+
+    operator fun get(name: String): ComponentType<*>? {
+      return registry[name]
+    }
+
+    private fun values(): Collection<ComponentType<*>> {
+      return registry.values
+    }
+
     val running: ComponentType<RunningComponent> = ComponentType("running") { RunningComponent() }
     val collision: ComponentType<PhysicsComponent> = ComponentType("physics") { PhysicsComponent() }
     val position: ComponentType<PositionComponent> = ComponentType("position") { PositionComponent() }
@@ -42,6 +67,6 @@ class ComponentType<T : Component<T>>(
     val animation: ComponentType<AnimationComponent> = ComponentType("animation") { AnimationComponent() }
     val network: ComponentType<NetworkComponent> = ComponentType("network") { NetworkComponent() }
     val inventory: ComponentType<InventoryComponent> = ComponentType("inventory") { InventoryComponent() }
-    val serverPlayer: ComponentType<ServerPlayerComponent> = ComponentType("player", ContextParam.NAME) { ServerPlayerComponent(it.getString("name") ?: throw IllegalStateException("Missing name param")) }
+    val serverPlayer: ComponentType<ServerPlayerComponent> = ComponentType("player", ContextParam("name", ContextType.string)) { ServerPlayerComponent(it.getString("name") ?: throw IllegalStateException("Missing name param")) }
   }
 }
