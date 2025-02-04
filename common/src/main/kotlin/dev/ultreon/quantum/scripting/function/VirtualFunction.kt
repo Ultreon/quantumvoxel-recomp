@@ -1,12 +1,12 @@
-package dev.ultreon.quantum.func
+package dev.ultreon.quantum.scripting.function
 
 abstract class VirtualFunction {
+  val params: MutableMap<String, ContextParam<*>> = mutableMapOf()
+
   abstract fun call(context: CallContext)
   fun call(context: ContextAware) {
     val callContext = CallContext()
-    for (param in context.supportedParams()) {
-      callContext.add(context, param)
-    }
+    callContext.set(context.contextType(), context)
     call(callContext)
   }
 }

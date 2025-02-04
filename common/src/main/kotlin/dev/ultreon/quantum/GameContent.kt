@@ -1,6 +1,5 @@
 package dev.ultreon.quantum
 
-import dev.ultreon.quantum.blocks.GameContent
 import dev.ultreon.quantum.registry.Registries
 import dev.ultreon.quantum.registry.Registry
 import dev.ultreon.quantum.resource.ResourceId

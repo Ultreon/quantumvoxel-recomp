@@ -5,6 +5,7 @@ import dev.ultreon.quantum.client.quantum
 import dev.ultreon.quantum.logger
 import dev.ultreon.quantum.resource.*
 import dev.ultreon.quantum.util.NamespaceID
+import kotlin.reflect.KProperty
 
 class IdScreen(screenId: NamespaceID) : Screen() {
   private val batch = globalBatch
@@ -92,3 +93,13 @@ class IdScreen(screenId: NamespaceID) : Screen() {
     }
   }
 }
+
+class ScreenProperty(val screenId: NamespaceID) {
+  operator fun getValue(thisRef: Any?, property: KProperty<*>): Screen {
+    return IdScreen.get(screenId) ?: throw IllegalStateException("Screen not found: $screenId")
+  }
+}
+
+fun screen(screenId: NamespaceID) = ScreenProperty(screenId)
+
+fun screen(namespace: String = "quantum", path: String) = screen(NamespaceID(namespace, path))

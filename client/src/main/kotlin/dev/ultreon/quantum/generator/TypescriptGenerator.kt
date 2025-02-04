@@ -3,7 +3,6 @@ package dev.ultreon.quantum.generator
 import dev.ultreon.quantum.client.scripting.TypescriptApiManager
 import kotlin.io.path.Path
 import kotlin.io.path.createDirectories
-import kotlin.io.path.exists
 import kotlin.io.path.notExists
 
 class TypescriptGenerator {

@@ -14,7 +14,6 @@ import dev.ultreon.quantum.logger
 import dev.ultreon.quantum.util.id
 import kotlinx.coroutines.launch
 import ktx.async.KtxAsync
-import ktx.graphics.use
 import kotlin.concurrent.thread
 
 class LoadScreen : Screen() {

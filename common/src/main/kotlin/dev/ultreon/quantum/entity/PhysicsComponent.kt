@@ -1,6 +1,5 @@
 package dev.ultreon.quantum.entity
 
-import com.artemis.Component
 import dev.ultreon.quantum.math.BoundingBoxD
 import dev.ultreon.quantum.util.BoundingBoxUtils
 import dev.ultreon.quantum.util.Tickable
@@ -11,7 +10,7 @@ import kotlin.math.abs
 private val tmp1 = vec3d()
 private val tmp2 = vec3d()
 
-class CollisionComponent : Component(), Tickable {
+class PhysicsComponent : Component<PhysicsComponent>(), Tickable {
   lateinit var positionComponent: PositionComponent
   lateinit var dimension: Dimension
   private var oDx: Double = 0.0
@@ -65,17 +64,14 @@ class CollisionComponent : Component(), Tickable {
    */
   fun move(deltaX: Double, deltaY: Double, deltaZ: Double): Boolean {
     // Store the original deltas
-    var deltaX = deltaX
-    var deltaY = deltaY
-    var deltaZ = deltaZ
-    val originalDeltaX = deltaX
-    val originalDeltaY = deltaY
-    val originalDeltaZ = deltaZ
+    var deX = deltaX
+    var deY = deltaY
+    var deZ = deltaZ
 
     // Calculate the absolute values of the deltas
-    var absDeltaX = abs(deltaX)
-    var absDeltaY = abs(deltaY)
-    var absDeltaZ = abs(deltaZ)
+    var absDeltaX = abs(deX)
+    var absDeltaY = abs(deY)
+    var absDeltaZ = abs(deZ)
 
     // Check if the deltas are too small to cause a significant move
     if (absDeltaX < 0.001 && absDeltaY < 0.001 && absDeltaZ < 0.001) {
@@ -100,18 +96,18 @@ class CollisionComponent : Component(), Tickable {
 //    deltaZ = modifiedValue.z
 
     // Store the original deltas after potential modification
-    val originalDeltaXModified = deltaX
-    val originalDeltaYModified = deltaY
-    val originalDeltaZModified = deltaZ
+    val originalDeltaXModified = deX
+    val originalDeltaYModified = deY
+    val originalDeltaZModified = deZ
 
     // Update the bounding box based on the modified deltas
-    val updatedBoundingBoxD: BoundingBoxD = this.boundingBox.updateByDelta(deltaX, deltaY, deltaZ)
+    val updatedBoundingBoxD: BoundingBoxD = this.boundingBox.updateByDelta(deX, deY, deZ)
 
     // Move the entity based on the updated bounding box and deltas
     if (this.noClip) {
-      this.x += deltaX
-      this.y += deltaY
-      this.z += deltaZ
+      this.x += deX
+      this.y += deY
+      this.z += deZ
       this.onMoved()
       // TODO: Networking
 //      this.pipeline.putDouble("x", this.x)
@@ -120,9 +116,9 @@ class CollisionComponent : Component(), Tickable {
     } else {
       this.moveWithCollision(
         updatedBoundingBoxD,
-        deltaX,
-        deltaY,
-        deltaZ,
+        deX,
+        deY,
+        deZ,
         originalDeltaXModified,
         originalDeltaYModified,
         originalDeltaZModified
@@ -158,9 +154,9 @@ class CollisionComponent : Component(), Tickable {
     oldDz: Double,
   ) {
     // Get list of bounding boxes the entity collides with
-    var dx = dx
-    var dy = dy
-    var dz = dz
+    var dex = dx
+    var dey = dy
+    var dez = dz
     val boxes: List<BoundingBoxD> = this.dimension.collide(ext, false)
 
     val pBox: BoundingBoxD = this.boundingBox // Get the entity's bounding box
@@ -170,58 +166,58 @@ class CollisionComponent : Component(), Tickable {
 
     // Check collision and update y-coordinate
     for (box in boxes) {
-      val dy2: Double = BoundingBoxUtils.clipYCollide(box, pBox, dy)
-      this.isColliding = this.isColliding or (dy != dy2)
-      this.isCollidingY = this.isCollidingY or (dy != dy2)
-      dy = dy2
+      val dy2: Double = BoundingBoxUtils.clipYCollide(box, pBox, dey)
+      this.isColliding = this.isColliding or (dey != dy2)
+      this.isCollidingY = this.isCollidingY or (dey != dy2)
+      dey = dy2
     }
 
     // Update the y-coordinate of the bounding box
-    pBox.min.add(0.0, dy, 0.0)
-    pBox.max.add(0.0, dy, 0.0)
+    pBox.min.add(0.0, dey, 0.0)
+    pBox.max.add(0.0, dey, 0.0)
     pBox.update()
 
     this.isCollidingX = false
 
     // Check collision and update x-coordinate
     for (box in boxes) {
-      val dx2: Double = BoundingBoxUtils.clipXCollide(box, pBox, dx)
-      this.isColliding = this.isColliding or (dx != dx2)
-      this.isCollidingX = this.isCollidingX or (dx != dx2)
-      dx = dx2
+      val dx2: Double = BoundingBoxUtils.clipXCollide(box, pBox, dex)
+      this.isColliding = this.isColliding or (dex != dx2)
+      this.isCollidingX = this.isCollidingX or (dex != dx2)
+      dex = dx2
     }
 
     // Update the x-coordinate of the bounding box
-    pBox.min.add(dx, 0.0, 0.0)
-    pBox.max.add(dx, 0.0, 0.0)
+    pBox.min.add(dex, 0.0, 0.0)
+    pBox.max.add(dex, 0.0, 0.0)
     pBox.update()
 
     this.isCollidingZ = false
 
     // Check collision and update z-coordinate
     for (box in boxes) {
-      val dz2: Double = BoundingBoxUtils.clipZCollide(box, pBox, dz)
-      this.isColliding = this.isColliding or (dz != dz2)
-      this.isCollidingZ = this.isCollidingZ or (dz != dz2)
-      dz = dz2
+      val dz2: Double = BoundingBoxUtils.clipZCollide(box, pBox, dez)
+      this.isColliding = this.isColliding or (dez != dz2)
+      this.isCollidingZ = this.isCollidingZ or (dez != dz2)
+      dez = dz2
     }
 
     // Update the z-coordinate of the bounding box
-    pBox.min.add(0.0, 0.0, dz)
-    pBox.max.add(0.0, 0.0, dz)
+    pBox.min.add(0.0, 0.0, dez)
+    pBox.max.add(0.0, 0.0, dez)
     pBox.update()
 
     // Check if entity is on the ground
     this.wasOnGround = this.onGround
-    this.onGround = oldDy != dy && oldDy < 0.0f
+    this.onGround = oldDy != dey && oldDy < 0.0f
 
     // Reset velocity if there was a collision in x-coordinate
-    if (oldDx != dx) {
+    if (oldDx != dex) {
       this.velocityX = 0.0
     }
 
     // Reset fall distance if entity is moving upwards
-    if (dy >= 0) {
+    if (dey >= 0) {
       this.fallDistance = 0.0
     }
 
@@ -230,13 +226,13 @@ class CollisionComponent : Component(), Tickable {
       this.hitGround()
       this.fallDistance = 0.0
       this.velocityY = 0.0
-      dy = 0.0
-    } else if (dy < 0) {
-      this.fallDistance -= dy
+      dey = 0.0
+    } else if (dey < 0) {
+      this.fallDistance -= dey
     }
 
     // Reset velocity if there was a collision in z-coordinate
-    if (oldDz != dz) {
+    if (oldDz != dez) {
       this.velocityZ = 0.0
     }
 
@@ -245,9 +241,9 @@ class CollisionComponent : Component(), Tickable {
     this.y = pBox.min.y
     this.z = (pBox.min.z + pBox.max.z) / 2.0f
 
-    this.oDx = dx
-    this.oDy = dy
-    this.oDz = dz
+    this.oDx = dex
+    this.oDy = dey
+    this.oDz = dez
   }
 
   private fun hitGround() {
@@ -264,6 +260,8 @@ class CollisionComponent : Component(), Tickable {
   override fun tick() {
     move()
   }
+
+  override val componentType = ComponentType.physics
 }
 
 private fun BoundingBoxD.updateByDelta(deltaX: Double, deltaY: Double, deltaZ: Double): BoundingBoxD {

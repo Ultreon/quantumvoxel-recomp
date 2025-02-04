@@ -1,0 +1,6 @@
+app_icon ICON "icons/icon.ico"
+app_name "Quantum Voxel"
+app_version "1.0.0"
+app_description "Quantum Voxel is a voxel game engine"
+app_author "Ultreon Development Studios"
+app_copyright "Copyright 2025 XyperCode"

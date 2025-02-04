@@ -1,4 +1,4 @@
-//package dev.ultreon.quantum.client
+package dev.ultreon.quantum.client//package dev.ultreon.quantum.client
 //
 //import com.badlogic.gdx.Files
 //import com.badlogic.gdx.files.FileHandle

@@ -1,10 +1,11 @@
 package dev.ultreon.quantum.blocks
 
-import dev.ultreon.quantum.func.ContextAware
-import dev.ultreon.quantum.func.ContextParam
-import dev.ultreon.quantum.func.VirtualFunction
+import dev.ultreon.quantum.scripting.function.ContextAware
+import dev.ultreon.quantum.scripting.function.ContextParam
+import dev.ultreon.quantum.scripting.function.ContextType
+import dev.ultreon.quantum.scripting.function.VirtualFunction
 
-class BlockEntity : ContextAware {
+class BlockEntity : ContextAware<BlockEntity> {
   private val tickables = ArrayList<VirtualFunction>()
 
   fun tick() {
@@ -13,15 +14,5 @@ class BlockEntity : ContextAware {
     }
   }
 
-  override fun <T> getContextParam(key: ContextParam<T>): T? {
-    @Suppress("UNCHECKED_CAST")
-    return when (key) {
-      ContextParam.BLOCK_ENTITY -> this as T
-      else -> null
-    }
-  }
-
-  override fun selfParam(): ContextParam<*> {
-    return ContextParam.BLOCK_ENTITY
-  }
+  override fun contextType(): ContextType<BlockEntity> = ContextType.blockEntity
 }

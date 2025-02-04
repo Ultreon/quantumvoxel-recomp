@@ -3,10 +3,12 @@
 package dev.ultreon.quantum.world
 
 import com.badlogic.gdx.utils.Disposable
-import com.caoccao.javet.interop.proxy.IJavetDirectProxyHandler
 import dev.ultreon.quantum.blocks.Block
 import dev.ultreon.quantum.client.scripting.TSApi
 import dev.ultreon.quantum.math.BoundingBoxD
+import dev.ultreon.quantum.scripting.function.ContextAware
+import dev.ultreon.quantum.scripting.function.ContextParam
+import dev.ultreon.quantum.scripting.function.ContextType
 import dev.ultreon.quantum.util.BlockHit
 import dev.ultreon.quantum.util.RayD
 import dev.ultreon.quantum.util.WorldRayCaster
@@ -31,7 +33,7 @@ value class BlockFlags(val value: Int) {
   }
 }
 
-abstract class Dimension : Disposable, TSApi {
+abstract class Dimension : Disposable, TSApi, ContextAware {
   val entityManager: EntityManager = EntityManager(this)
 
   abstract operator fun get(x: Int, y: Int, z: Int): Block
@@ -84,6 +86,22 @@ abstract class Dimension : Disposable, TSApi {
 
   fun tick() {
 
+  }
+
+  override fun supportedTypes(): List<ContextType<*>> {
+    return listOf(ContextType.dimension)
+  }
+
+  override fun contextType(): ContextType<*> {
+    return ContextType.dimension
+  }
+
+  override fun <T> getContextParam(key: ContextParam<T>): T? {
+    @Suppress("UNCHECKED_CAST")
+    return when (key) {
+      ContextParam.DIMENSION -> this as T
+      else -> null
+    }
   }
 
   abstract fun chunkAt(x: Int, y: Int, z: Int): Chunk?

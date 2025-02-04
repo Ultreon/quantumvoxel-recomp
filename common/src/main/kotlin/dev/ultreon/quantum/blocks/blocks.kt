@@ -4,8 +4,7 @@ package dev.ultreon.quantum.blocks
 
 import com.badlogic.gdx.math.collision.BoundingBox
 import com.badlogic.gdx.utils.JsonValue
-import dev.ultreon.quantum.func.ContextAware
-import dev.ultreon.quantum.func.ContextParam
+import dev.ultreon.quantum.scripting.function.ContextAware
 import dev.ultreon.quantum.id
 import dev.ultreon.quantum.math.BoundingBoxD
 import dev.ultreon.quantum.math.Vector3D
@@ -14,6 +13,7 @@ import dev.ultreon.quantum.registry.Registry
 import dev.ultreon.quantum.resource.ResourceManager
 import dev.ultreon.quantum.resource.asDirOrNull
 import dev.ultreon.quantum.resource.asDirectoryOrNull
+import dev.ultreon.quantum.scripting.function.ContextType
 import dev.ultreon.quantum.util.NamespaceID
 import dev.ultreon.quantum.util.asIdOrNull
 import dev.ultreon.quantum.util.id
@@ -24,7 +24,7 @@ import ktx.collections.toGdxArray
 import ktx.math.vec3
 import kotlin.reflect.KProperty
 
-class Block : ContextAware {
+class Block : ContextAware<Block> {
   val isOpaque: Boolean
     get() = renderType == "default"
   val isAir: Boolean
@@ -41,16 +41,9 @@ class Block : ContextAware {
   )
 
   val isSolid: Boolean = true
-  override fun <T> getContextParam(key: ContextParam<T>): T? {
-    @Suppress("UNCHECKED_CAST")
-    return when (key) {
-      ContextParam.BLOCK -> this as T
-      else -> null
-    }
-  }
 
-  override fun selfParam(): ContextParam<*> {
-    return ContextParam.BLOCK
+  override fun contextType(): ContextType<Block> {
+    return ContextType.block
   }
 
   override fun toString(): String {

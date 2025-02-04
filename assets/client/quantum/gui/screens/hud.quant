@@ -1,0 +1,43 @@
+{
+  title: N/A
+
+  widgets: [
+    {
+      type: hotbar
+      id: hotbar
+      position: {
+        type: screen-bottom
+        x: 0
+        y: 0
+      }
+      alignment: center
+      hotbar: {
+        connected: true
+      }
+    }
+    {
+      type: button
+      id: pause-mobile
+      text: Pause
+      position: {
+        type: screen-top
+        x: 0
+        y: 0
+      }
+      alignment: center
+      size: [50, 50]
+      appearance: {
+        color: #000000
+      }
+      hotkey: {
+        key: escape
+      }
+      conditions: [
+        {
+          type: platform
+          platform: mobile
+        }
+      ]
+    }
+  ]
+}

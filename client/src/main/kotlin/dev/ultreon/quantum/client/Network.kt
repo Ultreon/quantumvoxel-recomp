@@ -1,4 +1,4 @@
-//package dev.ultreon.quantum.client
+package dev.ultreon.quantum.client//package dev.ultreon.quantum.client
 //
 //import com.badlogic.gdx.Gdx
 //import io.socket.client.IO

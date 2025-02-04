@@ -1,4 +1,4 @@
-//package dev.ultreon.quantum.network
+package dev.ultreon.quantum.network//package dev.ultreon.quantum.network
 //
 //import com.corundumstudio.socketio.*
 //import kotlin.concurrent.thread

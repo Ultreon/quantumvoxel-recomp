@@ -4,6 +4,8 @@ import com.badlogic.gdx.graphics.g2d.SpriteBatch
 import com.badlogic.gdx.graphics.g2d.TextureRegion
 import com.github.tommyettinger.textra.Layout
 import dev.ultreon.quantum.client.QuantumVoxel
+import dev.ultreon.quantum.client.quantum
+import dev.ultreon.quantum.util.NamespaceID
 
 class GuiRenderer(val batch: SpriteBatch) {
   val font = QuantumVoxel.instance.font
@@ -21,8 +23,8 @@ class GuiRenderer(val batch: SpriteBatch) {
     v: Float = 0F,
     uWidth: Float = texture.regionWidth.toFloat(),
     uHeight: Float = texture.regionHeight.toFloat(),
-    texWidth: Int = tmpRegion.regionWidth,
-    texHeight: Int = tmpRegion.regionHeight,
+    texWidth: Int = texture.regionWidth,
+    texHeight: Int = texture.regionHeight,
   ) {
     tmpRegion.setRegion(texture)
     tmpRegion.u += (u / texWidth)
@@ -209,5 +211,27 @@ class GuiRenderer(val batch: SpriteBatch) {
     begin()
     block(this)
     end()
+  }
+
+  fun drawTexture(
+    texture: NamespaceID,
+    x: Float,
+    y: Float,
+    width: Float,
+    height: Float,
+    u: Float = 0F,
+    v: Float = 0F,
+    uWidth: Float = quantum.textureManager[texture].regionWidth.toFloat(),
+    uHeight: Float = quantum.textureManager[texture].regionHeight.toFloat(),
+    texWidth: Int = quantum.textureManager[texture].regionWidth,
+    texHeight: Int = quantum.textureManager[texture].regionHeight,
+  ) {
+    val textureRegion = quantum.textureManager[texture]
+    drawTexture(textureRegion, x, y, width, height, u, v, uWidth, uHeight, texWidth, texHeight)
+  }
+
+  fun drawNinePatch(texture: NamespaceID, x: Float, y: Float, width: Float, height: Float, leftInset: Int, topInset: Int, rightInset: Int, bottomInset: Int) {
+    val textureRegion = quantum.textureManager[texture]
+    drawNinePatch(textureRegion, x, y, width, height, leftInset, topInset, rightInset, bottomInset)
   }
 }

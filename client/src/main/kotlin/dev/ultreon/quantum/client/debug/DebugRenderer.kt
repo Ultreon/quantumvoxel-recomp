@@ -6,9 +6,9 @@ import com.badlogic.gdx.graphics.glutils.GLFrameBuffer
 import com.badlogic.gdx.graphics.glutils.ShaderProgram
 import dev.ultreon.quantum.client.draw
 import dev.ultreon.quantum.client.quantum
-import dev.ultreon.quantum.client.world.PlayerEntity
+import dev.ultreon.quantum.client.world.LocalPlayer
 import dev.ultreon.quantum.client.world.allLoading
-import dev.ultreon.quantum.entity.CollisionComponent
+import dev.ultreon.quantum.entity.PhysicsComponent
 import dev.ultreon.quantum.entity.PositionComponent
 import dev.ultreon.quantum.entity.RunningComponent
 import ktx.graphics.use
@@ -27,7 +27,7 @@ class DebugRenderer {
     }
 
     quantum.globalBatch.use {
-      val player: PlayerEntity? = quantum.player
+      val player: LocalPlayer? = quantum.player
       if (player != null) {
         val position: PositionComponent? = player.positionComponent
         if (position != null) {
@@ -40,7 +40,7 @@ class DebugRenderer {
           left("💨", "Running", running.running)
         }
 
-        val collision: CollisionComponent? = player.collisionComponent
+        val collision: PhysicsComponent? = player.physicsComponent
         if (collision != null) {
           left("🌊", "On Ground", collision.onGround)
           left("👉", "Collide XYZ", "${collision.isCollidingX}, ${collision.isCollidingY}, ${collision.isCollidingZ}")

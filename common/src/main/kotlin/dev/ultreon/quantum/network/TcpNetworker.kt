@@ -1,4 +1,4 @@
-//package dev.ultreon.quantum.network
+package dev.ultreon.quantum.network//package dev.ultreon.quantum.network
 //
 //import dev.ultreon.quantum.server.network.ServerConnection
 //import io.socket.socketio.server.SocketIoSocket

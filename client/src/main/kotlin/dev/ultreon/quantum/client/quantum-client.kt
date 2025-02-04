@@ -13,22 +13,11 @@ import com.badlogic.gdx.graphics.g2d.BitmapFont
 import com.badlogic.gdx.graphics.g2d.SpriteBatch
 import com.badlogic.gdx.graphics.g2d.TextureRegion
 import com.badlogic.gdx.math.Matrix4
-import com.badlogic.gdx.math.Vector3
 import com.badlogic.gdx.scenes.scene2d.ui.Touchpad
 import com.badlogic.gdx.utils.Queue
 import com.badlogic.gdx.utils.async.AsyncExecutor
 import com.badlogic.gdx.utils.viewport.ScreenViewport
 import com.badlogic.gdx.utils.viewport.Viewport
-import com.caoccao.javet.exceptions.JavetError
-import com.caoccao.javet.exceptions.JavetException
-import com.caoccao.javet.interop.V8Runtime
-import com.caoccao.javet.interop.callback.JavetCallbackContext
-import com.caoccao.javet.values.V8Value
-import com.caoccao.javet.values.primitive.V8ValueNumber
-import com.caoccao.javet.values.primitive.V8ValueString
-import com.caoccao.javet.values.reference.V8ValueArray
-import com.caoccao.javet.values.reference.V8ValueFunction
-import com.caoccao.javet.values.reference.V8ValueObject
 import com.github.tommyettinger.textra.Font
 import com.github.tommyettinger.textra.KnownFonts
 import dev.ultreon.quantum.*
@@ -43,18 +32,13 @@ import dev.ultreon.quantum.client.input.*
 import dev.ultreon.quantum.client.model.JsonModelLoader
 import dev.ultreon.quantum.client.model.ModelRegistry
 import dev.ultreon.quantum.client.scripting.TSApi
-import dev.ultreon.quantum.client.scripting.TSParams
-import dev.ultreon.quantum.client.scripting.TSType
 import dev.ultreon.quantum.client.scripting.TypescriptModule
 import dev.ultreon.quantum.client.texture.TextureManager
 import dev.ultreon.quantum.client.world.ClientDimension
-import dev.ultreon.quantum.client.world.PlayerEntity
-import dev.ultreon.quantum.network.Player
-import dev.ultreon.quantum.registry.Registries
+import dev.ultreon.quantum.client.world.LocalPlayer
+import dev.ultreon.quantum.network.Connection
 import dev.ultreon.quantum.resource.ResourceManager
 import dev.ultreon.quantum.util.NamespaceID
-import dev.ultreon.quantum.util.asIdOrNull
-import dev.ultreon.quantum.util.id
 import dev.ultreon.quantum.world.BlockFlags
 import dev.ultreon.quantum.world.Dimension
 import ktx.app.*
@@ -99,6 +83,8 @@ class QuantumVoxel : KtxApplicationAdapter, KtxInputAdapter, TSApi {
     instance = this
   }
 
+  var connection: Connection? = null
+
   //  private lateinit var gen: Gen
 //  private lateinit var v8Runtime: V8Runtime
   private var init: Boolean = false
@@ -128,7 +114,7 @@ class QuantumVoxel : KtxApplicationAdapter, KtxInputAdapter, TSApi {
     private set
   var debug = true
   var environmentRenderer: EnvironmentRenderer? = null
-  var player: PlayerEntity? = null
+  var player: LocalPlayer? = null
   var dimension: ClientDimension? = null
   private lateinit var crashFont: BitmapFont
   private lateinit var crashSpriteBatch: SpriteBatch
@@ -539,13 +525,14 @@ class QuantumVoxel : KtxApplicationAdapter, KtxInputAdapter, TSApi {
       return waiting.get().get()
     }
 
+    @Deprecated("Use Quants instead")
     fun registerApis(typescriptModule: TypescriptModule) {
       typescriptModule.register("client") {
         createType<QuantumVoxel>("Client")
         createType<ClientDimension>("ClientDimension")
         createType<Dimension>("Dimension")
         createType<World>("World")
-        createType<Player>("Player")
+        createType<LocalPlayer>("PlayerEntity")
         createType<Camera>("Camera")
         createType<ShapeDrawer>("Shapes")
         createType<DebugRenderer>("DebugRenderer")

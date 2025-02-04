@@ -1,8 +1,5 @@
 package dev.ultreon.quantum.client.scripting
 
-import com.caoccao.javet.interop.V8Runtime
-import com.caoccao.javet.values.V8Value
-
 data class TSFunction(
   val name: String,
   val params: TSParams? = null,
