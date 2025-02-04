@@ -92,6 +92,28 @@ subprojects {
       }
     }
   }
+
+  if (name != 'android') {
+    apply plugin: 'maven-publish'
+
+    publishing {
+      publications {
+        maven(MavenPublication) {
+          from(components.java)
+        }
+      }
+
+      repositories {
+        maven {
+          url = uri("https://maven.pkg.github.com/Ultreon/quantumvoxel-recomp")
+          credentials {
+            username = project.findProperty("gpr.user") ?: System.getenv("USERNAME")
+            password = project.findProperty("gpr.key") ?: System.getenv("TOKEN")
+          }
+        }
+      }
+    }
+  }
 }
 
 eclipse.project.name = 'QuantumVoxel' + '-parent'
