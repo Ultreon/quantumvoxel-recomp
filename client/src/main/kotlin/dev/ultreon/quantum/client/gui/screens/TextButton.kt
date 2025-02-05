@@ -36,7 +36,7 @@ class TextButton(parent: GuiContainer?, widget: JsonValue) : Widget(parent, widg
 
   override fun render(renderer: GuiRenderer, mouseX: Int, mouseY: Int, delta: Float) {
     renderer.drawNinePatch(
-      quantum.textureManager[id(path = "textures/gui/buttons/dark.png")],
+      id(path = "textures/gui/buttons/dark.png"),
       x, y, width, height,
       7, 7, 7, 7
     )

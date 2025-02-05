@@ -27,10 +27,10 @@ class GuiRenderer(val batch: SpriteBatch) {
     texHeight: Int = texture.regionHeight,
   ) {
     tmpRegion.setRegion(texture)
-    tmpRegion.u += (u / texWidth)
-    tmpRegion.v += (v / texHeight)
-    tmpRegion.u2 = tmpRegion.u + (uWidth / texWidth)
-    tmpRegion.v2 = tmpRegion.v + (uHeight / texHeight)
+    tmpRegion.u += (u / texWidth / tmpRegion.texture.width)
+    tmpRegion.v += (v / texHeight / tmpRegion.texture.height)
+    tmpRegion.u2 += (uWidth / texWidth / tmpRegion.texture.width / texWidth)
+    tmpRegion.v2 += (uHeight / texHeight / tmpRegion.texture.height / texHeight)
     batch.draw(tmpRegion, x, y, width, height)
   }
 
@@ -44,8 +44,8 @@ class GuiRenderer(val batch: SpriteBatch) {
     topInset: Int,
     rightInset: Int,
     bottomInset: Int,
-    texWidth: Int = tmpRegion.regionWidth,
-    texHeight: Int = tmpRegion.regionHeight,
+    texWidth: Int = texture.regionWidth,
+    texHeight: Int = texture.regionHeight,
   ) {
     // Corners
     drawTexture(

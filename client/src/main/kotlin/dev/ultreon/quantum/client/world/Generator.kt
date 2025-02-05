@@ -143,7 +143,7 @@ class Generator(val seed: Long = Random(java.lang.Double.doubleToLongBits(System
         when {
           dy < height && height > 64.0 && height < 64.5 -> chunk[x, dy, z] = Blocks.sand ?: Blocks.soil
           dy == height.toInt() -> chunk[x, dy, z] = Blocks.grass
-          dy < height && dy > height - 4 -> chunk[x, dy, z] = Blocks.sand ?: Blocks.soil
+          dy < height && dy > height - 4 -> chunk[x, dy, z] = Blocks.soil
           dy <= height - 4 -> chunk[x, dy, z] = Blocks.stone
         }
       }
@@ -235,7 +235,7 @@ class Generator(val seed: Long = Random(java.lang.Double.doubleToLongBits(System
           continue
         }
         when {
-          dy == height.toInt() -> chunk[x, dy, z] = Blocks.sand ?: Blocks.grass
+          dy == height.toInt() -> chunk[x, dy, z] = Blocks.sand ?: Blocks.soil
           dy < height && dy > height - 6 -> chunk[x, dy, z] = sandstone
           dy <= height - 6 -> chunk[x, dy, z] = Blocks.stone
         }

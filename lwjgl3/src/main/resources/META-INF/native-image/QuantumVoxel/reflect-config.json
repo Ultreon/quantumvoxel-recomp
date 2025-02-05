@@ -45,6 +45,9 @@
   "name":"[Ldev.ultreon.quantum.blocks.BlockHalf;"
 },
 {
+  "name":"[Ldev.ultreon.quantum.blocks.BlockState;"
+},
+{
   "name":"[Ldev.ultreon.quantum.math.Axis;"
 },
 {
@@ -89,6 +92,9 @@
 {
   "name":"com.badlogic.gdx.utils.Array",
   "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"java.lang.ClassValue"
 },
 {
   "name":"java.nio.Buffer",
@@ -141,8 +147,19 @@
   "name":"kotlin.reflect.jvm.internal.ReflectionFactoryImpl"
 },
 {
+  "name":"kotlin.SafePublicationLazyImpl",
+  "fields":[{"name":"_value"}]
+},
+{
+  "name":"kotlin.jvm.internal.DefaultConstructorMarker"
+},
+{
   "name":"kotlinx.coroutines.CompletedExceptionally",
   "fields":[{"name":"_handled$volatile"}]
+},
+{
+  "name":"kotlin.reflect.jvm.internal.ReflectionFactoryImpl",
+  "methods":[{"name":"<init>","parameterTypes":[] }]
 },
 {
   "name":"kotlinx.coroutines.EventLoopImplBase",

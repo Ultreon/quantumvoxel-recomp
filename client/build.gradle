@@ -80,6 +80,16 @@ tasks.register("zipDlcExtended", Zip) {
   dependsOn("compileDlcExtendedTypeScript")
 }
 
+afterEvaluate {
+  processDlcCoreResources {
+    dependsOn(":client:npmDlcCoreInstall", "zipDlcCore")
+  }
+
+  processDlcExtendedResources {
+    dependsOn(":client:npmDlcExtendedInstall", "zipDlcExtended")
+  }
+}
+
 tasks.register("generateTypeScript", JavaExec) {
   doFirst {
     delete(fileTree(dir: "src/generated/", includes: ["**/*.ts"]).files)
