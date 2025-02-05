@@ -82,4 +82,48 @@ project(":lwjgl3") {
 }"""
     )
   }
+
+// Task to package the native image into a macOS .app bundle
+  tasks.register("packageMacApp") {
+    dependsOn nativeCompile
+    group = "build"
+    description = "Packages the native image into a macOS app bundle"
+
+    doLast {
+      def nativeBinary = file("build/native/nativeCompile/${graalvmNative.binaries.main.imageName}")
+      def appBundle = file("build/MyApp.app")
+      def appContents = file("${appBundle}/Contents")
+      def macosDir = file("${appContents}/MacOS")
+      def resourcesDir = file("${appContents}/Resources")
+
+      // Create app structure
+      appBundle.mkdirs()
+      macosDir.mkdirs()
+      resourcesDir.mkdirs()
+
+      // Move binary into the app bundle
+      nativeBinary.renameTo(file("${macosDir}/${appName}"))
+
+      // Create Info.plist
+      def infoPlist = file("${appContents}/Info.plist")
+      infoPlist.text = """
+        <?xml version="1.0" encoding="UTF-8"?>
+        <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+        <plist version="1.0">
+          <dict>
+            <key>CFBundleName</key>
+            <string>${appName}</string>
+            <key>CFBundleIdentifier</key>
+            <string>${project.group}.${project.name}</string>
+            <key>CFBundleExecutable</key>
+            <string>${appName}</string>
+            <key>CFBundleVersion</key>
+            <string>${project.version}</string>
+          </dict>
+        </plist>
+        """.stripIndent()
+
+      println "macOS .app bundle created at ${appBundle.absolutePath}"
+    }
+  }
 }
