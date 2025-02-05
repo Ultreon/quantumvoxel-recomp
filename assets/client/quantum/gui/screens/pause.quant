@@ -14,15 +14,15 @@
       position: {
         type: relative
         relative-to: {
-          type: screen-top
+          type: screen-center
         }
-        y: -150
+        y: 100
       }
     }
 
     {
       type: button,
-      id: return-to-world,
+      id: return_to_world,
       text: Return to World,
 
       size: [150, 21]
@@ -33,7 +33,7 @@
           type: widget
           id: title
         }
-        y: 130
+        y: -130
       }
 
       interaction: {
@@ -57,7 +57,7 @@
           type: widget
           id: title
         }
-        y: -10
+        y: -30
       }
 
       interaction: {

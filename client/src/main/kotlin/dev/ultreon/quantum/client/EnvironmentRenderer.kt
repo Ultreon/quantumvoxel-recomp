@@ -180,12 +180,12 @@ class EnvironmentRenderer : Disposable {
       spriteBatch.transformMatrix.scale(quantum.guiScale, quantum.guiScale, quantum.guiScale)
 
     try {
-      spriteBatch.begin()
+      quantum.guiRenderer.begin()
       renderHud(
         (Gdx.input.x / quantum.guiScale).toInt(),
         (Gdx.input.y / quantum.guiScale).toInt()
       )
-      spriteBatch.end()
+      quantum.guiRenderer.end()
     } finally {
       spriteBatch.transformMatrix = backupMatrix
     }

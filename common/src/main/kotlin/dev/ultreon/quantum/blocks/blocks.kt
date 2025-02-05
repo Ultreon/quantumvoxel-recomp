@@ -111,7 +111,7 @@ object Blocks : GameContent<Block>(Registries.blocks) {
   val grass by key(Registries.blocks, id(path = "grass_block"))
   val stone by key(Registries.blocks, id(path = "stone"))
   val water by key(Registries.blocks, id(path = "water"))
-  val sand by key(Registries.blocks, id(path = "sand"))
+  val sand by optionalKey(Registries.blocks, id(path = "sand"))
   val crate by optionalKey(Registries.blocks, id(path = "crate"))
   val cobblestone by optionalKey(Registries.blocks, id(path = "cobblestone"))
   val snowyGrass by optionalKey(Registries.blocks, id(path = "snowy_grass"))

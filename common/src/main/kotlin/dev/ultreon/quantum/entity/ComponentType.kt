@@ -38,8 +38,8 @@ class ComponentType<T : Component<T>>(
     return name.hashCode()
   }
 
-  fun parse(value: JsonValue): Component<*> {
-    return constructor(CallContext.from(value))
+  fun parse(value: JsonValue): T? {
+    return constructor(CallContext.from(value) ?: return null)
   }
 
   companion object {

@@ -33,6 +33,7 @@ import dev.ultreon.quantum.client.model.JsonModelLoader
 import dev.ultreon.quantum.client.model.ModelRegistry
 import dev.ultreon.quantum.client.scripting.TSApi
 import dev.ultreon.quantum.client.scripting.TypescriptModule
+import dev.ultreon.quantum.client.scripting.cond.ClientConditions
 import dev.ultreon.quantum.client.texture.TextureManager
 import dev.ultreon.quantum.client.world.ClientDimension
 import dev.ultreon.quantum.client.world.LocalPlayer
@@ -49,6 +50,8 @@ import java.io.FileNotFoundException
 import java.util.*
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.atomic.AtomicReference
+import java.util.zip.ZipInputStream
+import kotlin.io.path.Path
 import kotlin.math.min
 
 const val MINIMUM_WIDTH = 550
@@ -223,6 +226,21 @@ class QuantumVoxel : KtxApplicationAdapter, KtxInputAdapter, TSApi {
 
     gamePlatform.loadResources(clientResources)
     gamePlatform.loadResources(commonResources)
+
+    Gdx.files.local("content-packs").let { path ->
+      if (path.exists()) {
+        path.list().forEach {
+          if (it.extension() == "qvcontent") {
+            ZipInputStream(it.read()).use { zip -> clientResources.loadZip(zip) }
+            ZipInputStream(it.read()).use { zip -> commonResources.loadZip(zip) }
+          }
+        }
+      } else {
+        path.mkdirs()
+      }
+    }
+
+    ClientConditions
 
     doContentRegistration()
 

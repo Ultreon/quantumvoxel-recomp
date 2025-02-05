@@ -14,7 +14,7 @@ object Items {
 //  val iron = BlockItem { Blocks.iron }
 //  val snowyGrass = BlockItem { Blocks.snowyGrass } // TODO: Add snowy grass item
 //  val shortGrass = BlockItem { Blocks.shortGrass } // TODO: Add short grass item
-  val sand = BlockItem { Blocks.sand }
+  val sand = Blocks.sand?.let { sand -> BlockItem { sand } }
 //  val crate = BlockItem { Blocks.crate } // TODO: Add crate item
 
   init {
@@ -26,7 +26,7 @@ object Items {
 //    Registries.items.register(id(path = "iron"), iron)
 //    Registries.items.register(id(path = "snowy_grass"), snowyGrass)
 //    Registries.items.register(id(path = "short_grass"), shortGrass)
-    Registries.items.register(id(path = "sand"), sand)
+    sand?.let { Registries.items.register(id(path = "sand"), it) }
 //    Registries.items.register(id(path = "crate"), crate)
   }
 

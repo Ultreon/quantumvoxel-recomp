@@ -7,7 +7,9 @@ abstract class VirtualFunction(val params: MutableMap<String, ContextParam<*>> =
 
   fun call(json: JsonValue) {
     val callContext = CallContext()
-    params.forEach { (name, param) -> callContext[name] = param.of(json) }
+    for ((name, param) in params) {
+      callContext[name] = param.of(json) ?: continue
+    }
     call(callContext)
   }
 

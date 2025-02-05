@@ -2,8 +2,13 @@ package dev.ultreon.quantum.client.gui.screens
 
 import dev.ultreon.quantum.client.globalBatch
 import dev.ultreon.quantum.client.quantum
+import dev.ultreon.quantum.client.scripting.ClientContextTypes
 import dev.ultreon.quantum.logger
 import dev.ultreon.quantum.resource.*
+import dev.ultreon.quantum.scripting.condition.VirtualCondition
+import dev.ultreon.quantum.scripting.function.CallContext
+import dev.ultreon.quantum.scripting.function.ContextType
+import dev.ultreon.quantum.scripting.function.ContextValue
 import dev.ultreon.quantum.util.NamespaceID
 import kotlin.reflect.KProperty
 
@@ -33,8 +38,41 @@ class IdScreen(screenId: NamespaceID) : Screen() {
 
       val widgetsVal = json["widgets"]
       if (widgetsVal.isArray) {
-        for ((i, widget) in widgetsVal.withIndex()) {
+        for ((i, widget) in widgetsVal.withIndex()) run main@ {
           if (widget.isObject) {
+            var visible = true
+            val conditions = widget["if"]
+            if (conditions?.isArray == true) {
+              for (condition in conditions) {
+                if (condition.isBoolean) {
+                  visible = condition.asBoolean()
+                } else if (condition.isString) {
+                  val conditionString = condition.asString()
+                  if (conditionString.matches("@\\(.*\\)".toRegex())) {
+                    val conditionName = conditionString.substringAfter("@(").substringBeforeLast(")")
+                    logger.error("Condition variables not implemented in screen ($screenId).${condition.trace()}")
+                    // TODO
+                  } else if (conditionString == "false") {
+                    visible = false
+                  }
+                } else if (condition.isObject) {
+                  val type = condition["type"]?.asString() ?: run {
+                    logger.error("Condition type must be a string in screen ($screenId).${condition.trace()}")
+                    return@main
+                  }
+                  val virtualCondition = VirtualCondition[type] ?: run {
+                    logger.error("Unknown condition type: $type in screen ($screenId).${condition["type"].trace()}")
+                    return@main
+                  }
+                  virtualCondition.test(CallContext.of(
+                    ContextValue(ClientContextTypes.screen, this),
+                    ContextValue(ClientContextTypes.batch, batch),
+                  ) ?: return@main).let { visible = visible && it }
+                } else {
+                  logger.error("Condition must be a boolean, string or object in screen ($screenId).${condition.trace()}")
+                }
+              }
+            }
             val widgetType = widget["type"]
             if (widgetType.isString) {
               val type = widgetType.asString()

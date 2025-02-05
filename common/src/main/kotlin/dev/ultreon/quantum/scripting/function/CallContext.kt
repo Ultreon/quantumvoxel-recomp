@@ -1,6 +1,7 @@
 package dev.ultreon.quantum.scripting.function
 
 import com.badlogic.gdx.utils.JsonValue
+import dev.ultreon.quantum.logger
 
 class CallContext {
   val paramValues = hashMapOf<String, ContextValue<*>>()
@@ -56,13 +57,36 @@ class CallContext {
   }
 
   companion object {
-    fun from(value: JsonValue): CallContext {
+    fun from(value: JsonValue): CallContext? {
       val context = CallContext()
+      if (value.isObject) {
+        context.paramValues[value.getString("context-type", "###").also {
+          if (it == "###") {
+            logger.error("No context type specified: ${value.trace()}")
+            return@from null
+          }
+        }] = ContextType[value.getString("context-type")]?.parse(value) as? ContextValue<*>? ?: run {
+          logger.error("Unknown context type: ${value.getString("type")}")
+          return null
+        }
+        return context
+      }
       if (!value.isArray) {
         throw IllegalArgumentException("CallContext value must be an array")
       }
       value.forEach {
-        context.paramValues[it.getString("type")] = ContextType[it.getString("type")]?.parse(it) as ContextValue<*>
+        context.paramValues[it.getString("type")] =
+          ContextType[it.getString("type")]?.parse(it) as? ContextValue<*>? ?: run {
+            logger.error("Unknown context type: ${it.getString("type")}")
+            return null
+          }
+      }
+      return context
+    }
+    fun of(vararg contextType: ContextValue<*>): CallContext? {
+      val context = CallContext()
+      contextType.forEach {
+        context.paramValues[it.type.name] = it
       }
       return context
     }

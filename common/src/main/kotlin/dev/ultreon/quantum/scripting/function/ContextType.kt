@@ -9,6 +9,7 @@ import dev.ultreon.quantum.blocks.BlockEntity
 import dev.ultreon.quantum.blocks.BlockState
 import dev.ultreon.quantum.entity.*
 import dev.ultreon.quantum.item.Item
+import dev.ultreon.quantum.logger
 import dev.ultreon.quantum.math.Axis
 import dev.ultreon.quantum.math.Vector3D
 import dev.ultreon.quantum.registry.Registries
@@ -27,7 +28,7 @@ typealias ComponentMap = Map<ComponentType<*>, Component<*>>
 class ContextType<T : Any>(
   val name: String,
   val clazz: Class<T>,
-  val parser: (ContextType<T>, JsonValue) -> ContextValue<T>,
+  val parser: (ContextType<T>, JsonValue) -> ContextValue<T>?,
 ) : ContextAware<ContextType<*>> {
   fun cast(dimension: Any): T {
     return clazz.cast(dimension)
@@ -62,7 +63,7 @@ class ContextType<T : Any>(
     return clazz.hashCode()
   }
 
-  fun parse(json: JsonValue): ContextValue<T> {
+  fun parse(json: JsonValue): ContextValue<T>? {
     return this.parser.invoke(this, json)
   }
 
@@ -77,14 +78,16 @@ class ContextType<T : Any>(
       return@register Registries.entityTemplates[id]?.let { ContextValue(this, it) }
         ?: throw IllegalArgumentException("Unknown entity template: ${json.get("id").asString()}")
     })
-    val entity: ContextType<Entity> = register("entity", parser = { throw UnsupportedOperationException() })
+    val entity: ContextType<Entity> =
+      register("entity", parser = { logger.error("Unsupported entity: ${it.trace()}"); return@register null })
     val condition: ContextType<VirtualCondition> = register("condition", parser = { json ->
       val type = json.get("type").asString()
       return@register VirtualCondition[type]?.let { cond -> ContextValue(this, cond) }
         ?: throw IllegalArgumentException("Unknown condition: $type")
     })
 
-    val dimension: ContextType<Dimension> = register("dimension", parser = { throw UnsupportedOperationException() })
+    val dimension: ContextType<Dimension> =
+      register("dimension", parser = { logger.error("Unsupported dimension: ${it.trace()}"); return@register null })
     val block: ContextType<Block> = register("block", parser = { json ->
       val id = json.get("id").asString().asIdOrNull() ?: throw IllegalArgumentException(
         "Invalid ID: ${
@@ -106,15 +109,19 @@ class ContextType<T : Any>(
       return@register ContextValue(this, BlockState.parse(json, block))
     })
     val blockEntity: ContextType<BlockEntity> =
-      register("block-entity", parser = { throw UnsupportedOperationException() })
+      register(
+        "block-entity",
+        parser = { logger.error("Unsupported block-entity: ${it.trace()}"); return@register null })
     val item: ContextType<Item> = register("item", parser = { json ->
-      val id = json.get("id").asString().asIdOrNull() ?: throw IllegalArgumentException(
-        "Invalid ID: ${
-          json.get("id").asString()
-        }"
-      )
+      val id = json.get("id").asString().asIdOrNull() ?: run {
+        logger.error("Invalid ID: ${json.get("id").asString()}")
+        return@register null
+      }
       return@register Registries.items[id]?.let { ContextValue(this, it) }
-        ?: throw IllegalArgumentException("Unknown item: ${json.get("id").asString()}")
+        ?: run {
+          logger.error("Unknown item: ${json.get("id").asString()}")
+          null
+        }
     })
     val gridPoint: ContextType<GridPoint3> = register("grid-point", parser = { json ->
       val x = json.get("x").asInt()
@@ -136,23 +143,37 @@ class ContextType<T : Any>(
       } else if (json.isNumber) {
         return@register ContextValue(this, Vector3D(json.asDouble(), json.asDouble(), json.asDouble()))
       } else {
-        throw IllegalArgumentException("Invalid vector: $json")
+        logger.error("Invalid vector: $json")
+        return@register null
       }
     })
     val direction: ContextType<Direction> = register("direction", parser = { json ->
       val name = json.asString()
-      return@register ContextValue(this, Direction.valueOf(name.uppercase()))
+      return@register ContextValue(this, enumValues<Direction>().firstOrNull {
+        it.name.equals(name, ignoreCase = true)
+      } ?: run {
+        logger.error("Invalid direction: $name")
+        return@register null
+      })
     })
     val axis: ContextType<Axis> = register("axis", parser = { json ->
       val name = json.asString()
-      return@register ContextValue(this, Axis.valueOf(name.uppercase()))
+      return@register ContextValue(this, enumValues<Axis>().firstOrNull {
+        it.name.equals(name, ignoreCase = true)
+      } ?: run {
+        logger.error("Invalid axis: $name")
+        return@register null
+      })
     })
     val itemStack: ContextType<ItemStack> = register("item-stack", parser = { json ->
-      val item = json.get("item").asString().asIdOrNull() ?: throw IllegalArgumentException(
-        "Invalid item: ${
-          json.get("item").asString()
-        }"
-      )
+      val item = json.get("item").asString().asIdOrNull() ?: run {
+        logger.error(
+          "Invalid item: ${
+            json.get("item").asString()
+          }"
+        )
+        return@register null
+      }
       val count = json.get("count").asInt()
       return@register ContextValue(
         this,
@@ -194,7 +215,8 @@ class ContextType<T : Any>(
           )
         )
       } else {
-        throw IllegalArgumentException("Invalid matrix: $json")
+        logger.error("Invalid matrix: $json")
+        return@register null
       }
     })
     val matrix3: ContextType<Matrix3> = register("mat3", parser = { json ->
@@ -221,9 +243,12 @@ class ContextType<T : Any>(
               a?.get(0) ?: 1.0f, a?.get(1) ?: 0.0f, a?.get(2) ?: 0.0f,
               b?.get(0) ?: 0.0f, b?.get(1) ?: 1.0f, b?.get(2) ?: 0.0f,
               c?.get(0) ?: 0.0f, c?.get(1) ?: 0.0f, c?.get(2) ?: 1.0f
-        )))
+            )
+          )
+        )
       } else {
-        throw IllegalArgumentException("Invalid matrix: $json")
+        logger.error("Invalid matrix: $json")
+        return@register null
       }
     })
     val int: ContextType<Int> = register("int", parser = { json -> ContextValue(this, json.asInt()) })
@@ -236,22 +261,35 @@ class ContextType<T : Any>(
     @OptIn(ExperimentalEncodingApi::class)
     val binary: ContextType<ByteArray> = register("binary", parser = { json ->
       val base64 = json.asString()
-      return@register ContextValue(this, Base64.decode(base64))
+      try {
+        return@register ContextValue(this, Base64.decode(base64))
+      } catch (e: Exception) {
+        logger.error("Failed to decode base64: $base64", e)
+        return@register null
+      }
     })
     val json: ContextType<JsonValue> = register("json", parser = { json -> ContextValue(this, json) })
     val id: ContextType<NamespaceID> = register("id", parser = { json ->
-      ContextValue(this, json.asString()?.asIdOrNull()
-        ?: throw IllegalArgumentException("Invalid id: ${json.asString()}"))
+      ContextValue(
+        this, json.asString()?.asIdOrNull()
+          ?: run {
+            logger.error("Invalid id: ${json.asString()}")
+            return@register null
+          })
     })
     val type: ContextType<ContextType<*>> = register("type", parser = { json ->
       val name = json.asString()
-      val type = registry[name] ?: throw IllegalArgumentException("Unknown type: $name")
+      val type = registry[name] ?: run {
+        logger.error("Unknown type: $name")
+        return@register null
+      }
       ContextValue(this, type)
     })
     val componentMap: ContextType<ComponentMap> = register("component-map", parser = { json ->
       val map = mutableMapOf<ComponentType<*>, Component<*>>()
       if (!json.isArray) {
-        throw IllegalArgumentException("ComponentMap value must be an array")
+        logger.error("ComponentMap value must be an array")
+        return@register null
       }
       json.forEach { value ->
         val component = ComponentType.parse(value)
@@ -262,17 +300,24 @@ class ContextType<T : Any>(
     val componentTypeList: ContextType<ComponentTypeList> = register("component-type-list", parser = { json ->
       val list = mutableListOf<ComponentType<*>>()
       if (!json.isArray) {
-        throw IllegalArgumentException("ComponentTypeList value must be an array")
+        logger.error("ComponentTypeList value must be an array")
+        return@register null
       }
       json.forEach { value ->
-        list.add(ComponentType[value.asString()] ?: throw IllegalArgumentException("Unknown component type: ${value.asString()}"))
+        list.add(ComponentType[value.asString()] ?: run {
+          logger.error("Unknown component type: ${value.asString()}")
+          return@register null
+        })
       }
       ContextValue(this, list)
     })
     val component: ContextType<Component<*>> = register("component", parser = { json ->
       val name = json.asString()
-      val componentType = ComponentType[name] ?: throw IllegalArgumentException("Unknown component type: $name")
-      return@register ContextValue(this, componentType.parse(json))
+      val componentType = ComponentType[name] ?: run {
+        logger.error("Unknown component type: $name")
+        return@register null
+      }
+      return@register ContextValue(this, componentType.parse(json) ?: return@register null)
     })
 
     private fun <T : Any> register(
@@ -286,9 +331,9 @@ class ContextType<T : Any>(
     }
 
     @Suppress("UNCHECKED_CAST")
-    private fun <T : Any> register(
+    fun <T : Any> register(
       name: String,
-      parser: ContextType<T>.(JsonValue) -> ContextValue<T>,
+      parser: ContextType<T>.(JsonValue) -> ContextValue<T>?,
       vararg typeGetter: T,
     ): ContextType<T> {
       val type = typeGetter.javaClass.componentType

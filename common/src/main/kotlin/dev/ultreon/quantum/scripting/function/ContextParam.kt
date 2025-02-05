@@ -15,7 +15,7 @@ class ContextParam<T : Any>(val name: String, val type: ContextType<T>) {
     return "ContextParam(name=$name, type=$type)"
   }
 
-  fun of(json: JsonValue): ContextValue<*> {
+  fun of(json: JsonValue): ContextValue<T>? {
     return type.parse(json)
   }
 }

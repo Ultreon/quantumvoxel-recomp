@@ -190,6 +190,8 @@ class ResourceManager(
         byteArrayOutputStream.write(b)
         b = zip.read()
       }
+      logger.debug("Loaded resource: $domain:$path/$filename")
+      logger.debug("Resource node: $resourceNode")
       resourceNode?.asLeafOrNull()?.addResource(
         StaticResource(
           NamespaceID.of(domain, if (path == "") filename else "$path/$filename"),
