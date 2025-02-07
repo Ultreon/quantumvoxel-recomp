@@ -1,0 +1,22 @@
+{
+  states: {
+
+  }
+  behavior: {
+    breakSpeed: 0
+  }
+  interactions: {
+    // Experimental
+  }
+  physics: {
+    collision: none
+    friction: 0.6
+  }
+  rendering: {
+    render_type: foliage
+    ambient_occlusion: false
+  }
+  extra: {
+    // Experimental
+  }
+}

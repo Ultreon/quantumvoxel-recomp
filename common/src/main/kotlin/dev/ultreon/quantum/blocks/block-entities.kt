@@ -1,16 +1,17 @@
 package dev.ultreon.quantum.blocks
 
-import dev.ultreon.quantum.scripting.function.ContextAware
-import dev.ultreon.quantum.scripting.function.ContextParam
-import dev.ultreon.quantum.scripting.function.ContextType
+import dev.ultreon.quantum.scripting.ContextAware
+import dev.ultreon.quantum.scripting.ContextParam
+import dev.ultreon.quantum.scripting.ContextType
 import dev.ultreon.quantum.scripting.function.VirtualFunction
+import kotlinx.coroutines.runBlocking
 
 class BlockEntity : ContextAware<BlockEntity> {
   private val tickables = ArrayList<VirtualFunction>()
 
   fun tick() {
     for (it in this.tickables) {
-      it.call(this)
+      runBlocking { it.call(this@BlockEntity) }
     }
   }
 

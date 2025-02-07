@@ -3,11 +3,17 @@
 package dev.ultreon.quantum.world
 
 import com.badlogic.gdx.utils.Disposable
+import com.badlogic.gdx.utils.JsonValue
 import dev.ultreon.quantum.blocks.Block
+import dev.ultreon.quantum.blocks.Blocks
 import dev.ultreon.quantum.client.scripting.TSApi
 import dev.ultreon.quantum.math.BoundingBoxD
-import dev.ultreon.quantum.scripting.function.ContextAware
-import dev.ultreon.quantum.scripting.function.ContextType
+import dev.ultreon.quantum.scripting.ContextAware
+import dev.ultreon.quantum.scripting.ContextParam
+import dev.ultreon.quantum.scripting.ContextType
+import dev.ultreon.quantum.scripting.ContextValue
+import dev.ultreon.quantum.scripting.function.VirtualFunction
+import dev.ultreon.quantum.scripting.function.function
 import dev.ultreon.quantum.util.BlockHit
 import dev.ultreon.quantum.util.RayD
 import dev.ultreon.quantum.util.WorldRayCaster
@@ -42,6 +48,36 @@ abstract class Dimension : Disposable, TSApi, ContextAware<Dimension> {
   abstract fun set(x: Int, y: Int, z: Int, block: Block, flags: BlockFlags)
 
   override fun dispose() = Unit
+
+  override fun fieldOf(name: String, contextJson: JsonValue?): ContextValue<*>? {
+    return when (name) {
+      "get_block" -> ContextValue(ContextType.function, function(
+        ContextParam("x", ContextType.int),
+        ContextParam("y", ContextType.int),
+        ContextParam("z", ContextType.int),
+        function = {
+          return@function ContextValue(
+            ContextType.block,
+            this[it.getInt("x") ?: 0, it.getInt("y") ?: 0, it.getInt("z") ?: 0]
+          )
+        }
+      ))
+      "set_block" -> ContextValue(ContextType.function, function(
+        ContextParam("x", ContextType.int),
+        ContextParam("y", ContextType.int),
+        ContextParam("z", ContextType.int),
+        ContextParam("block", ContextType.block),
+        function = {
+          this[it.getInt("x") ?: 0, it.getInt("y") ?: 0, it.getInt("z") ?: 0] = it.get<Block>("block") ?: Blocks.air
+          return@function ContextValue(
+            ContextType.block,
+            this[it.getInt("x") ?: 0, it.getInt("y") ?: 0, it.getInt("z") ?: 0]
+          )
+        }
+      ))
+      else -> null
+    }
+  }
 
   fun collide(box: BoundingBoxD, collideFluid: Boolean): List<BoundingBoxD> {
     val boxes: MutableList<BoundingBoxD> = ArrayList()

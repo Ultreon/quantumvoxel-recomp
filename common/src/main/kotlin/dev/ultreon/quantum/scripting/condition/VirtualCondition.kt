@@ -1,9 +1,9 @@
 package dev.ultreon.quantum.scripting.condition
 
 import dev.ultreon.quantum.scripting.function.CallContext
-import dev.ultreon.quantum.scripting.function.ContextAware
-import dev.ultreon.quantum.scripting.function.ContextParam
-import dev.ultreon.quantum.scripting.function.ContextType
+import dev.ultreon.quantum.scripting.ContextAware
+import dev.ultreon.quantum.scripting.ContextParam
+import dev.ultreon.quantum.scripting.ContextType
 
 fun interface VirtualCondition : ContextAware<VirtualCondition> {
   fun test(callContext: CallContext): Boolean

@@ -2,6 +2,9 @@ package dev.ultreon.quantum.scripting.function
 
 import com.badlogic.gdx.utils.JsonValue
 import dev.ultreon.quantum.logger
+import dev.ultreon.quantum.scripting.ContextAware
+import dev.ultreon.quantum.scripting.ContextType
+import dev.ultreon.quantum.scripting.ContextValue
 
 class CallContext {
   val paramValues = hashMapOf<String, ContextValue<*>>()
@@ -19,11 +22,19 @@ class CallContext {
   }
 
   fun getInt(name: String): Int? {
-    return paramValues[name]?.value as? Int
+    return (paramValues[name]?.value as? Number)?.toInt()
+  }
+
+  fun getLong(name: String): Long? {
+    return (paramValues[name]?.value as? Number)?.toLong()
+  }
+
+  fun getFloat(name: String): Float? {
+    return (paramValues[name]?.value as? Number)?.toFloat()
   }
 
   fun getDouble(name: String): Double? {
-    return paramValues[name]?.value as? Double
+    return (paramValues[name]?.value as? Number)?.toDouble()
   }
 
   fun getBoolean(name: String): Boolean? {

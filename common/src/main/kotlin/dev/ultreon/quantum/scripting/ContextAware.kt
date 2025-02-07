@@ -1,6 +1,7 @@
-package dev.ultreon.quantum.scripting.function
+package dev.ultreon.quantum.scripting
 
 import com.badlogic.gdx.utils.JsonValue
+import dev.ultreon.quantum.scripting.function.CallContext
 
 interface ContextAware<T : ContextAware<T>> {
   fun contextType(): ContextType<T>

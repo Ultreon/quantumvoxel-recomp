@@ -4,7 +4,7 @@ package dev.ultreon.quantum.blocks
 
 import com.badlogic.gdx.math.collision.BoundingBox
 import com.badlogic.gdx.utils.JsonValue
-import dev.ultreon.quantum.scripting.function.ContextAware
+import dev.ultreon.quantum.scripting.ContextAware
 import dev.ultreon.quantum.id
 import dev.ultreon.quantum.math.BoundingBoxD
 import dev.ultreon.quantum.math.Vector3D
@@ -13,7 +13,7 @@ import dev.ultreon.quantum.registry.Registry
 import dev.ultreon.quantum.resource.ResourceManager
 import dev.ultreon.quantum.resource.asDirOrNull
 import dev.ultreon.quantum.resource.asDirectoryOrNull
-import dev.ultreon.quantum.scripting.function.ContextType
+import dev.ultreon.quantum.scripting.ContextType
 import dev.ultreon.quantum.util.NamespaceID
 import dev.ultreon.quantum.util.asIdOrNull
 import dev.ultreon.quantum.util.id

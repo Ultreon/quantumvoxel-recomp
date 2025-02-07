@@ -1,4 +1,4 @@
-package dev.ultreon.quantum.scripting.function
+package dev.ultreon.quantum.scripting
 
 import com.badlogic.gdx.utils.JsonValue
 

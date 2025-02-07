@@ -7,8 +7,8 @@ import dev.ultreon.quantum.logger
 import dev.ultreon.quantum.resource.*
 import dev.ultreon.quantum.scripting.condition.VirtualCondition
 import dev.ultreon.quantum.scripting.function.CallContext
-import dev.ultreon.quantum.scripting.function.ContextType
-import dev.ultreon.quantum.scripting.function.ContextValue
+import dev.ultreon.quantum.scripting.ContextType
+import dev.ultreon.quantum.scripting.ContextValue
 import dev.ultreon.quantum.util.NamespaceID
 import kotlin.reflect.KProperty
 

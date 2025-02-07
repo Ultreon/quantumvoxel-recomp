@@ -1,6 +1,7 @@
 package dev.ultreon.quantum.util
 
 import com.badlogic.gdx.utils.GdxRuntimeException
+import org.intellij.lang.annotations.Language
 
 data class NamespaceID(
   val domain: String,
@@ -30,6 +31,9 @@ data class NamespaceID(
   }
 
   companion object {
+    @Language("RegExp")
+    const val PATTERN: String = "([a-z0-9_\\-]+):([a-z0-9_\\-/.]+)"
+
     fun parse(string: String): NamespaceID {
       val index = string.indexOf(':')
       if (index == -1) return NamespaceID("quantum", validatePath(string))

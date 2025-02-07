@@ -3,8 +3,8 @@ package dev.ultreon.quantum.client.scripting
 import dev.ultreon.quantum.client.gui.screens.IdScreen
 import dev.ultreon.quantum.client.quantum
 import dev.ultreon.quantum.logger
-import dev.ultreon.quantum.scripting.function.ContextType
-import dev.ultreon.quantum.scripting.function.ContextValue
+import dev.ultreon.quantum.scripting.ContextType
+import dev.ultreon.quantum.scripting.ContextValue
 import dev.ultreon.quantum.util.asIdOrNull
 
 object ClientContextTypes {

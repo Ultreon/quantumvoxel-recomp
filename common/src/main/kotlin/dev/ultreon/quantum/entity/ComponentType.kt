@@ -2,14 +2,14 @@ package dev.ultreon.quantum.entity
 
 import com.badlogic.gdx.utils.JsonValue
 import dev.ultreon.quantum.scripting.function.CallContext
-import dev.ultreon.quantum.scripting.function.ContextParam
-import dev.ultreon.quantum.scripting.function.ContextType
+import dev.ultreon.quantum.scripting.ContextParam
+import dev.ultreon.quantum.scripting.ContextType
 import dev.ultreon.quantum.server.player.ServerPlayerComponent
 
 class ComponentType<T : Component<T>>(
-  val name: String,
-  vararg val params: ContextParam<*>,
-  val constructor: (context: CallContext) -> T
+    val name: String,
+    vararg val params: ContextParam<*>,
+    val constructor: (context: CallContext) -> T
 ) : Comparable<ComponentType<*>> {
   init {
     registry[name] = this

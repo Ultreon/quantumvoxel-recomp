@@ -5,11 +5,11 @@ import com.badlogic.gdx.utils.JsonValue
 import dev.ultreon.quantum.GameContent
 import dev.ultreon.quantum.blocks.key
 import dev.ultreon.quantum.math.Vector3D
-import dev.ultreon.quantum.scripting.function.ContextAware
+import dev.ultreon.quantum.scripting.ContextAware
 import dev.ultreon.quantum.registry.Registries
 import dev.ultreon.quantum.registry.RegistryKeys
-import dev.ultreon.quantum.scripting.function.ContextType
-import dev.ultreon.quantum.scripting.function.ContextValue
+import dev.ultreon.quantum.scripting.ContextType
+import dev.ultreon.quantum.scripting.ContextValue
 import dev.ultreon.quantum.util.id
 import dev.ultreon.quantum.world.Dimension
 

@@ -2,7 +2,7 @@ package dev.ultreon.quantum.blocks
 
 import com.badlogic.gdx.utils.JsonValue
 import dev.ultreon.quantum.InternalApi
-import dev.ultreon.quantum.scripting.function.ContextValue
+import dev.ultreon.quantum.scripting.ContextValue
 import ktx.collections.GdxArray
 import ktx.collections.gdxArrayOf
 
