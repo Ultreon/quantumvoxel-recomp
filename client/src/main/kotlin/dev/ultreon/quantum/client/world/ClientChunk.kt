@@ -135,6 +135,9 @@ class ClientChunk(x: Int, y: Int, z: Int, private val material: Material, val di
     val builder = ModelBuilder()
     builder.begin()
     allLoading++
+    if (allLoading > 1000 || dimension.chunks.size + allLoading > 8000) {
+      throw ProtectionFault("Too many chunks loading")
+    }
     val part1 = builder.part(
       "world#default", GL20.GL_TRIANGLES, VertexAttributes(
         VertexAttribute.Position(),
