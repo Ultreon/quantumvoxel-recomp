@@ -32,21 +32,6 @@ project(":lwjgl3") {
     }
   }
 
-  if (System.getProperty("os.name").containsIgnoreCase("windows")) {
-    project.tasks.register("compileIcon", Exec) {
-      commandLine("windres", "-o", "build/native/resources.o", "resources.rc")
-      inputs.file("resources.rc")
-      outputs.file("build/native/resources.o")
-    }
-  }
-
-  nativeCompile {
-    if (System.getProperty("os.name").containsIgnoreCase("windows")) {
-      dependsOn ":lwjgl3:compileIcon"
-      inputs.file("build/native/resources.o")
-    }
-  }
-
   run {
     doNotTrackState("Running the app should not be affected by Graal.")
   }
