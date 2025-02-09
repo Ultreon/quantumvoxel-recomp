@@ -2,30 +2,38 @@
 
 package dev.ultreon.quantum.scripting.qfunc
 
+import com.badlogic.gdx.utils.JsonValue
+import dev.ultreon.quantum.logger
+import dev.ultreon.quantum.scripting.ContextAware
 import dev.ultreon.quantum.scripting.ContextType
 import dev.ultreon.quantum.scripting.ContextValue
+import dev.ultreon.quantum.scripting.CoreUtils
 import dev.ultreon.quantum.scripting.function.CallContext
 import dev.ultreon.quantum.scripting.function.VirtualFunction
-import dev.ultreon.quantum.util.NamespaceID
 import kotlinx.coroutines.*
-import ktx.async.KtxAsync
 import ktx.async.MainDispatcher
-import org.antlr.v4.runtime.CharStreams
-import org.antlr.v4.runtime.CommonTokenStream
-import org.antlr.v4.runtime.tree.ParseTree
-import org.antlr.v4.runtime.tree.TerminalNode
 import org.intellij.lang.annotations.Language
-import java.util.Stack
+import java.util.*
 import kotlin.coroutines.CoroutineContext
 
-class QFuncInterpreter(private var inputParameters: Map<String, ContextValue<*>?>) : QuantumParserBaseVisitor<Job>() {
+class QFuncInterpreterException(message: String, val filename: String, val line: Int, val column: Int) :
+  Exception("$message at $filename:$line:$column")
+
+class QFuncInternalError(message: String, val filename: String, val line: Int, val column: Int) :
+  Exception("$message at $filename:$line:$column")
+
+class QFuncInterpreter(private var inputParameters: Map<String, ContextValue<*>?>) {
+  private val loopValues: Stack<ContextValue<*>> = Stack()
+  private var persistObject: ContextValue<*>? = null
   private lateinit var context: CoroutineContext
-  private lateinit var persistentGlobals: Map<String, ContextValue<*>?>
+  private var persistentGlobals: Map<String, ContextValue<*>?> = mapOf()
   private val stack: Stack<BacktraceElement> = Stack()
   private val globals: MutableMap<String, ContextValue<*>?> = mutableMapOf()
   var checkInput = true
   var checkPersist = false
   var state = S_NONE
+
+  private val errors: MutableList<Throwable> = mutableListOf()
 
   companion object {
     @JvmStatic
@@ -45,719 +53,770 @@ class QFuncInterpreter(private var inputParameters: Map<String, ContextValue<*>?
     completion: () -> Unit = {},
     error: (Throwable) -> Unit = {}
   ) {
-    val lexer = QuantumLexer(CharStreams.fromString(code))
-    val parser = QuantumParser(CommonTokenStream(lexer))
+    val lexer = QFuncLexer(code, "<dynamic>")
+    val parser = QFuncParser(lexer)
 
-    this@QFuncInterpreter.inputParameters = callContext.paramValues
+    this@QFuncInterpreter.inputParameters =
+      callContext.paramValues + ("core" to ContextValue(ContextType.core, CoreUtils))
     this@QFuncInterpreter.context = MainDispatcher
 
-    val visitAsync = KtxAsync.async { visitAsync(parser.file()) }
-    visitAsync.invokeOnCompletion {
-      if (it != null) {
-        error(it)
-        return@invokeOnCompletion
-      }
+    try {
+      runBlocking { visit(parser.file ?: return@runBlocking) }
       completion()
+    } catch (e: QFuncSyntaxError) {
+      logger.error(e.toString())
+      error(e)
     }
   }
 
   suspend fun interpretAsync(
     code: String,
-    callContext: CallContext
+    callContext: CallContext,
+    filename: String = "<dynamic>"
   ): ContextValue<*>? {
-    val lexer = QuantumLexer(CharStreams.fromString(code))
-    val parser = QuantumParser(CommonTokenStream(lexer))
+    try {
+      val lexer = QFuncLexer(code, filename)
+      val parser = QFuncParser(lexer)
+      parser.parse()
+      return exec(callContext, parser)
+    } catch (e: QFuncSyntaxError) {
+      logger.error(e.toString())
+      return null
+    } catch (e: QFuncParserException) {
+      logger.error("Error parsing: " + e.message)
+      return null
+    } catch (e: Exception) {
+      logger.error(e.toString() + "\n" + e.stackTraceToString())
+      return null
+    }
 
-    this@QFuncInterpreter.inputParameters = callContext.paramValues
+  }
+
+  private suspend fun QFuncInterpreter.exec(
+    callContext: CallContext,
+    parser: QFuncParser
+  ): ContextValue<*>? {
+    this@QFuncInterpreter.inputParameters =
+      callContext.paramValues + ("core" to ContextValue(ContextType.core, CoreUtils))
     this@QFuncInterpreter.context = MainDispatcher
 
-    return visitAsync(parser.file()) as? ContextValue<*>
-  }
-
-  override fun visit(tree: ParseTree): Job = KtxAsync.async {
-    val result = super.visit(tree)
-
-    if (result != null) {
-      return@async result
-    }
-    throw UnsupportedOperationException("Unknown tree: ${tree::class.simpleName}")
-  }
-
-  suspend fun visitAsync(tree: ParseTree): Any {
-    val result = visit(tree)
-
-    yield()
-
-    if (result is Deferred<*>) {
-      return result.await() ?: run {
-        throw UnsupportedOperationException("Unknown tree: ${tree::class.simpleName}")
-      }
-    }
-
-    return result.join()
-  }
-
-  override fun visitFile(ctx: QuantumParser.FileContext): Job = KtxAsync.async {
-    if (ctx.statement().isEmpty()) {
-      return@async Unit
-    }
-
-    if (ctx.statement().size == 1) {
-      this@QFuncInterpreter.visitAsync(ctx.statement(0)) as Job
-      return@async Unit
-    }
-
-    return@async ctx.statement().map { this@QFuncInterpreter.visitAsync(it) as Job }.reduce { a, b ->
-      a.also {
-        return@async KtxAsync.async {
-          a.join()
-          b.join()
-        }
-      }
-    }
-  }
-
-  override fun visitStatement(ctx: QuantumParser.StatementContext): Job = KtxAsync.async {
-    if (ctx.inputStatement() == null) {
-      checkInput = false
-      checkPersist = true
-    } else if
-             (checkInput) return@async this@QFuncInterpreter.visitAsync(ctx.inputStatement())
-    else
-      throw QFuncSyntaxError("#input statements should be at the top of the script")
-
-    if (ctx.persistStatement() != null) {
-      checkPersist = false
-    } else if (checkPersist)
-      return@async this@QFuncInterpreter.visitAsync(ctx.persistStatement())
-    else
-      throw QFuncSyntaxError("#persist statements should be at the top of the script directly after the #input statement")
-
-    if (ctx.ifStatement() != null) return@async visitAsync(ctx.ifStatement())
-    if (ctx.forStatement() != null) return@async visitAsync(ctx.forStatement())
-    if (ctx.whileStatement() != null) return@async visitAsync(ctx.whileStatement())
-    if (ctx.functionCall() != null) return@async visitAsync(ctx.functionCall())
-    if (ctx.returnStatement() != null) return@async visitAsync(ctx.returnStatement())
-    if (ctx.stopStatement() != null) return@async visitAsync(ctx.stopStatement())
-    if (ctx.expressionStatement() != null) return@async visitAsync(ctx.expressionStatement())
-    if (ctx.loopStatement() != null) return@async visitAsync(ctx.loopStatement())
-    if (ctx.stopStatement() != null) return@async visitAsync(ctx.stopStatement())
-    if (ctx.continueStatement() != null) return@async visitAsync(ctx.continueStatement())
-    if (ctx.breakStatement() != null) return@async visitAsync(ctx.breakStatement())
-    if (ctx.assignment() != null) return@async visitAsync(ctx.assignment())
-    if (ctx.lineComment() != null) return@async Unit
-
-    throw UnsupportedOperationException("Unknown statement: ${ctx.children[0].text}")
-  }
-
-  override fun visitIfStatement(ctx: QuantumParser.IfStatementContext): Job = KtxAsync.async {
-    val visit = this@QFuncInterpreter.visitAsync(ctx.condition().expression())
-    if (visit is Boolean) {
-      if (visit) this@QFuncInterpreter.visitAsync(ctx.statement(0)) else if (ctx.statement().size > 1) this@QFuncInterpreter.visitAsync(
-        ctx.statement(1)
-      )
-      return@async Unit
-    }
-    throw QFuncSyntaxError("Expected a boolean condition")
-  }
-
-  override fun visitForStatement(ctx: QuantumParser.ForStatementContext): Job = KtxAsync.async {
-    TODO("Not yet implemented")
-  }
-
-  override fun visitExpression(ctx: QuantumParser.ExpressionContext): Job = KtxAsync.async {
-    this@QFuncInterpreter.state = S_EXPRESSION
     try {
-      val group = ctx.group()
-      if (group != null) return@async this@QFuncInterpreter.visitAsync(group)
-      throw UnsupportedOperationException("Unknown expression: ${ctx.children[0].text}")
-    } finally {
-      this@QFuncInterpreter.state = S_NONE
+      return visit(parser.file ?: return null) as? ContextValue<*>
+    } catch (e: QFuncSyntaxError) {
+      e.message?.let { logger.error(it + "\n" + e.stackTraceToString()) } ?: logger.error("An error occurred")
+      return null
+    } catch (e: QFuncParserException) {
+      e.message?.let { logger.error(it + "\n" + e.stackTraceToString()) } ?: logger.error("An error occurred")
+      return null
+    } catch (e: QFuncInternalError) {
+      e.message?.let { logger.error(it + "\n" + e.stackTraceToString()) } ?: logger.error("An error occurred")
+      return null
+    } catch (e: QFuncInterpreterException) {
+      e.message?.let { logger.error(it + "\n" + e.stackTraceToString()) } ?: logger.error("An error occurred")
+      return null
+    } catch (e: Exception) {
+      e.message?.let { logger.error(it + "\n" + e.stackTraceToString()) } ?: logger.error("An error occurred")
+      return null
     }
   }
 
-  override fun visitGroup(ctx: QuantumParser.GroupContext): Job = KtxAsync.async {
-    return@async this@QFuncInterpreter.visitAsync(ctx.andExpr())
-  }
-
-  override fun visitAndExpr(ctx: QuantumParser.AndExprContext): Job = KtxAsync.async {
-    val orExpr = this@QFuncInterpreter.visitAsync(ctx.orExpr())
-    if (orExpr is Boolean) {
-      if (!orExpr) return@async false
-
-      val andExpr = this@QFuncInterpreter.visitAsync(ctx.andExpr())
-      if (andExpr is Boolean) {
-        return@async andExpr
+  private suspend fun visit(tree: AST): Any? {
+    return when (tree) {
+      is BlockAST -> {
+        visitBlock(tree)
       }
-      throw QFuncSyntaxError("Expected a boolean condition")
-    }
 
-    if (ctx.andExpr() != null) {
-      throw QFuncSyntaxError("Expected a boolean condition", ctx)
-    }
-
-    return@async orExpr
-  }
-
-  override fun visitOrExpr(ctx: QuantumParser.OrExprContext): Job = KtxAsync.async {
-    val andExpr = this@QFuncInterpreter.visitAsync(ctx.negationExpr())
-    if (andExpr is Boolean) {
-      if (andExpr) return@async true
-
-      val orExpr = this@QFuncInterpreter.visitAsync(ctx.orExpr())
-      if (orExpr is Boolean) {
-        return@async orExpr
+      is StringAST -> {
+        visitString(tree)
       }
-      throw QFuncSyntaxError("Expected a boolean condition")
-    }
 
-    if (ctx.orExpr() != null) {
-      throw QFuncSyntaxError("Expected a boolean condition", ctx)
-    }
-
-    return@async andExpr
-  }
-
-  override fun visitNegationExpr(ctx: QuantumParser.NegationExprContext): Job = KtxAsync.async {
-    val negationExpr = ctx.negationExpr()
-    if (negationExpr != null) {
-      val visit = this@QFuncInterpreter.visitAsync(negationExpr)
-      if (visit is Boolean) {
-        return@async !visit
+      is NumberAST -> {
+        visitNumber(tree)
       }
-      throw QFuncSyntaxError("Expected a boolean condition")
+
+      is BooleanAST -> {
+        visitBoolean(tree)
+      }
+
+      is GlobalAST -> {
+        visitGlobal(tree)
+      }
+
+      is InputParamAST -> {
+        visitInputParam(tree)
+      }
+
+      is MemberAST -> {
+        visitMember(tree)
+      }
+
+      is AssignmentAST -> {
+        visitAssignment(tree)
+      }
+
+      is FunctionCallAST -> {
+        visitFunctionCall(tree)
+      }
+
+      is ArgumentAST -> {
+        visitArgument(tree)
+      }
+
+      is IdAST -> {
+        visitId(tree)
+      }
+
+      is TagIdAST -> {
+        visitTagId(tree)
+      }
+
+      is DirectiveAST -> {
+        visitDirective(tree)
+      }
+
+      is DirectiveTypeAST -> {
+        visitDirectiveType(tree)
+      }
+
+      is DirectiveValueAST -> {
+        visitDirectiveValue(tree)
+      }
+
+      is IfAST -> {
+        visitIf(tree)
+      }
+
+      is WhileAST -> {
+        visitWhile(tree)
+      }
+
+      is ForAST -> {
+        visitFor(tree)
+      }
+
+      is PresentAST -> {
+        visitPresent(tree)
+      }
+
+      is FileAST -> {
+        visitFile(tree)
+      }
+
+      is ExpressionStatementAST -> {
+        visitExpressionStatement(tree)
+      }
+
+      is BinaryOpsAST -> {
+        visitBinaryOps(tree)
+      }
+
+      else -> {
+        throw Exception("Unknown AST type: ${tree::class.simpleName}")
+      }
     }
-    return@async this@QFuncInterpreter.visitAsync(ctx.equalityExpr())
   }
 
-  override fun visitEqualityExpr(ctx: QuantumParser.EqualityExprContext): Job = KtxAsync.async {
-    val equalityExpr = ctx.equalityExpr()
-    if (equalityExpr != null) {
-      val visit = this@QFuncInterpreter.visitAsync(equalityExpr)
-      return@async visit == this@QFuncInterpreter.visitAsync(ctx.relationalExpr())
-    }
-    return@async this@QFuncInterpreter.visitAsync(ctx.relationalExpr())
-  }
-
-  override fun visitRelationalExpr(ctx: QuantumParser.RelationalExprContext): Job = KtxAsync.async {
-    val relationalExpr = ctx.relationalExpr()
-    if (relationalExpr != null) {
-      val visit = this@QFuncInterpreter.visitAsync(relationalExpr)
-      if (visit is Comparable<*>) {
-        val visit2 = this@QFuncInterpreter.visitAsync(ctx.bitwiseAndExpr())
-        if (visit2 is Comparable<*>) {
-          if (visit.javaClass == visit2.javaClass) {
-            val comparison = (visit as Comparable<Any>).compareTo(visit2 as Comparable<Any>)
-
-            return@async if (ctx.LESS_THAN() != null) comparison < 0
-            else if (ctx.GREATER_THAN() != null) comparison > 0
-            else if (ctx.LESS_THAN_EQUAL() != null) comparison <= 0
-            else if (ctx.GREATER_THAN_EQUAL() != null) comparison >= 0
-            else throw QFuncSyntaxError("Expected a comparison operator")
+  private suspend fun visitBinaryOps(tree: BinaryOpsAST): Any? {
+    val left = visit(tree.left)
+    val right = visit(tree.right)
+    if (left is ContextValue<*> && right is ContextValue<*>) {
+      return when (tree.type) {
+        QFuncTokenType.ADD -> left + right
+        QFuncTokenType.SUB -> left - right
+        QFuncTokenType.MUL -> left * right
+        QFuncTokenType.DIV -> left / right
+        QFuncTokenType.MOD -> left % right
+        QFuncTokenType.EQUALS -> ContextValue(ContextType.boolean, left.value == right.value)
+        QFuncTokenType.NOT_EQUAL -> ContextValue(ContextType.boolean, left.value != right.value)
+        QFuncTokenType.LESS_THAN -> ContextValue(ContextType.boolean, left < right)
+        QFuncTokenType.GREATER_THAN -> ContextValue(ContextType.boolean, left > right)
+        QFuncTokenType.LESS_THAN_EQUALS -> ContextValue(ContextType.boolean, left <= right)
+        QFuncTokenType.GREATER_THAN_EQUALS -> ContextValue(ContextType.boolean, left >= right)
+        QFuncTokenType.AND -> {
+          if (left.value is Boolean && right.value is Boolean) {
+            return ContextValue(ContextType.boolean, left.value && right.value)
           } else {
-            throw QFuncSyntaxError("Cannot compare ${visit.javaClass.simpleName} with ${visit2.javaClass.simpleName}")
+            throw QFuncInterpreterException("Cannot AND non-boolean values", tree.filename, tree.line, tree.column)
           }
+        }
+
+        QFuncTokenType.OR -> {
+          if (left.value is Boolean && right.value is Boolean) {
+            return ContextValue(ContextType.boolean, left.value || right.value)
+          } else {
+            throw QFuncInterpreterException("Cannot OR non-boolean values", tree.filename, tree.line, tree.column)
+          }
+        }
+
+        else -> throw QFuncInterpreterException("Unknown operator: ${tree.type}", tree.filename, tree.line, tree.column)
+      }
+    }
+    if (left !is ContextValue<*> && right !is ContextValue<*>)
+      throw QFuncInterpreterException(
+        "Left and right values are not ContextValues",
+        tree.filename,
+        tree.line,
+        tree.column
+      )
+    if (left !is ContextValue<*>)
+      throw QFuncInterpreterException("Left value is not a ContextValue", tree.filename, tree.line, tree.column)
+    if (right !is ContextValue<*>)
+      throw QFuncInterpreterException("Right value is not a ContextValue", tree.filename, tree.line, tree.column)
+
+    throw unreachable()
+  }
+
+  private fun unreachable(): Throwable {
+    throw AssertionError("Unreachable code")
+  }
+
+  private suspend fun visitExpressionStatement(tree: ExpressionStatementAST): Any? {
+    visit(tree.expression)
+    return null
+  }
+
+  private suspend fun visitFile(tree: FileAST): Any? {
+    for (statement in tree.statements) {
+      visit(statement)
+    }
+    return null
+  }
+
+  private suspend fun visitPresent(tree: PresentAST): Any? {
+    return ContextValue(ContextType.boolean, visit(tree.expression) != null)
+  }
+
+  private suspend fun visitBlock(tree: BlockAST): Any? {
+    for (statement in tree.statements) {
+      visit(statement)
+    }
+    return null
+  }
+
+  private suspend fun visitString(tree: StringAST): Any? {
+    return ContextValue(ContextType.string, tree.value)
+  }
+
+  private suspend fun visitNumber(tree: NumberAST): Any? {
+    return when (tree.value) {
+      is Int -> ContextValue(ContextType.int, tree.value)
+      is Long -> ContextValue(ContextType.long, tree.value)
+      is Float -> ContextValue(ContextType.float, tree.value)
+      is Double -> ContextValue(ContextType.double, tree.value)
+      else -> throw QFuncInterpreterException(
+        "Unknown number type: ${tree.value::class.simpleName}",
+        tree.filename,
+        tree.line,
+        tree.column
+      )
+    }
+  }
+
+  private suspend fun visitBoolean(tree: BooleanAST): Any? {
+    return ContextValue(ContextType.boolean, tree.value)
+  }
+
+  private suspend fun visitGlobal(tree: GlobalAST): Any? {
+    var value: ContextValue<*>? = globals[tree.name] ?: return null
+    for (member in tree.members) {
+      if (value == null) {
+        throw QFuncInterpreterException("Value not present", tree.filename, tree.line, tree.column)
+      }
+      value = value.fieldOf(member.name, null) ?: throw QFuncInterpreterException(
+        "Unknown member: ${member.name}",
+        tree.filename,
+        tree.line,
+        tree.column
+      )
+      if (member.funcCall != null) {
+        val callContext = visit(member.funcCall) as? CallContext ?: run {
+          throw QFuncInternalError("Call context not present", tree.filename, tree.line, tree.column)
+        }
+
+        val actualValue = value.value
+        if (actualValue is VirtualFunction) {
+          return actualValue.call(callContext)
         } else {
-          throw QFuncSyntaxError("Expected a comparable")
-        }
-      } else {
-        throw QFuncSyntaxError("Expected a comparable")
-      }
-    }
-    return@async this@QFuncInterpreter.visitAsync(ctx.bitwiseAndExpr())
-  }
-
-  override fun visitBitwiseAndExpr(ctx: QuantumParser.BitwiseAndExprContext): Job = KtxAsync.async {
-    val bitwiseAndExpr = ctx.bitwiseAndExpr()
-    if (bitwiseAndExpr != null) {
-      val visit = this@QFuncInterpreter.visitAsync(bitwiseAndExpr)
-      if (visit is Int) {
-        val and = this@QFuncInterpreter.visitAsync(ctx.bitwiseOrExpr())
-        if (and is Int) {
-          return@async visit and and
-        }
-        throw QFuncSyntaxError("Expected an integer")
-      }
-    }
-    return@async this@QFuncInterpreter.visitAsync(ctx.bitwiseOrExpr())
-  }
-
-  override fun visitBitwiseOrExpr(ctx: QuantumParser.BitwiseOrExprContext): Job = KtxAsync.async {
-    val bitwiseOrExpr = ctx.bitwiseOrExpr()
-    if (bitwiseOrExpr != null) {
-      val visit = this@QFuncInterpreter.visitAsync(bitwiseOrExpr)
-      if (visit is Int) {
-        val or = this@QFuncInterpreter.visitAsync(ctx.bitwiseXorExpr())
-        if (or is Int) {
-          return@async visit or or
-        }
-        throw QFuncSyntaxError("Expected an integer")
-      }
-    }
-    return@async this@QFuncInterpreter.visitAsync(ctx.bitwiseXorExpr())
-  }
-
-  override fun visitBitwiseXorExpr(ctx: QuantumParser.BitwiseXorExprContext): Job = KtxAsync.async {
-    val bitwiseXorExpr = ctx.bitwiseXorExpr()
-    if (bitwiseXorExpr != null) {
-      val visit = this@QFuncInterpreter.visitAsync(bitwiseXorExpr)
-      if (visit is Int) {
-        val xor = this@QFuncInterpreter.visitAsync(ctx.bitwiseNotExpr())
-        if (xor is Int) {
-          return@async visit xor xor
-        }
-        throw QFuncSyntaxError("Expected an integer")
-      }
-    }
-    return@async this@QFuncInterpreter.visitAsync(ctx.bitwiseNotExpr())
-  }
-
-  override fun visitBitwiseNotExpr(ctx: QuantumParser.BitwiseNotExprContext): Job = KtxAsync.async {
-    val bitwiseNotExpr = ctx.bitwiseNotExpr()
-    if (bitwiseNotExpr != null) {
-      val visit = this@QFuncInterpreter.visitAsync(bitwiseNotExpr)
-      if (visit is Int) {
-        return@async visit.inv()
-      }
-      throw QFuncSyntaxError("Expected an integer")
-    }
-    return@async this@QFuncInterpreter.visitAsync(ctx.shiftExpr())
-  }
-
-  override fun visitShiftExpr(ctx: QuantumParser.ShiftExprContext): Job = KtxAsync.async {
-    val shiftExpr: MutableList<QuantumParser.ShiftExprContext> = ctx.shiftExpr()
-    val multExpr = this@QFuncInterpreter.visitAsync(ctx.multExpr())
-    if (shiftExpr.size > 1) {
-      var value = this@QFuncInterpreter.visitAsync(shiftExpr[0])
-      if (value !is Int) {
-        throw QFuncSyntaxError("Expected an integer", shiftExpr[0])
-      }
-      for (i in 1 until ctx.children.size step 2) {
-        val operator = ctx.children[i] as TerminalNode
-        if (shiftExpr.size <= i + 1) {
-          throw QFuncSyntaxError("Expected an integer after ${operator.text}", shiftExpr[i])
-        }
-        val visit = this@QFuncInterpreter.visitAsync(shiftExpr[i + 1])
-        if (visit !is Int) {
-          throw QFuncSyntaxError("Expected an integer", shiftExpr[i + 1])
-        }
-        value = if (operator.text == ">>") {
-          (value as Int) shr visit
-        } else {
-          (value as Int) shl visit
-        }
-      }
-
-      if (value !is Int) throw QFuncSyntaxError("Expected an integer", shiftExpr[ctx.children.size - 1])
-      if (multExpr !is Int) throw QFuncSyntaxError("Expected an integer", ctx)
-      return@async multExpr * value
-    }
-    return@async this@QFuncInterpreter.visitAsync(ctx.multExpr())
-  }
-
-  override fun visitMultExpr(ctx: QuantumParser.MultExprContext): Job = KtxAsync.async {
-    val multExpr: MutableList<QuantumParser.MultExprContext> = ctx.multExpr()
-    val unaryExpr = this@QFuncInterpreter.visitAsync(ctx.addExpr())
-    if (multExpr.size > 1) {
-      var value = this@QFuncInterpreter.visitAsync(multExpr[0])
-      if (value !is Int) {
-        throw QFuncSyntaxError("Expected an integer", multExpr[0])
-      }
-      for (i in 1 until ctx.children.size step 2) {
-        val operator = ctx.children[i] as TerminalNode
-        if (multExpr.size <= i + 1) {
-          throw QFuncSyntaxError("Expected an integer after ${operator.text}", multExpr[i])
-        }
-        val visit = this@QFuncInterpreter.visitAsync(multExpr[i + 1])
-        if (visit !is Int) {
-          throw QFuncSyntaxError("Expected an integer", multExpr[i + 1])
-        }
-        value = when (operator.text) {
-          "*" -> (value as Int) * visit
-          "/" -> (value as Int) / visit
-          "%" -> (value as Int) % visit
-          else -> throw QFuncSyntaxError("Unexpected operator ${operator.text}", ctx)
-        }
-      }
-
-      if (value !is Int) throw QFuncSyntaxError("Expected an integer", multExpr[ctx.children.size - 1])
-      if (unaryExpr !is Int) throw QFuncSyntaxError("Expected an integer", ctx)
-      return@async unaryExpr * value
-    }
-
-    return@async this@QFuncInterpreter.visitAsync(ctx.addExpr())
-  }
-
-  override fun visitAddExpr(ctx: QuantumParser.AddExprContext): Job = KtxAsync.async {
-    val addExpr: MutableList<QuantumParser.AddExprContext> = ctx.addExpr()
-    val unaryExpr = this@QFuncInterpreter.visitAsync(ctx.primary())
-    if (addExpr.size > 1) {
-      var value = this@QFuncInterpreter.visitAsync(addExpr[0])
-      if (value !is Int) {
-        throw QFuncSyntaxError("Expected an integer", addExpr[0])
-      }
-      for (i in 1 until ctx.children.size step 2) {
-        val operator = ctx.children[i] as TerminalNode
-        if (addExpr.size <= i + 1) {
-          throw QFuncSyntaxError("Expected an integer after ${operator.text}", addExpr[i])
-        }
-        val visit = this@QFuncInterpreter.visitAsync(addExpr[i + 1])
-        if (visit !is Int) {
-          throw QFuncSyntaxError("Expected an integer", addExpr[i + 1])
-        }
-        value = when (operator.text) {
-          "+" -> (value as Int) + visit
-          "-" -> (value as Int) - visit
-          else -> throw QFuncSyntaxError("Unexpected operator ${operator.text}", ctx)
-        }
-      }
-
-      if (value !is Int) throw QFuncSyntaxError("Expected an integer", addExpr[ctx.children.size - 1])
-      if (unaryExpr !is Int) throw QFuncSyntaxError("Expected an integer", ctx)
-      return@async unaryExpr * value
-    }
-    return@async this@QFuncInterpreter.visitAsync(ctx.primary())
-  }
-
-  override fun visitPrimary(ctx: QuantumParser.PrimaryContext): Job = KtxAsync.async {
-    return@async this@QFuncInterpreter.visitAsync(ctx.atom())
-  }
-
-  override fun visitAtom(ctx: QuantumParser.AtomContext): Job = KtxAsync.async {
-    val id = ctx.id()
-    if (id != null) {
-      val visit = this@QFuncInterpreter.visitAsync(id)
-      if (visit is NamespaceID) {
-        return@async visit
-      }
-      throw QFuncSyntaxError("Expected a namespaced id", id)
-    }
-
-    val literal = ctx.NUMBER()
-    if (literal != null) {
-      return@async literal.text.toIntOrNull() ?: literal.text.toLongOrNull() ?: literal.text.toFloatOrNull()
-      ?: literal.text.toDoubleOrNull()
-    }
-
-    val string = ctx.STRING()
-    if (string != null) {
-      return@async string.text
-    }
-
-    val boolean = ctx.BOOLEAN()
-    if (boolean != null) {
-      return@async boolean.text.toBoolean()
-    }
-
-    val floatingPoint = ctx.FLOATING_POINT()
-    if (floatingPoint != null) {
-      return@async floatingPoint.text.toFloatOrNull() ?: floatingPoint.text.toDoubleOrNull()
-    }
-
-    throw QFuncSyntaxError("Expected an atom", ctx)
-  }
-
-  override fun visitId(ctx: QuantumParser.IdContext): Job = KtxAsync.async {
-    val hash = ctx.HASH()
-    val lbracket = ctx.LBRACKET()
-    val rbracket = ctx.RBRACKET()
-
-    if (lbracket != null && rbracket != null) {
-      if (hash != null) {
-        val namespace = ctx.namespace()
-        val path = ctx.path()
-        if (namespace != null && path != null) {
-          return@async TagID(namespace.text, path.text)
-        }
-
-        throw QFuncSyntaxError("Expected a domain and path in the form domain:path", ctx)
-      }
-
-      val namespace = ctx.namespace()
-      val path = ctx.path()
-      if (namespace != null && path != null) {
-        return@async NamespaceID(namespace.text, path.text)
-      }
-
-      throw QFuncSyntaxError("Expected a domain and path in the form domain:path", ctx)
-    }
-
-    throw QFuncSyntaxError("Expected an id", ctx)
-  }
-
-  override fun visitNamespace(ctx: QuantumParser.NamespaceContext): Job = KtxAsync.async {
-    return@async ctx.text
-  }
-
-  override fun visitPath(ctx: QuantumParser.PathContext): Job = KtxAsync.async {
-    return@async ctx.text
-  }
-
-  override fun visitNamedAtom(ctx: QuantumParser.NamedAtomContext?): Job = KtxAsync.async {
-    if (ctx == null) return@async null
-    val variableName = ctx.variableName()
-    if (variableName != null) {
-      TODO("Not yet implemented")
-    }
-
-    val globalRef = ctx.globalRef()
-    if (globalRef.PRESENT() != null) {
-      val name = globalRef.globalExpr().globalName().text
-      return@async ContextValue(ContextType.boolean, name in globals)
-    } else if (globalRef != null) {
-      val name = globalRef.globalExpr().globalName().text
-
-      if (this@QFuncInterpreter.state == S_ASSIGNMENT) {
-        if (ctx.member().isNotEmpty()) {
-          throw QFuncSyntaxError("Cannot assign to a member of a global", ctx)
-        }
-
-        return@async { value: ContextValue<*>? ->
-          this@QFuncInterpreter.globals[name] = value
-        }
-      }
-
-      var value = this@QFuncInterpreter.globals[name]
-      for (member in ctx.member()) {
-        val functionCall = member.functionCall()
-        if (functionCall != null) {
-          val map = this@QFuncInterpreter.visitAsync(functionCall.argumentList()) as? Map<String, ContextValue<*>?>
-          value = (value?.type?.fieldOf(
-            functionCall.funcName().text,
-            null
-          ) as? (Map<String, ContextValue<*>?>) -> ContextValue<*>?)?.invoke(map ?: emptyMap())
-          continue
-        }
-        value = value?.type?.fieldOf(member.variableName().text, null)
-      }
-
-      return@async value
-    }
-
-    val paramName = ctx.parameterExpr()
-    if (paramName != null) {
-      val name = paramName.paramName().text
-
-      if (this@QFuncInterpreter.state == S_ASSIGNMENT) {
-        throw QFuncSyntaxError("Cannot assign to a parameter", ctx)
-      }
-
-      var value = this@QFuncInterpreter.inputParameters[name]
-      for (member in ctx.member()) {
-        val functionCall = member.functionCall()
-        if (functionCall != null) {
-          val map = this@QFuncInterpreter.visitAsync(functionCall.argumentList()) as? Map<String, ContextValue<*>>
-          value = ((value?.type?.fieldOf(
-            functionCall.funcName().text,
-            null
-          ))?.value as? VirtualFunction)?.call(CallContext().also {
-            it.paramValues.putAll(map ?: emptyMap())
-          })
-          continue
-        }
-        value = value?.type?.fieldOf(member.variableName().text, null)
-      }
-
-      return@async value
-    }
-
-    throw QFuncSyntaxError("Expected a global name or parameter name", ctx)
-  }
-
-  override fun visitArgumentList(ctx: QuantumParser.ArgumentListContext?): Job = KtxAsync.async {
-    val map = HashMap<String, ContextValue<*>?>()
-    for (argument in ctx!!.argumentExpr()) {
-      val name = argument.argumentName().text
-      val value = this@QFuncInterpreter.visitAsync(argument.expression())
-      map[name] = value as? ContextValue<*>
-    }
-    return@async map
-  }
-
-  override fun visitFunctionCall(ctx: QuantumParser.FunctionCallContext?): Job = KtxAsync.async {
-    if (ctx == null) return@async null
-    return@async this@QFuncInterpreter.visitAsync(ctx.funcName())
-  }
-
-  override fun visitFuncName(ctx: QuantumParser.FuncNameContext?): Job = KtxAsync.async {
-    if (ctx == null) return@async null
-    return@async ctx.text
-  }
-
-  override fun visitBlockStatement(ctx: QuantumParser.BlockStatementContext?): Job = KtxAsync.async {
-    if (ctx == null) return@async null
-    for (statement in ctx.statement()) {
-      this@QFuncInterpreter.visitAsync(statement)
-    }
-    return@async Unit
-  }
-
-  override fun visitMember(ctx: QuantumParser.MemberContext?): Job = KtxAsync.async {
-    if (ctx == null) return@async null
-    if (ctx.variableName() != null) {
-      return@async ctx.variableName().text
-    }
-    return@async this@QFuncInterpreter.visitAsync(ctx.functionCall())
-  }
-
-  override fun visitInputStatement(ctx: QuantumParser.InputStatementContext?): Job = KtxAsync.async {
-    if (ctx == null) return@async null
-    val map = HashMap<String, ContextValue<*>?>()
-    ctx.globalName().forEach {
-      if (!inputParameters.containsKey(it.text))
-        throw QFuncSyntaxError("Input parameter $it cannot be referred in this context!", ctx)
-      map[it.text] = inputParameters[it.text]
-    }
-    this@QFuncInterpreter.inputParameters = map
-    return@async Unit
-  }
-
-  override fun visitPersistStatement(ctx: QuantumParser.PersistStatementContext?): Job = KtxAsync.async {
-    if (ctx == null) return@async null
-    val map = HashMap<String, ContextValue<*>?>()
-    ctx.globalName().forEach { map[it.text] = globals[it.text] }
-    this@QFuncInterpreter.persistentGlobals = map
-    return@async Unit
-  }
-
-  @Suppress("UNCHECKED_CAST")
-  override fun visitAssignment(ctx: QuantumParser.AssignmentContext?): Job = KtxAsync.async {
-    if (ctx == null) return@async null
-    this@QFuncInterpreter.state = S_EXPRESSION
-    try {
-      val value = this@QFuncInterpreter.visitAsync(ctx.expression()) as? (ContextValue<*>?) -> Unit
-      this@QFuncInterpreter.state = S_ASSIGNMENT
-
-      val globalName = ctx.globalExpr().globalName()
-      if (globalName != null) {
-        val name = globalName.text
-        value?.invoke(this@QFuncInterpreter.globals[name])
-        return@async Unit
-      }
-      return@async Unit
-    } finally {
-      this@QFuncInterpreter.state = S_NONE
-    }
-  }
-
-  override fun visitExpressionStatement(ctx: QuantumParser.ExpressionStatementContext?): Job = KtxAsync.async {
-    if (ctx == null) return@async null
-    return@async this@QFuncInterpreter.visitAsync(ctx.expression())
-  }
-
-  override fun visitReturnStatement(ctx: QuantumParser.ReturnStatementContext?): Job = KtxAsync.async {
-    if (ctx == null) return@async null
-    return@async Return(this@QFuncInterpreter.visitAsync(ctx.expression()) as? ContextValue<*>?)
-  }
-
-  override fun visitIsCond(ctx: QuantumParser.IsCondContext?): Job = KtxAsync.async {
-    if (ctx == null) return@async null
-    return@async (this@QFuncInterpreter.visitAsync(ctx.expression(0)) as ContextValue<*>?)?.isSame(
-      this@QFuncInterpreter.visitAsync(
-        ctx.expression(1)
-      ) as ContextValue<*>?
-    )
-  }
-
-  override fun visitLineComment(ctx: QuantumParser.LineCommentContext?): Job = KtxAsync.async {
-    if (ctx == null) return@async null
-    return@async Unit
-  }
-
-  override fun visitWhileStatement(ctx: QuantumParser.WhileStatementContext?): Job = KtxAsync.async {
-    if (ctx == null) return@async null
-    val condition = ctx.condition()
-    return@async KtxAsync.async {
-      while (visitAsync(condition.expression()) as? Boolean == true) {
-        try {
-          this@QFuncInterpreter.visitAsync(ctx.statement())
-        } catch (e: Break) {
-          break
-        } catch (e: Continue) {
-          continue
+          throw QFuncInterpreterException("Not a function", tree.filename, tree.line, tree.column)
         }
       }
     }
+
+    return value
   }
 
-  override fun visitLoopStatement(ctx: QuantumParser.LoopStatementContext?): Job = KtxAsync.async {
-    if (ctx == null) return@async null
-    return@async KtxAsync.async {
-      while (true) {
-        try {
-          visitAsync(ctx.blockStatement())
-        } catch (e: Break) {
-          break
-        } catch (e: Continue) {
-          continue
+  private suspend fun visitInputParam(tree: InputParamAST): Any? {
+    return inputParameters[tree.name]?.let {
+      var returnValue: ContextValue<*>? = it
+      for (member in tree.members) {
+        if (returnValue == null) {
+          throw QFuncInterpreterException("Value not present", tree.filename, tree.line, tree.column)
         }
+
+        returnValue = returnValue.fieldOf(member.name, null) ?: throw QFuncInterpreterException(
+          "Unknown member: ${member.name}",
+          tree.filename,
+          tree.line,
+          tree.column
+        )
+
+        if (member.funcCall != null) {
+          val callContext = visit(member.funcCall) as? CallContext ?: run {
+            throw QFuncInternalError("Call context not present", tree.filename, tree.line, tree.column)
+          }
+
+          val actualValue = returnValue.value
+          if (actualValue is VirtualFunction) {
+            return actualValue.call(callContext)
+          } else {
+            throw QFuncInterpreterException("Not a function", tree.filename, tree.line, tree.column)
+          }
+        }
+      }
+
+      returnValue
+    }
+  }
+
+  private suspend fun visitMember(tree: MemberAST): Any? {
+    throw Exception("Not supported")
+  }
+
+  private suspend fun visitAssignment(tree: AssignmentAST): Any? {
+    val value = visit(tree.expression)
+    globals[tree.global] = value as? ContextValue<*> ?: run {
+      logger.error("Value not present at ${tree.filename}:${tree.line}:${tree.column}")
+      return null
+    }
+    return value
+  }
+
+  private suspend fun visitFunctionCall(tree: FunctionCallAST): Any? {
+    val callContext = CallContext(JsonValue(JsonValue.ValueType.nullValue))
+    for (argument in tree.arguments) {
+      callContext.paramValues[argument.parameterName] = visit(argument.expression) as? ContextValue<*> ?: run {
+        logger.warn("Value not present at ${tree.filename}:${tree.line}:${tree.column}")
+        return null
+      }
+    }
+
+    return callContext
+  }
+
+  private suspend fun visitId(tree: IdAST): Any? {
+    return ContextValue(ContextType.id, tree.id)
+  }
+
+  private suspend fun visitTagId(tree: TagIdAST): Any? {
+    return ContextValue(ContextType.id, tree.id) // TODO
+  }
+
+  private suspend fun visitDirective(tree: DirectiveAST): Any? {
+    val values = tree.values
+    return when (tree.name) {
+      "input" -> {
+        val map = mutableMapOf<String, ContextValue<*>?>()
+        for (value in values) {
+          map[value.value] = inputParameters[value.value] ?: run {
+            logger.error("Value not present at ${tree.filename}:${tree.line}:${tree.column}")
+            return null
+          }
+        }
+        this.inputParameters = map
+        null
+      }
+
+      "persist" -> {
+        val map = mutableMapOf<String, ContextValue<*>?>()
+        for (value in values) {
+          map[value.value] = globals[value.value]
+        }
+        this.persistentGlobals = map
+        this.persistObject = this.inputParameters[tree.type?.name ?: run {
+          throw QFuncInterpreterException("Missing input type", tree.filename, tree.line, tree.column)
+        }] ?: run {
+          throw QFuncInterpreterException(
+            "Unknown input parameter: ${tree.type.name}",
+            tree.filename,
+            tree.line,
+            tree.column
+          )
+        }
+        null
+      }
+
+      else -> {
+        throw Exception("Unknown directive: ${tree.name}")
       }
     }
   }
 
-  override fun visitStopStatement(ctx: QuantumParser.StopStatementContext?): Job = KtxAsync.async {
-    if (ctx == null) return@async null
-    throw Stop()
+  private suspend fun visitIf(tree: IfAST): Any? {
+    val condRaw = visit(tree.condition)
+    val conditionValue = condRaw as? ContextValue<*> ?: run {
+      throw QFuncInterpreterException("Value not present", tree.filename, tree.line, tree.column)
+    }
+
+    val condition = conditionValue.value
+    if (condition !is Boolean) {
+      throw QFuncInterpreterException("Condition is not a boolean", tree.filename, tree.line, tree.column)
+    }
+
+    if (condition) {
+      return visit(tree.body)
+    } else if (tree.elseBody != null) {
+      return visit(tree.elseBody)
+    } else {
+      return null
+    }
   }
 
-  override fun visitBreakStatement(ctx: QuantumParser.BreakStatementContext?): Job = KtxAsync.async {
-    if (ctx == null) return@async null
-    throw Break()
+  private suspend fun visitWhile(tree: WhileAST): Any? {
+    while (true) {
+      val conditionValue = visit(tree.condition) as? ContextValue<*> ?: run {
+        logger.error("Value not present at ${tree.filename}:${tree.line}:${tree.column}")
+        return null
+      }
+
+      val condition = conditionValue.value
+      if (condition !is Boolean) {
+        throw QFuncInterpreterException("Condition is not a boolean", tree.filename, tree.line, tree.column)
+      }
+
+      if (!condition) {
+        break
+      }
+
+      try {
+        visit(tree.body)
+      } catch (e: QFuncInterpreterException) {
+        logger.error("Error in while loop at ${tree.filename}:${tree.line}:${tree.column}", e)
+        throw e
+      } catch (e: Break) {
+        break
+      } catch (e: Continue) {
+        continue
+      }
+    }
+
+    return null
   }
 
-  override fun visitContinueStatement(ctx: QuantumParser.ContinueStatementContext?): Job = KtxAsync.async {
-    if (ctx == null) return@async null
-    throw Continue()
+  private suspend fun visitFor(tree: ForAST): Any? {
+    val iterableValue = visit(tree.iterable) as? ContextValue<*> ?: run {
+      logger.error("Value not present at ${tree.filename}:${tree.line}:${tree.column}")
+      return null
+    }
+
+    val iterable = iterableValue.value
+    if (iterable !is Iterable<*>) {
+      throw QFuncInterpreterException("Iterable is not iterable", tree.filename, tree.line, tree.column)
+    }
+
+    for (item in iterable) {
+      try {
+        this.loopValues.push(ContextValue(ContextType[(item!!)::class] as ContextType<*>, item))
+        visit(tree.body)
+        this.loopValues.pop()
+      } catch (e: QFuncInterpreterException) {
+        logger.error("Error in for loop at ${tree.filename}:${tree.line}:${tree.column}", e)
+        throw e
+      } catch (e: Break) {
+        break
+      } catch (e: Continue) {
+        continue
+      }
+    }
+
+    return null
   }
 
-  override fun visitDirectiveType(ctx: QuantumParser.DirectiveTypeContext?): Job = KtxAsync.async {
-    if (ctx == null) return@async null
-    return@async ctx.text
+  private suspend fun visitBreak(tree: BreakAST): Any? {
+    throw Break
   }
 
-  override fun visitArgumentName(ctx: QuantumParser.ArgumentNameContext?): Job = KtxAsync.async {
-    if (ctx == null) return@async null
-    return@async ctx.text
+  private suspend fun visitContinue(tree: ContinueAST): Any? {
+    throw Continue
   }
 
-  override fun visitCondition(ctx: QuantumParser.ConditionContext?): Job = KtxAsync.async {
-    if (ctx == null) return@async null
-    return@async this@QFuncInterpreter.visitAsync(ctx.expression())
+  private suspend fun visitReturn(tree: ReturnAST): Any? {
+    throw Return(visit(tree.expression ?: throw Return(null)) as? ContextValue<*> ?: run {
+      throw QFuncInterpreterException("Value not present", tree.filename, tree.line, tree.column)
+    })
   }
 
-  override fun visitTerminal(node: TerminalNode?): Job = KtxAsync.async {
-    if (node == null) return@async null
-    return@async node.text
+  private suspend fun visitStop(tree: StopAST): Any? {
+    throw Stop
   }
 
-  override fun visitArgumentExpr(ctx: QuantumParser.ArgumentExprContext?): Job = KtxAsync.async {
-    if (ctx == null) return@async null
-    return@async ctx.argumentName().text to this@QFuncInterpreter.visitAsync(ctx.expression())
+  object Break : Exception() {
+    private fun readResolve(): Any = Break
   }
 
-  class Stop : Exception()
-  class Break : Exception()
-  class Continue : Exception()
-
-  data class Return(val value: ContextValue<*>?)
-
-  override fun visitVariableName(ctx: QuantumParser.VariableNameContext): Job = KtxAsync.async {
-    return@async ctx.text
+  object Continue : Exception() {
+    private fun readResolve(): Any = Continue
   }
 
-  override fun visitParamName(ctx: QuantumParser.ParamNameContext): Job = KtxAsync.async {
-    return@async ctx.text
+  class Return(val value: ContextValue<*>?) : Exception()
+  object Stop : Exception() {
+    private fun readResolve(): Any = Stop
   }
 
-  override fun visitParameterExpr(ctx: QuantumParser.ParameterExprContext): Job = KtxAsync.async {
-    return@async ctx.paramName().text
+  private suspend fun visitDirectiveType(tree: DirectiveTypeAST): Any? {
+    throw Exception("Not supported")
   }
 
-  override fun visitGlobalName(ctx: QuantumParser.GlobalNameContext): Job = KtxAsync.async {
-    return@async ctx.text
+  private suspend fun visitDirectiveValue(tree: DirectiveValueAST): Any? {
+    throw Exception("Not supported")
   }
 
-  override fun visitGlobalExpr(ctx: QuantumParser.GlobalExprContext): Job = KtxAsync.async {
-    return@async ctx.globalName().text
+  private suspend fun visitArgument(tree: ArgumentAST): Any? {
+    return tree.parameterName to visit(tree.expression)
+  }
+}
+
+private fun ContextValue<*>.fieldOf(text: String, contextJson: JsonValue?): ContextValue<*>? {
+  return if (value is ContextAware<*>)
+    value.fieldOf(text, contextJson)
+  else null
+}
+
+private operator fun ContextValue<*>.compareTo(other: ContextValue<*>): Int {
+  return when (this.value) {
+    is Int -> when (other.value) {
+      is Int -> this.value.compareTo(other.value)
+      is Long -> this.value.compareTo(other.value.toInt())
+      is Float -> this.value.compareTo(other.value.toFloat())
+      is Double -> this.value.compareTo(other.value.toDouble())
+      else -> throw UnsupportedOperationException("Cannot compare ${this.type} to ${other.type}")
+    }
+
+    is Long -> when (other.value) {
+      is Int -> this.value.compareTo(other.value.toLong())
+      is Long -> this.value.compareTo(other.value)
+      is Float -> this.value.compareTo(other.value.toFloat())
+      is Double -> this.value.compareTo(other.value.toDouble())
+      else -> throw UnsupportedOperationException("Cannot compare ${this.type} to ${other.type}")
+    }
+
+    is Float -> when (other.value) {
+      is Int -> this.value.compareTo(other.value.toFloat())
+      is Long -> this.value.compareTo(other.value.toFloat())
+      is Float -> this.value.compareTo(other.value)
+      is Double -> this.value.compareTo(other.value.toDouble())
+      else -> throw UnsupportedOperationException("Cannot compare ${this.type} to ${other.type}")
+    }
+
+    is Double -> when (other.value) {
+      is Int -> this.value.compareTo(other.value.toDouble())
+      is Long -> this.value.compareTo(other.value.toDouble())
+      is Float -> this.value.compareTo(other.value.toDouble())
+      is Double -> this.value.compareTo(other.value)
+      else -> throw UnsupportedOperationException("Cannot compare ${this.type} to ${other.type}")
+    }
+
+    is String -> when (other.value) {
+      is String -> this.value.toString().compareTo(other.value.toString())
+      else -> 0
+    }
+
+    else -> 0
+  }
+}
+
+private operator fun ContextValue<*>.plus(other: ContextValue<*>): ContextValue<*> {
+  return when (this.value) {
+    is Int -> when (other.value) {
+      is Int -> ContextValue(ContextType.int, this.value + other.value)
+      is Long -> ContextValue(ContextType.long, this.value + other.value)
+      is Float -> ContextValue(ContextType.float, this.value + other.value)
+      is Double -> ContextValue(ContextType.double, this.value + other.value)
+      else -> throw UnsupportedOperationException("Cannot add ${this.type} to ${other.type}")
+    }
+
+    is Long -> when (other.value) {
+      is Int -> ContextValue(ContextType.long, this.value + other.value.toLong())
+      is Long -> ContextValue(ContextType.long, this.value + other.value)
+      is Float -> ContextValue(ContextType.float, this.value + other.value)
+      is Double -> ContextValue(ContextType.double, this.value + other.value)
+      else -> throw UnsupportedOperationException("Cannot add ${this.type} to ${other.type}")
+    }
+
+    is Float -> when (other.value) {
+      is Int -> ContextValue(ContextType.float, this.value + other.value.toFloat())
+      is Long -> ContextValue(ContextType.float, this.value + other.value.toFloat())
+      is Float -> ContextValue(ContextType.float, this.value + other.value)
+      is Double -> ContextValue(ContextType.double, this.value + other.value)
+      else -> throw UnsupportedOperationException("Cannot add ${this.type} to ${other.type}")
+    }
+
+    is Double -> when (other.value) {
+      is Int -> ContextValue(ContextType.double, this.value + other.value.toDouble())
+      is Long -> ContextValue(ContextType.double, this.value + other.value.toDouble())
+      is Float -> ContextValue(ContextType.double, this.value + other.value.toDouble())
+      is Double -> ContextValue(ContextType.double, this.value + other.value)
+      else -> throw UnsupportedOperationException("Cannot add ${this.type} to ${other.type}")
+    }
+
+    is String -> ContextValue(ContextType.string, this.value + other.value)
+    else -> throw UnsupportedOperationException("Cannot add ${this.type} to ${other.type}")
+  }
+}
+
+private operator fun ContextValue<*>.minus(other: ContextValue<*>): ContextValue<*> {
+  return when (this.value) {
+    is Int -> when (other.value) {
+      is Int -> ContextValue(ContextType.int, this.value - other.value)
+      is Long -> ContextValue(ContextType.long, this.value - other.value)
+      is Float -> ContextValue(ContextType.float, this.value - other.value)
+      is Double -> ContextValue(ContextType.double, this.value - other.value)
+      else -> throw UnsupportedOperationException("Cannot subtract ${this.type} to ${other.type}")
+    }
+
+    is Long -> when (other.value) {
+      is Int -> ContextValue(ContextType.long, this.value - other.value.toLong())
+      is Long -> ContextValue(ContextType.long, this.value - other.value)
+      is Float -> ContextValue(ContextType.float, this.value - other.value)
+      is Double -> ContextValue(ContextType.double, this.value - other.value)
+      else -> throw UnsupportedOperationException("Cannot subtract ${this.type} to ${other.type}")
+    }
+
+    is Float -> when (other.value) {
+      is Int -> ContextValue(ContextType.float, this.value - other.value.toFloat())
+      is Long -> ContextValue(ContextType.float, this.value - other.value.toFloat())
+      is Float -> ContextValue(ContextType.float, this.value - other.value)
+      is Double -> ContextValue(ContextType.double, this.value - other.value)
+      else -> throw UnsupportedOperationException("Cannot subtract ${this.type} to ${other.type}")
+    }
+
+    is Double -> when (other.value) {
+      is Int -> ContextValue(ContextType.double, this.value - other.value.toDouble())
+      is Long -> ContextValue(ContextType.double, this.value - other.value.toDouble())
+      is Float -> ContextValue(ContextType.double, this.value - other.value.toDouble())
+      is Double -> ContextValue(ContextType.double, this.value - other.value)
+      else -> throw UnsupportedOperationException("Cannot subtract ${this.type} to ${other.type}")
+    }
+
+    else -> throw UnsupportedOperationException("Cannot subtract ${this.type} to ${other.type}")
+  }
+}
+
+private operator fun ContextValue<*>.times(other: ContextValue<*>): ContextValue<*> {
+  return when (this.value) {
+    is Int -> when (other.value) {
+      is Int -> ContextValue(ContextType.int, this.value * other.value)
+      is Long -> ContextValue(ContextType.long, this.value * other.value)
+      is Float -> ContextValue(ContextType.float, this.value * other.value)
+      is Double -> ContextValue(ContextType.double, this.value * other.value)
+      else -> throw UnsupportedOperationException("Cannot multiply ${this.type} to ${other.type}")
+    }
+
+    is Long -> when (other.value) {
+      is Int -> ContextValue(ContextType.long, this.value * other.value.toLong())
+      is Long -> ContextValue(ContextType.long, this.value * other.value)
+      is Float -> ContextValue(ContextType.float, this.value * other.value)
+      is Double -> ContextValue(ContextType.double, this.value * other.value)
+      else -> throw UnsupportedOperationException("Cannot multiply ${this.type} to ${other.type}")
+    }
+
+    is Float -> when (other.value) {
+      is Int -> ContextValue(ContextType.float, this.value * other.value.toFloat())
+      is Long -> ContextValue(ContextType.float, this.value * other.value.toFloat())
+      is Float -> ContextValue(ContextType.float, this.value * other.value)
+      is Double -> ContextValue(ContextType.double, this.value * other.value)
+      else -> throw UnsupportedOperationException("Cannot multiply ${this.type} to ${other.type}")
+    }
+
+    is Double -> when (other.value) {
+      is Int -> ContextValue(ContextType.double, this.value * other.value.toDouble())
+      is Long -> ContextValue(ContextType.double, this.value * other.value.toDouble())
+      is Float -> ContextValue(ContextType.double, this.value * other.value.toDouble())
+      is Double -> ContextValue(ContextType.double, this.value * other.value)
+      else -> throw UnsupportedOperationException("Cannot multiply ${this.type} to ${other.type}")
+    }
+
+    is String -> when (other.value) {
+      is Int -> ContextValue(ContextType.string, this.value.repeat(other.value))
+      is Long -> throw UnsupportedOperationException("Too big to repeat")
+      else -> throw UnsupportedOperationException("Cannot multiply ${this.type} to ${other.type}")
+    }
+
+    else -> throw UnsupportedOperationException("Cannot multiply ${this.type} to ${other.type}")
+  }
+}
+
+private operator fun ContextValue<*>.div(other: ContextValue<*>): ContextValue<*> {
+  return when (this.value) {
+    is Int -> when (other.value) {
+      is Int -> ContextValue(ContextType.int, this.value / other.value)
+      is Long -> ContextValue(ContextType.long, this.value / other.value)
+      is Float -> ContextValue(ContextType.float, this.value / other.value)
+      is Double -> ContextValue(ContextType.double, this.value / other.value)
+      else -> throw UnsupportedOperationException("Cannot divide ${this.type} to ${other.type}")
+    }
+
+    is Long -> when (other.value) {
+      is Int -> ContextValue(ContextType.long, this.value / other.value.toLong())
+      is Long -> ContextValue(ContextType.long, this.value / other.value)
+      is Float -> ContextValue(ContextType.float, this.value / other.value)
+      is Double -> ContextValue(ContextType.double, this.value / other.value)
+      else -> throw UnsupportedOperationException("Cannot divide ${this.type} to ${other.type}")
+    }
+
+    is Float -> when (other.value) {
+      is Int -> ContextValue(ContextType.float, this.value / other.value.toFloat())
+      is Long -> ContextValue(ContextType.float, this.value / other.value.toFloat())
+      is Float -> ContextValue(ContextType.float, this.value / other.value)
+      is Double -> ContextValue(ContextType.double, this.value / other.value)
+      else -> throw UnsupportedOperationException("Cannot divide ${this.type} to ${other.type}")
+    }
+
+    is Double -> when (other.value) {
+      is Int -> ContextValue(ContextType.double, this.value / other.value.toDouble())
+      is Long -> ContextValue(ContextType.double, this.value / other.value.toDouble())
+      is Float -> ContextValue(ContextType.double, this.value / other.value.toDouble())
+      is Double -> ContextValue(ContextType.double, this.value / other.value)
+      else -> throw UnsupportedOperationException("Cannot divide ${this.type} to ${other.type}")
+    }
+
+    else -> throw UnsupportedOperationException("Cannot divide ${this.type} to ${other.type}")
+  }
+}
+
+private operator fun ContextValue<*>.rem(other: ContextValue<*>): ContextValue<*> {
+  return when (this.value) {
+    is Int -> when (other.value) {
+      is Int -> ContextValue(ContextType.int, this.value % other.value)
+      is Long -> ContextValue(ContextType.long, this.value % other.value)
+      is Float -> ContextValue(ContextType.float, this.value % other.value)
+      is Double -> ContextValue(ContextType.double, this.value % other.value)
+      else -> throw UnsupportedOperationException("Cannot divide ${this.type} to ${other.type}")
+    }
+
+    is Long -> when (other.value) {
+      is Int -> ContextValue(ContextType.long, this.value % other.value.toLong())
+      is Long -> ContextValue(ContextType.long, this.value % other.value)
+      is Float -> ContextValue(ContextType.float, this.value % other.value)
+      is Double -> ContextValue(ContextType.double, this.value % other.value)
+      else -> throw UnsupportedOperationException("Cannot divide ${this.type} to ${other.type}")
+    }
+
+    is Float -> when (other.value) {
+      is Int -> ContextValue(ContextType.float, this.value % other.value.toFloat())
+      is Long -> ContextValue(ContextType.float, this.value % other.value.toFloat())
+      is Float -> ContextValue(ContextType.float, this.value % other.value)
+      is Double -> ContextValue(ContextType.double, this.value % other.value)
+      else -> throw UnsupportedOperationException("Cannot divide ${this.type} to ${other.type}")
+    }
+
+    is Double -> when (other.value) {
+      is Int -> ContextValue(ContextType.double, this.value % other.value.toDouble())
+      is Long -> ContextValue(ContextType.double, this.value % other.value.toDouble())
+      is Float -> ContextValue(ContextType.double, this.value % other.value.toDouble())
+      is Double -> ContextValue(ContextType.double, this.value % other.value)
+      else -> throw UnsupportedOperationException("Cannot divide ${this.type} to ${other.type}")
+    }
+
+    else -> throw UnsupportedOperationException("Cannot divide ${this.type} to ${other.type}")
   }
 }

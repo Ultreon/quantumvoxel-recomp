@@ -6,7 +6,7 @@ import dev.ultreon.quantum.scripting.ContextAware
 import dev.ultreon.quantum.scripting.ContextType
 import dev.ultreon.quantum.scripting.ContextValue
 
-class CallContext {
+class CallContext(val originJson: JsonValue) {
   val paramValues = hashMapOf<String, ContextValue<*>>()
 
   operator fun <T : Any> set(type: ContextType<out T>, value: T) {
@@ -69,7 +69,7 @@ class CallContext {
 
   companion object {
     fun from(value: JsonValue): CallContext? {
-      val context = CallContext()
+      val context = CallContext(value)
       if (value.isObject) {
         context.paramValues[value.getString("context-type", "###").also {
           if (it == "###") {
@@ -94,8 +94,8 @@ class CallContext {
       }
       return context
     }
-    fun of(vararg contextType: ContextValue<*>): CallContext? {
-      val context = CallContext()
+    fun of(json: JsonValue, vararg contextType: ContextValue<*>): CallContext? {
+      val context = CallContext(json)
       contextType.forEach {
         context.paramValues[it.type.name] = it
       }

@@ -328,12 +328,16 @@ class ContextType<T : Any>(
     })
 
     val function: ContextType<VirtualFunction> = register("function", parser = { json ->
-      val name = json.asString()
+      if (!json.isObject) {
+        logger.error("Function value must be an object")
+        return@register null
+      }
+      val name = json.get("name").asString()
       val function = VirtualFunctions[name] ?: run {
         logger.error("Unknown function: $name")
         return@register null
       }
-      return@register ContextValue(this, function)
+      return@register ContextValue(this, function(json.get("context")))
     })
 
     val core: ContextType<CoreUtils> = register("core", parser = { json ->

@@ -65,6 +65,7 @@ class IdScreen(screenId: NamespaceID) : Screen() {
                     return@main
                   }
                   virtualCondition.test(CallContext.of(
+                    condition,
                     ContextValue(ClientContextTypes.screen, this),
                     ContextValue(ClientContextTypes.batch, batch),
                   ) ?: return@main).let { visible = visible && it }

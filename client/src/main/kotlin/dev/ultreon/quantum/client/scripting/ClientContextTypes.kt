@@ -40,4 +40,8 @@ object ClientContextTypes {
   val clientDimension = ContextType.register("client-dimension", parser = {
     return@register quantum.dimension?.let { ContextValue(this, it ) }
   })
+
+  val client = ContextType.register("client", parser = {
+    return@register ContextValue(this, quantum)
+  })
 }

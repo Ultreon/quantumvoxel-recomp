@@ -1,0 +1,59 @@
+#input old_screen screen client core
+#persist<core> test_data
+
+@core:log_info(message: 'Random number: ' + @core:math:randint(min: 0, max: 100));
+@core:log_info(message: 'Random number: ' + @core:math:randint(min: 0, max: 100));
+@core:log_info(message: 'Random number: ' + @core:math:randint(min: 0, max: 100));
+@core:log_info(message: 'Random number: ' + @core:math:randint(min: 0, max: 100));
+
+@core:log_info(message: 'Screen switched!');
+
+if @core:math:randint(min: 0, max: 5) == 0 {
+  @core:log_info(message: 'Block 1 is stone');
+} else {
+  @core:log_info(message: 'Block 1 is not stone');
+}
+
+if @core:math:randint(min: 0, max: 5) == 0 {
+  @core:log_info(message: 'Block 2 is stone');
+} else {
+  @core:log_info(message: 'Block 2 is not stone');
+}
+
+if @core:math:randint(min: 0, max: 5) == 0 {
+  @core:log_info(message: 'Block 3 is stone');
+} else {
+  @core:log_info(message: 'Block 3 is not stone');
+}
+
+if @core:math:randint(min: 0, max: 5) == 0 {
+  @core:log_info(message: 'Block 4 is stone');
+} else {
+  @core:log_info(message: 'Block 4 is not stone');
+}
+
+if @core:math:randint(min: 0, max: 5) == 0 {
+  @core:log_info(message: 'Block 5 is stone');
+} else {
+  @core:log_info(message: 'Block 5 is not stone');
+}
+
+if @core:math:randint(min: 0, max: 5) == 0 {
+  @core:log_info(message: 'Block 6 is stone');
+} else {
+  @core:log_info(message: 'Block 6 is not stone');
+}
+
+if @core:math:randint(min: 0, max: 5) == 0 {
+  @core:log_info(message: 'Block 7 is stone');
+} else {
+  @core:log_info(message: 'Block 7 is not stone');
+}
+
+if present $test_data {
+  @core:log_info(message: 'Test data is present: ' + $test_data);
+}
+
+$test_data = @core:math:randint(min: 0, max: 100);
+
+@core:log_info(message: 'Random number: ' + $test_data);

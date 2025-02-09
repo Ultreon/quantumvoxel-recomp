@@ -11,7 +11,7 @@ class BlockEntity : ContextAware<BlockEntity> {
 
   fun tick() {
     for (it in this.tickables) {
-      runBlocking { it.call(this@BlockEntity) }
+//      runBlocking { it.call() }
     }
   }
 

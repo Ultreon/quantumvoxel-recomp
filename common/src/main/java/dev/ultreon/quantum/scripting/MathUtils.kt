@@ -1,6 +1,8 @@
 package dev.ultreon.quantum.scripting
 
+import com.badlogic.gdx.math.RandomXS128
 import com.badlogic.gdx.utils.JsonValue
+import dev.ultreon.quantum.logger
 import dev.ultreon.quantum.scripting.function.function
 import kotlin.math.*
 
@@ -14,8 +16,11 @@ object MathUtils : ContextAware<MathUtils> {
     function = {
       it.getInt("min")?.let { min ->
         it.getInt("max")?.let { max ->
-          if (min > max) return@function ContextValue(ContextType.int, min)
-          return@function ContextValue(ContextType.int, (min..max).random())
+          if (min > max) {
+            logger.warn("randint: min is greater than max")
+            return@function ContextValue(ContextType.int, min)
+          }
+          return@function ContextValue(ContextType.int, RandomXS128().nextInt(max - (min - 1)) + (min - 1))
         }
       }
       null

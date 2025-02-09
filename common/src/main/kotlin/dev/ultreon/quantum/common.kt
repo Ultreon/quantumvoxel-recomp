@@ -2,6 +2,7 @@ package dev.ultreon.quantum
 
 import dev.ultreon.quantum.blocks.Block
 import dev.ultreon.quantum.blocks.Blocks
+import dev.ultreon.quantum.event.commonEvents
 //import dev.ultreon.quantum.event.EventBus
 import dev.ultreon.quantum.item.Item
 import dev.ultreon.quantum.item.Items
@@ -44,6 +45,8 @@ val commonResources = ResourceManager("common")
 fun doContentRegistration() {
   Blocks.loadContent(commonResources)
   Items.loadContent(commonResources)
+
+  commonEvents.load()
 }
 
 //val commonEventBus = EventBus()

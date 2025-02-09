@@ -14,6 +14,7 @@ import com.badlogic.gdx.graphics.g2d.SpriteBatch
 import com.badlogic.gdx.graphics.g2d.TextureRegion
 import com.badlogic.gdx.math.Matrix4
 import com.badlogic.gdx.scenes.scene2d.ui.Touchpad
+import com.badlogic.gdx.utils.JsonValue
 import com.badlogic.gdx.utils.Queue
 import com.badlogic.gdx.utils.async.AsyncExecutor
 import com.badlogic.gdx.utils.viewport.ScreenViewport
@@ -31,6 +32,7 @@ import dev.ultreon.quantum.client.gui.screens.Screen
 import dev.ultreon.quantum.client.input.*
 import dev.ultreon.quantum.client.model.JsonModelLoader
 import dev.ultreon.quantum.client.model.ModelRegistry
+import dev.ultreon.quantum.client.scripting.ClientContextTypes
 import dev.ultreon.quantum.client.scripting.TSApi
 import dev.ultreon.quantum.client.scripting.TypescriptModule
 import dev.ultreon.quantum.client.scripting.cond.ClientConditions
@@ -39,6 +41,10 @@ import dev.ultreon.quantum.client.world.ClientDimension
 import dev.ultreon.quantum.client.world.LocalPlayer
 import dev.ultreon.quantum.network.Connection
 import dev.ultreon.quantum.resource.ResourceManager
+import dev.ultreon.quantum.scripting.ContextAware
+import dev.ultreon.quantum.scripting.ContextType
+import dev.ultreon.quantum.scripting.ContextValue
+import dev.ultreon.quantum.scripting.function.function
 import dev.ultreon.quantum.util.NamespaceID
 import dev.ultreon.quantum.world.BlockFlags
 import dev.ultreon.quantum.world.Dimension
@@ -81,7 +87,7 @@ lateinit var gamePlatform: GamePlatform
  * - The `render` method manages the drawing lifecycle, including handling and rendering crash details if any exception occurs.
  * - The `dispose` method cleans up resources and disposes of components safely when the game is terminated.
  */
-class QuantumVoxel : KtxApplicationAdapter, KtxInputAdapter, TSApi {
+class QuantumVoxel : KtxApplicationAdapter, KtxInputAdapter, TSApi, ContextAware<QuantumVoxel> {
   init {
     instance = this
   }
@@ -243,6 +249,7 @@ class QuantumVoxel : KtxApplicationAdapter, KtxInputAdapter, TSApi {
     ClientConditions
 
     doContentRegistration()
+    clientEvents.load()
 
     guiCam = OrthographicCamera()
     guiViewport = ScreenViewport(guiCam)
@@ -405,6 +412,9 @@ class QuantumVoxel : KtxApplicationAdapter, KtxInputAdapter, TSApi {
   }
 
   private fun doTick() {
+    clientEvents["game_tick"]
+      ?.callSync("client" to ContextValue(ClientContextTypes.client, this))
+
     dimension?.tick()
     bag.clear()
     player?.tick()
@@ -421,8 +431,8 @@ class QuantumVoxel : KtxApplicationAdapter, KtxInputAdapter, TSApi {
    * @return The maximum allowable GUI scale as an integer value.
    */
   fun calcMaxGuiScale(): Int {
-    var windowWidth = this.width
-    var windowHeight = this.height
+    val windowWidth = this.width
+    val windowHeight = this.height
 
     if (windowWidth / MINIMUM_WIDTH < windowHeight / MINIMUM_HEIGHT) {
       return (windowWidth / MINIMUM_WIDTH).coerceAtLeast(1)
@@ -448,6 +458,13 @@ class QuantumVoxel : KtxApplicationAdapter, KtxInputAdapter, TSApi {
 
     this.width = width
     this.height = height
+
+    clientEvents["resize"]
+      ?.callSync(
+        "client" to ContextValue(ClientContextTypes.client, this),
+        "width" to ContextValue(ContextType.int, width),
+        "height" to ContextValue(ContextType.int, height)
+      )
 
     super.resize(width, height)
 
@@ -475,6 +492,14 @@ class QuantumVoxel : KtxApplicationAdapter, KtxInputAdapter, TSApi {
     if (this.screen == type) {
       return
     }
+
+    clientEvents["show_screen"]
+      ?.callSync(
+        "client" to ContextValue(ClientContextTypes.client, this),
+        "old_screen" to ContextValue(ClientContextTypes.screen, this.screen ?: PlaceholderScreen),
+        "screen" to ContextValue(ClientContextTypes.screen, type ?: PlaceholderScreen)
+      )
+
 
     this.screen?.hide()
     this.screen = type
@@ -512,6 +537,39 @@ class QuantumVoxel : KtxApplicationAdapter, KtxInputAdapter, TSApi {
     }
 
     return result or super.touchUp(screenX, screenY, pointer, button)
+  }
+
+  override fun contextType(): ContextType<QuantumVoxel> {
+    return ClientContextTypes.client
+  }
+
+  private val vfStartWorld = function(function = {
+    return@function if (dimension == null) {
+      startWorld()
+      null
+    } else {
+      stopWorld {
+        startWorld()
+      }
+      null
+    }
+  })
+
+  override fun fieldOf(name: String, contextJson: JsonValue?): ContextValue<*>? {
+    return when (name) {
+      "dimension" -> dimension?.let { ContextValue(ClientContextTypes.clientDimension, it) }
+      "player" -> player?.let { ContextValue(ClientContextTypes.localPlayer, it) }
+      "screen" -> screen?.let { ContextValue(ClientContextTypes.screen, it) }
+      "global_batch" -> ContextValue(ClientContextTypes.batch, globalBatch)
+      "font" -> ContextValue(ClientContextTypes.font, quantum.font)
+      "renderer" -> ContextValue(ClientContextTypes.guiRenderer, guiRenderer)
+      "start_world" -> ContextValue(ContextType.function, vfStartWorld)
+      else -> super.fieldOf(name, contextJson)
+    }
+  }
+
+  override fun toString(): String {
+    return "QuantumVoxel"
   }
 
   companion object {
