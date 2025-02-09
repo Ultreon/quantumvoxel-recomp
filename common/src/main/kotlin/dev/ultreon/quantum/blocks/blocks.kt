@@ -4,6 +4,7 @@ package dev.ultreon.quantum.blocks
 
 import com.badlogic.gdx.math.collision.BoundingBox
 import com.badlogic.gdx.utils.JsonValue
+import dev.ultreon.quantum.scripting.ContextAware
 import dev.ultreon.quantum.id
 import dev.ultreon.quantum.math.BoundingBoxD
 import dev.ultreon.quantum.math.Vector3D
@@ -12,6 +13,8 @@ import dev.ultreon.quantum.registry.Registry
 import dev.ultreon.quantum.resource.ResourceManager
 import dev.ultreon.quantum.resource.asDirOrNull
 import dev.ultreon.quantum.resource.asDirectoryOrNull
+import dev.ultreon.quantum.scripting.ContextType
+import dev.ultreon.quantum.scripting.PersistentData
 import dev.ultreon.quantum.util.NamespaceID
 import dev.ultreon.quantum.util.asIdOrNull
 import dev.ultreon.quantum.util.id
@@ -22,7 +25,8 @@ import ktx.collections.toGdxArray
 import ktx.math.vec3
 import kotlin.reflect.KProperty
 
-class Block {
+class Block : ContextAware<Block> {
+  val definition: BlockStateDefinition = BlockStateDefinition(GdxArray())
   val isOpaque: Boolean
     get() = renderType == "default"
   val isAir: Boolean
@@ -39,6 +43,12 @@ class Block {
   )
 
   val isSolid: Boolean = true
+
+  override val persistentData: PersistentData = PersistentData()
+
+  override fun contextType(): ContextType<Block> {
+    return ContextType.block
+  }
 
   override fun toString(): String {
     return "Block($id)"
@@ -104,7 +114,7 @@ object Blocks : GameContent<Block>(Registries.blocks) {
   val grass by key(Registries.blocks, id(path = "grass_block"))
   val stone by key(Registries.blocks, id(path = "stone"))
   val water by key(Registries.blocks, id(path = "water"))
-  val sand by key(Registries.blocks, id(path = "sand"))
+  val sand by optionalKey(Registries.blocks, id(path = "sand"))
   val crate by optionalKey(Registries.blocks, id(path = "crate"))
   val cobblestone by optionalKey(Registries.blocks, id(path = "cobblestone"))
   val snowyGrass by optionalKey(Registries.blocks, id(path = "snowy_grass"))

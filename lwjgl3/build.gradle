@@ -91,7 +91,7 @@ run {
   workingDir = rootProject.file('run').path
   setIgnoreExitValue(false)
 
-  jvmArgs += "-agentlib:native-image-agent=config-output-dir=./config."
+//  jvmArgs += "-agentlib:native-image-agent=config-output-dir=./config."
 
   if (os.contains('mac')) jvmArgs += "-XstartOnFirstThread"
 }

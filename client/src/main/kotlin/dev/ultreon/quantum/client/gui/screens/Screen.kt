@@ -3,13 +3,14 @@ package dev.ultreon.quantum.client.gui.screens
 import com.badlogic.gdx.Gdx
 import com.badlogic.gdx.Input
 import com.badlogic.gdx.scenes.scene2d.Stage
-import dev.ultreon.quantum.client.*
+import dev.ultreon.quantum.client.QuantumVoxel
 import dev.ultreon.quantum.client.gui.GuiRenderer
 import dev.ultreon.quantum.client.gui.widget.GuiContainer
-import dev.ultreon.quantum.client.gui.widget.Widget
+import dev.ultreon.quantum.client.guiScale
+import dev.ultreon.quantum.client.quantum
+import dev.ultreon.quantum.client.shapes
 import ktx.app.KtxScreen
 import ktx.graphics.color
-import ktx.graphics.use
 
 private val background = color(0f, 0f, 0f, 0.5f)
 

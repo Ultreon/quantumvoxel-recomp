@@ -1,14 +1,31 @@
 package dev.ultreon.quantum.resource
 
+import com.badlogic.gdx.utils.JsonValue
 import dev.ultreon.quantum.logger
+import dev.ultreon.quantum.scripting.*
+import dev.ultreon.quantum.scripting.function.CallContext
+import dev.ultreon.quantum.scripting.function.VirtualFunction
+import dev.ultreon.quantum.scripting.function.function
 import dev.ultreon.quantum.util.NamespaceID
 
 class ResourceRoot(
   override val name: String,
   val children: MutableMap<String, ResourceNode> = mutableMapOf()
-) : Iterable<ResourceNode>, ResourceDir {
+) : Iterable<ResourceNode>, ResourceDir, ContextAware<ResourceRoot> {
   override fun iterator(): Iterator<ResourceNode> = children.values.iterator()
   override fun isDirectory(): Boolean = true
+
+  override val persistentData: PersistentData = PersistentData()
+  override fun contextType(): ContextType<ResourceRoot> = ContextType.resourceRoot
+
+  override fun fieldOf(name: String, contextJson: JsonValue?): ContextValue<*>? {
+    return when (val node = get(name)) {
+      is ResourceDirectory -> ContextValue(ContextType.resourceDirectory, node)
+      is ResourceLeaf -> ContextValue(ContextType.resourceLeaf, node)
+      else -> null
+    }
+  }
+
 
   override operator fun get(name: String): ResourceNode? {
     return children[name]
@@ -52,8 +69,19 @@ class ResourceDirectory(
   val domain: String,
   val parent: ResourceDir,
   val children: MutableMap<String, ResourceNode> = mutableMapOf()
-) : Iterable<ResourceNode>, ResourceDir {
+) : Iterable<ResourceNode>, ResourceDir, ContextAware<ResourceDirectory> {
   override val isRoot: Boolean get() = false
+
+  override val persistentData: PersistentData = PersistentData()
+  override fun contextType(): ContextType<ResourceDirectory> = ContextType.resourceDirectory
+
+  override fun fieldOf(name: String, contextJson: JsonValue?): ContextValue<*>? {
+    return when (val node = get(name)) {
+      is ResourceDirectory -> ContextValue(ContextType.resourceDirectory, node)
+      is ResourceLeaf -> ContextValue(ContextType.resourceLeaf, node)
+      else -> null
+    }
+  }
 
   override fun iterator(): Iterator<ResourceNode> = children.values.iterator()
   override fun isDirectory(): Boolean = true
@@ -109,8 +137,53 @@ class ResourceDirectory(
   }
 }
 
-class ResourceLeaf(val parent: ResourceDir, override val name: String) : ResourceNode, Iterable<Resource> {
+class ResourceLeaf(val parent: ResourceDir, override val name: String) : ResourceNode, Iterable<Resource>, ContextAware<ResourceLeaf> {
   private val resources = mutableMapOf<String, MutableList<Resource>>()
+
+  override val persistentData: PersistentData = PersistentData()
+  override fun contextType(): ContextType<ResourceLeaf> = ContextType.resourceLeaf
+
+  private val get = function(
+    ContextParam("domain", ContextType.string),
+    function = {
+      it.getString("domain")?.let { domain ->
+        return@function ContextValue(ContextType.resource, resources[domain]?.last() ?: return@function null)
+      }
+      null
+    }
+  )
+
+  private val require = function(
+    ContextParam("domain", ContextType.string),
+    function = {
+      it.getString("domain")?.let { domain ->
+        return@function ContextValue(ContextType.resource, resources[domain]?.last() ?: throw NoSuchResourceException("No such resource: $domain"))
+      }
+      null
+    }
+  )
+
+  private val forEach = function(
+    ContextParam("callback", ContextType.function),
+    function = { call ->
+      val callback = call.get<VirtualFunction>("callback") ?: return@function null
+      resources.values.forEach { resources ->
+        resources.forEach { res -> callback.call(CallContext().also {
+          it.paramValues["resource"] = ContextValue(ContextType.resource, res)
+        }) }
+      }
+      null
+    }
+  )
+
+  override fun fieldOf(name: String, contextJson: JsonValue?): ContextValue<*>? {
+    return when (name) {
+      "get" -> ContextValue(ContextType.function, get)
+      "require" -> ContextValue(ContextType.function, require)
+      "forEach" -> ContextValue(ContextType.function, forEach)
+      else -> null
+    }
+  }
 
   override val isRoot: Boolean get() = false
 
@@ -121,7 +194,6 @@ class ResourceLeaf(val parent: ResourceDir, override val name: String) : Resourc
 
   override fun toString(): String = "$parent/$name"
   operator fun get(domain: String): List<Resource> {
-    logger.debug("Getting resources for domain $domain in resource leaf: $this")
     return resources[domain] ?: run {
       logger.error("No resources found for domain $domain in resource leaf: $this")
       emptyList()

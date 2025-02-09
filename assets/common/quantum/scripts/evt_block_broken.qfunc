@@ -1,0 +1,35 @@
+#input old_screen screen client core
+#persist<core> test_data
+
+@core:log_info(message: 'Random number: ' + @core:math:randint(min: 0, max: 100));
+@core:log_info(message: 'Random number: ' + @core:math:randint(min: 0, max: 100));
+@core:log_info(message: 'Random number: ' + @core:math:randint(min: 0, max: 100));
+@core:log_info(message: 'Random number: ' + @core:math:randint(min: 0, max: 100));
+
+@core:log_info(message: 'Screen switched!');
+
+$resource = @core:resources:get(location: [quantum:texts/hello.txt]);
+
+if present $resource {
+  @core:log_info(message: 'Our content: ' + $resource:text);
+} else {
+  @core:log_info(message: 'Resource not found: ' + [quantum:texts/hello.txt]);
+}
+
+if !@core:math:randbool(chance: 0.5) {
+  @core:log_info(message: 'We are unlucky!');
+} else {
+  @core:log_info(message: 'We are lucky!');
+}
+
+if present $test_data {
+  @core:log_info(message: 'Test data is present: ' + $test_data);
+}
+
+$test_data = @core:math:randint(min: 0, max: 100);
+
+if !present $test_data {
+  @core:log_error(message: 'Test data is not present');
+}
+
+@core:log_info(message: 'Random number: ' + $test_data);

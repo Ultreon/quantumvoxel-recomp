@@ -1,6 +1,8 @@
 package dev.ultreon.quantum.blocks
 
+import com.badlogic.gdx.utils.JsonValue
 import dev.ultreon.quantum.InternalApi
+import dev.ultreon.quantum.scripting.ContextValue
 import ktx.collections.GdxArray
 import ktx.collections.gdxArrayOf
 
@@ -38,6 +40,14 @@ class BlockState(val definition: BlockStateDefinition) {
     var result = definition.hashCode()
     result = 31 * result + properties.hashCode()
     return result
+  }
+
+  companion object {
+    fun parse(json: JsonValue, block: ContextValue<Block>): BlockState {
+      return block.value.definition.stateWith(
+
+      )
+    }
   }
 }
 

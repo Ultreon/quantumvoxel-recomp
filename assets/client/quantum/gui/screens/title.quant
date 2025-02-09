@@ -34,6 +34,11 @@
         y: -100
       }
 
+      size: {
+        x: 100
+        y: 50
+      }
+
       interaction: {
         on-click: {
           action: {

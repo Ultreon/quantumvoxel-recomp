@@ -1,8 +1,16 @@
+@file:Suppress("LeakingThis")
+
 package dev.ultreon.quantum.world
 
 import com.badlogic.gdx.utils.Disposable
+import com.badlogic.gdx.utils.JsonValue
 import dev.ultreon.quantum.blocks.Block
+import dev.ultreon.quantum.blocks.Blocks
+import dev.ultreon.quantum.client.scripting.TSApi
 import dev.ultreon.quantum.math.BoundingBoxD
+import dev.ultreon.quantum.scripting.*
+import dev.ultreon.quantum.scripting.function.VirtualFunction
+import dev.ultreon.quantum.scripting.function.function
 import dev.ultreon.quantum.util.BlockHit
 import dev.ultreon.quantum.util.RayD
 import dev.ultreon.quantum.util.WorldRayCaster
@@ -27,7 +35,9 @@ value class BlockFlags(val value: Int) {
   }
 }
 
-abstract class Dimension : Disposable {
+abstract class Dimension : Disposable, TSApi, ContextAware<Dimension> {
+  val entityManager: EntityManager = EntityManager(this)
+
   abstract operator fun get(x: Int, y: Int, z: Int): Block
   operator fun set(x: Int, y: Int, z: Int, block: Block) =
     set(x, y, z, block, BlockFlags.SYNC + BlockFlags.UPDATE)
@@ -35,6 +45,36 @@ abstract class Dimension : Disposable {
   abstract fun set(x: Int, y: Int, z: Int, block: Block, flags: BlockFlags)
 
   override fun dispose() = Unit
+
+  override fun fieldOf(name: String, contextJson: JsonValue?): ContextValue<*>? {
+    return when (name) {
+      "get_block" -> ContextValue(ContextType.function, function(
+        ContextParam("x", ContextType.int),
+        ContextParam("y", ContextType.int),
+        ContextParam("z", ContextType.int),
+        function = {
+          return@function ContextValue(
+            ContextType.block,
+            this[it.getInt("x") ?: 0, it.getInt("y") ?: 0, it.getInt("z") ?: 0]
+          )
+        }
+      ))
+      "set_block" -> ContextValue(ContextType.function, function(
+        ContextParam("x", ContextType.int),
+        ContextParam("y", ContextType.int),
+        ContextParam("z", ContextType.int),
+        ContextParam("block", ContextType.block),
+        function = {
+          this[it.getInt("x") ?: 0, it.getInt("y") ?: 0, it.getInt("z") ?: 0] = it.get<Block>("block") ?: Blocks.air
+          return@function ContextValue(
+            ContextType.block,
+            this[it.getInt("x") ?: 0, it.getInt("y") ?: 0, it.getInt("z") ?: 0]
+          )
+        }
+      ))
+      else -> null
+    }
+  }
 
   fun collide(box: BoundingBoxD, collideFluid: Boolean): List<BoundingBoxD> {
     val boxes: MutableList<BoundingBoxD> = ArrayList()
@@ -80,6 +120,14 @@ abstract class Dimension : Disposable {
 
   }
 
+  override fun supportedTypes(): List<ContextType<*>> {
+    return listOf(ContextType.dimension)
+  }
+
+  override fun contextType(): ContextType<Dimension> {
+    return ContextType.dimension
+  }
+
   abstract fun chunkAt(x: Int, y: Int, z: Int): Chunk?
 
   open fun chunkAtBlock(x: Int, y: Int, z: Int): Chunk? {
@@ -89,4 +137,6 @@ abstract class Dimension : Disposable {
   fun rayTrace(ray: RayD): BlockHit {
     return WorldRayCaster.rayCast(BlockHit(ray), this)
   }
+
+  override val persistentData: PersistentData = PersistentData()
 }

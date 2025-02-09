@@ -2,6 +2,7 @@ package dev.ultreon.quantum.resource
 
 import com.badlogic.gdx.utils.JsonReader
 import com.badlogic.gdx.utils.JsonValue
+import dev.ultreon.quantum.scripting.ContextAware
 import dev.ultreon.quantum.util.NamespaceID
 import java.io.InputStream
 import java.io.Reader
@@ -9,7 +10,7 @@ import java.nio.ByteBuffer
 
 private val jsonReader = JsonReader()
 
-interface Resource {
+interface Resource : ContextAware<Resource> {
   val location: NamespaceID
 
   val text: String

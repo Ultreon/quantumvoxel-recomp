@@ -4,14 +4,40 @@ import com.badlogic.gdx.graphics.g2d.SpriteBatch
 import com.badlogic.gdx.graphics.g2d.TextureRegion
 import com.github.tommyettinger.textra.Layout
 import dev.ultreon.quantum.client.QuantumVoxel
+import dev.ultreon.quantum.client.quantum
+import dev.ultreon.quantum.util.NamespaceID
 
-class GuiRenderer(val batch: SpriteBatch) {
+class GuiRenderer(private val batch: SpriteBatch) {
   val font = QuantumVoxel.instance.font
 
   private val tmpRegion = TextureRegion()
   private val layout = Layout()
 
-  fun drawTexture(
+  private fun blit(
+    texture: TextureRegion,
+    x: Float,
+    y: Float,
+    width: Float,
+    height: Float,
+    u: Float,
+    v: Float,
+    uSize: Float,
+    vSize: Float,
+    texWidth: Int,
+    texHeight: Int,
+  ) {
+    val uDiff = texture.u2 - texture.u
+    val vDiff = texture.v2 - texture.v
+
+    tmpRegion.texture = texture.texture
+    tmpRegion.u = texture.u + (u / texWidth) * uDiff
+    tmpRegion.v = texture.v + (v / texHeight) * vDiff
+    tmpRegion.u2 = (u + uSize) / texWidth * uDiff + texture.u
+    tmpRegion.v2 = (v + vSize) / texHeight * vDiff + texture.v
+    batch.draw(tmpRegion, x, y, width, height)
+  }
+
+  private fun drawTexture(
     texture: TextureRegion,
     x: Float,
     y: Float,
@@ -19,160 +45,77 @@ class GuiRenderer(val batch: SpriteBatch) {
     height: Float,
     u: Float = 0F,
     v: Float = 0F,
-    uWidth: Float = texture.regionWidth.toFloat(),
-    uHeight: Float = texture.regionHeight.toFloat(),
-    texWidth: Int = tmpRegion.regionWidth,
-    texHeight: Int = tmpRegion.regionHeight,
+    uSize: Float,
+    vSize: Float,
+    texWidth: Int,
+    texHeight: Int,
   ) {
-    tmpRegion.setRegion(texture)
-    tmpRegion.u += (u / texWidth)
-    tmpRegion.v += (v / texHeight)
-    tmpRegion.u2 = tmpRegion.u + (uWidth / texWidth)
-    tmpRegion.v2 = tmpRegion.v + (uHeight / texHeight)
-    batch.draw(tmpRegion, x, y, width, height)
+    blit(texture, x, y, width, height, u, v, uSize, vSize, texWidth, texHeight)
   }
 
-  fun drawNinePatch(
-    texture: TextureRegion,
+  fun drawTexture(
+    texture: NamespaceID,
+    x: Float,
+    y: Float,
+    width: Float,
+    height: Float
+  ) {
+    val texture1 = quantum.textureManager[texture]
+    drawTexture(
+      texture1,
+      x,
+      y,
+      width,
+      height,
+      0F,
+      0F,
+      texture1.regionWidth.toFloat(),
+      texture1.regionHeight.toFloat(),
+      texture1.regionWidth,
+      texture1.regionHeight
+    )
+  }
+
+  fun drawTexture(
+    texture: NamespaceID,
     x: Float,
     y: Float,
     width: Float,
     height: Float,
-    leftInset: Int,
-    topInset: Int,
-    rightInset: Int,
-    bottomInset: Int,
-    texWidth: Int = tmpRegion.regionWidth,
-    texHeight: Int = tmpRegion.regionHeight,
+    texWidth: Int,
+    texHeight: Int
   ) {
-    // Corners
-    drawTexture(
-      texture = texture,
-      x = x,
-      y = y,
-      width = width,
-      height = height,
-      u = 0F,
-      v = 0F,
-      uWidth = leftInset.toFloat(),
-      uHeight = topInset.toFloat(),
-      texWidth = texWidth,
-      texHeight = texHeight
-    )
-    drawTexture(
-      texture = texture,
-      x = x,
-      y = y + height - bottomInset,
-      width = width,
-      height = bottomInset.toFloat(),
-      u = 0F,
-      v = texHeight - bottomInset.toFloat(),
-      uWidth = leftInset.toFloat(),
-      uHeight = bottomInset.toFloat(),
-      texWidth = texWidth,
-      texHeight = texHeight
-    )
-    drawTexture(
-      texture = texture,
-      x = x + width - rightInset,
-      y = y,
-      width = rightInset.toFloat(),
-      height = height,
-      u = texWidth - rightInset.toFloat(),
-      v = 0F,
-      uWidth = rightInset.toFloat(),
-      uHeight = topInset.toFloat(),
-      texWidth = texWidth,
-      texHeight = texHeight
-    )
-    drawTexture(
-      texture = texture,
-      x = x + width - rightInset,
-      y = y + height - bottomInset,
-      width = rightInset.toFloat(),
-      height = bottomInset.toFloat(),
-      u = texWidth - rightInset.toFloat(),
-      v = texHeight - bottomInset.toFloat(),
-      uWidth = rightInset.toFloat(),
-      uHeight = bottomInset.toFloat(),
-      texWidth = texWidth,
-      texHeight = texHeight
-    )
+    drawTexture(quantum.textureManager[texture], x, y, width, height, 0F, 0F, width, height, texWidth, texHeight)
+  }
 
-    // Edges
-    for (dx in leftInset until (width - rightInset).toInt()) {
-      drawTexture(
-        texture = texture,
-        x = x + dx,
-        y = y,
-        width = width - leftInset - rightInset,
-        height = topInset.toFloat(),
-        u = leftInset + dx.toFloat(),
-        v = 0F,
-        uWidth = width - leftInset - rightInset,
-        uHeight = topInset.toFloat(),
-        texWidth = texWidth,
-        texHeight = texHeight
-      )
-      drawTexture(
-        texture = texture,
-        x = x + dx,
-        y = y + height - bottomInset,
-        width = width - leftInset - rightInset,
-        height = bottomInset.toFloat(),
-        u = leftInset + dx.toFloat(),
-        v = texHeight - bottomInset.toFloat(),
-        uWidth = width - leftInset - rightInset,
-        uHeight = bottomInset.toFloat(),
-        texWidth = texWidth,
-        texHeight = texHeight
-      )
-    }
-    for (dy in topInset until (height - bottomInset).toInt()) {
-      drawTexture(
-        texture = texture,
-        x = x,
-        y = y + dy,
-        width = leftInset.toFloat(),
-        height = height - topInset - bottomInset,
-        u = 0F,
-        v = topInset + dy.toFloat(),
-        uWidth = leftInset.toFloat(),
-        uHeight = height - topInset - bottomInset,
-        texWidth = texWidth,
-        texHeight = texHeight
-      )
-      drawTexture(
-        texture = texture,
-        x = x + width - rightInset,
-        y = y + dy,
-        width = rightInset.toFloat(),
-        height = height - topInset - bottomInset,
-        u = texWidth - rightInset.toFloat(),
-        v = topInset + dy.toFloat(),
-        uWidth = rightInset.toFloat(),
-        uHeight = height - topInset - bottomInset,
-        texWidth = texWidth,
-        texHeight = texHeight
-      )
-    }
+  fun drawTexture(
+    texture: NamespaceID,
+    x: Float,
+    y: Float,
+    width: Float,
+    height: Float,
+    u: Float,
+    v: Float,
+    texWidth: Int,
+    texHeight: Int
+  ) {
+    drawTexture(quantum.textureManager[texture], x, y, width, height, u, v, width, height, texWidth, texHeight)
+  }
 
-    // Center
-    for (dx in leftInset until (width - rightInset).toInt() step texture.regionWidth - leftInset - rightInset)
-      for (dy in topInset until (height - bottomInset).toInt() step texture.regionHeight - topInset - bottomInset)
-        drawTexture(
-          texture = texture,
-          x = x + dx,
-          y = y + dy,
-          width = width - leftInset - rightInset,
-          height = height - topInset - bottomInset,
-          u = leftInset + dx.toFloat(),
-          v = topInset + dy.toFloat(),
-          uWidth = width - leftInset - rightInset,
-          uHeight = height - topInset - bottomInset,
-          texWidth = texWidth,
-          texHeight = texHeight
-        )
+  fun drawTexture(
+    texture: NamespaceID,
+    x: Float,
+    y: Float,
+    width: Float,
+    height: Float,
+    u: Float,
+    v: Float,
+    uSize: Float,
+    vSize: Float,
+    texWidth: Int,
+    texHeight: Int
+  ) {
+    drawTexture(quantum.textureManager[texture], x, y, width, height, u, v, uSize, vSize, texWidth, texHeight)
   }
 
   fun drawText(text: String, x: Float, y: Float) {
@@ -209,5 +152,183 @@ class GuiRenderer(val batch: SpriteBatch) {
     begin()
     block(this)
     end()
+  }
+
+  private fun drawNinePatch(
+    texture: TextureRegion,
+    leftInset: Float,
+    topInset: Float,
+    rightInset: Float,
+    bottomInset: Float,
+    x: Float,
+    y: Float,
+    width: Float,
+    height: Float,
+    texWidth: Int,
+    texHeight: Int,
+  ) {
+    // Corners
+    drawTexture(
+      texture,
+      x,
+      y + height - bottomInset,
+      leftInset,
+      topInset,
+      0F,
+      0F,
+      leftInset,
+      topInset,
+      texWidth,
+      texHeight
+    )
+    drawTexture(
+      texture,
+      x + width - rightInset,
+      y + height - bottomInset,
+      rightInset,
+      topInset,
+      texWidth - rightInset,
+      0F,
+      rightInset,
+      topInset,
+      texWidth,
+      texHeight
+    )
+    drawTexture(
+      texture,
+      x,
+      y,
+      leftInset,
+      bottomInset,
+      0F,
+      texHeight - bottomInset,
+      leftInset,
+      bottomInset,
+      texWidth,
+      texHeight
+    )
+    drawTexture(
+      texture,
+      x + width - rightInset,
+      y,
+      rightInset,
+      bottomInset,
+      texWidth - rightInset,
+      texHeight - bottomInset,
+      rightInset,
+      bottomInset,
+      texWidth,
+      texHeight
+    )
+
+    // Horizontal
+    for (i in leftInset.toInt() until (width - rightInset).toInt() step (texWidth - leftInset - rightInset).toInt()) {
+      drawTexture(
+        texture,
+        x + i,
+        y + height - bottomInset,
+        texWidth - leftInset - rightInset,
+        topInset,
+        leftInset,
+        0F,
+        texWidth - leftInset - rightInset,
+        topInset,
+        texWidth,
+        texHeight
+      )
+      drawTexture(
+        texture,
+        x + i,
+        y,
+        texWidth - leftInset - rightInset,
+        bottomInset,
+        leftInset,
+        texHeight - bottomInset,
+        texWidth - leftInset - rightInset,
+        bottomInset,
+        texWidth,
+        texHeight
+      )
+    }
+
+    // Vertical
+    for (i in topInset.toInt() until (height - bottomInset).toInt() step (texHeight - topInset - bottomInset).toInt()) {
+      drawTexture(
+        texture,
+        x,
+        y + i,
+        leftInset,
+        texHeight - topInset - bottomInset,
+        0F,
+        topInset,
+        leftInset,
+        texHeight - topInset - bottomInset,
+        texWidth,
+        texHeight
+      )
+      drawTexture(
+        texture,
+        x + width - rightInset,
+        y + i,
+        rightInset,
+        texHeight - topInset - bottomInset,
+        texWidth - rightInset,
+        topInset,
+        rightInset,
+        texHeight - topInset - bottomInset,
+        texWidth,
+        texHeight
+      )
+    }
+
+    // Center
+    for (i in leftInset.toInt() until (width - rightInset).toInt() step (texWidth - leftInset - rightInset).toInt()) {
+      for (j in topInset.toInt() until (height - bottomInset).toInt() step (texHeight - topInset - bottomInset).toInt()) {
+        drawTexture(
+          texture,
+          x + i,
+          y + j,
+          texWidth - leftInset - rightInset,
+          texHeight - topInset - bottomInset,
+          leftInset,
+          topInset,
+          texWidth - leftInset - rightInset,
+          texHeight - topInset - bottomInset,
+          texWidth,
+          texHeight
+        )
+      }
+    }
+  }
+
+  fun drawNinePatch(
+    texture: NamespaceID,
+    inset: Float,
+    x: Float,
+    y: Float,
+    width: Float,
+    height: Float,
+    texWidth: Int,
+    texHeight: Int,
+  ) {
+    val textureRegion = quantum.textureManager[texture]
+    drawNinePatch(textureRegion, inset, inset, inset, inset, x, y - height, width, height, texWidth, texHeight)
+  }
+
+  fun drawNinePatch(
+    texture: NamespaceID,
+    leftInset: Float,
+    topInset: Float,
+    rightInset: Float,
+    bottomInset: Float,
+    x: Float,
+    y: Float,
+    width: Float,
+    height: Float,
+    texWidth: Int,
+    texHeight: Int,
+  ) {
+    val textureRegion = quantum.textureManager[texture]
+    drawNinePatch(textureRegion, leftInset, topInset, rightInset, bottomInset, x, y - height, width, height, texWidth, texHeight)
   }
 }

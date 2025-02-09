@@ -24,7 +24,7 @@ val renderDistance: Int
   get() = if (gamePlatform.isMobile) 4 else 8
 
 open class ClientDimension(private val material: Material) : Dimension() {
-  private lateinit var player: PlayerEntity
+  private lateinit var player: LocalPlayer
   val chunks: MutableMap<Long, ClientChunk> = ConcurrentHashMap()
   val chunksToLoad = GdxArray<Pair<GridPoint3, Long>>()
   val generator = Generator()
@@ -67,7 +67,7 @@ open class ClientDimension(private val material: Material) : Dimension() {
     if (oldChunk != null) {
       if (remove(oldChunk)) {
         if (chunk.loading) {
-          throw AssertionError("Sanity check failed")
+          return true
         }
         chunk.disposeChunk()
         return true
@@ -293,8 +293,8 @@ open class ClientDimension(private val material: Material) : Dimension() {
     return rayTrace(RayD(position, lookVec))
   }
 
-  fun spawnPlayer(vec3d: Vector3D): PlayerEntity {
-    this.player = PlayerEntity(this, vec3d)
+  fun spawnPlayer(vec3d: Vector3D): LocalPlayer {
+    this.player = LocalPlayer("local", this, vec3d)
     return player
   }
 }

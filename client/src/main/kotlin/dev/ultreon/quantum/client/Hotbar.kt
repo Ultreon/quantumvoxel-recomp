@@ -1,9 +1,9 @@
 package dev.ultreon.quantum.client
 
-import com.badlogic.gdx.graphics.g2d.Batch
-import com.badlogic.gdx.scenes.scene2d.Actor
-import dev.ultreon.quantum.client.gui.draw
-import dev.ultreon.quantum.entity.InventoryComponent
+import com.badlogic.gdx.utils.JsonValue
+import dev.ultreon.quantum.client.gui.GuiRenderer
+import dev.ultreon.quantum.client.gui.widget.GuiContainer
+import dev.ultreon.quantum.client.gui.widget.Widget
 import dev.ultreon.quantum.util.id
 
 private val hotbarLeft = id(path = "textures/gui/hud/hotbar/hotbar_left.png")
@@ -12,7 +12,7 @@ private val hotbarDisplay = id(path = "textures/gui/hud/hotbar/hotbar_display.pn
 private val hotbarBridge = id(path = "textures/gui/hud/hotbar/hotbar_bridge.png")
 private val hotbarSelect = id(path = "textures/gui/hud/hotbar/hotbar_select.png")
 
-class Hotbar : Actor() {
+class Hotbar : Widget {
   val index: Int
     get() {
       val player = quantum.player
@@ -20,17 +20,19 @@ class Hotbar : Actor() {
       return inventory?.hotbarIndex ?: 0
     }
 
-  override fun draw(batch: Batch?, parentAlpha: Float) {
-    batch?.let {
-      if (width > 208) batch.draw(hotbarBridge, x + 100, y, width - 200, 32F)
-      batch.draw(hotbarLeft, x, y, 104F, 32F)
-      batch.draw(hotbarRight, x + width - 104, y, 104F, 32F)
+  constructor(parent: GuiContainer) : super(parent)
 
-      batch.draw(hotbarDisplay, x + 1F, y + 32F, 102F, 16F)
-      batch.draw(hotbarDisplay, x + width - 103F, y + 32F, 102F, 16F)
+  constructor(parent: GuiContainer, json: JsonValue) : super(parent, json)
 
-      val value: Int = if (index >= 5) (width - 104 + 5 - 105 + 5).toInt() else 0
-      batch.draw(hotbarSelect, x + 5 + index * 19 + value, y + 8, 18F, 18F)
-    }
+  override fun render(renderer: GuiRenderer, mouseX: Int, mouseY: Int, delta: Float) {
+    if (width > 208) renderer.drawTexture(hotbarBridge, x + 100, y, width - 200, 32F)
+    renderer.drawTexture(hotbarLeft, x, y, 104F, 32F)
+    renderer.drawTexture(hotbarRight, x + width - 104, y, 104F, 32F)
+
+    renderer.drawTexture(hotbarDisplay, x + 1F, y + 32F, 102F, 16F)
+    renderer.drawTexture(hotbarDisplay, x + width - 103F, y + 32F, 102F, 16F)
+
+    val value: Int = if (index >= 5) (width - 104 + 5 - 105 + 5).toInt() else 0
+    renderer.drawTexture(hotbarSelect, x + 5 + index * 19 + value, y + 8, 18F, 18F)
   }
 }

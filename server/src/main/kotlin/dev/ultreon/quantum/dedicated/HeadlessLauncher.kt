@@ -2,10 +2,6 @@
 
 package dev.ultreon.quantum.dedicated
 
-import com.badlogic.gdx.backends.headless.HeadlessApplication
-import com.badlogic.gdx.backends.headless.HeadlessApplicationConfiguration
-import dev.ultreon.quantum.server.QuantumVoxelServer
-
 /** Launches the headless application. Can be converted into a server application or a scripting utility. */
 fun main() {
 //  HeadlessApplication(QuantumVoxelServer(), HeadlessApplicationConfiguration().apply {

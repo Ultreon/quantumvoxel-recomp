@@ -1,14 +1,22 @@
 package dev.ultreon.quantum.entity
 
+import com.badlogic.gdx.utils.JsonValue
 import dev.ultreon.quantum.id
 import dev.ultreon.quantum.item.Item
 import dev.ultreon.quantum.item.Items
+import dev.ultreon.quantum.registry.Registries
+import dev.ultreon.quantum.util.asIdOrNull
 
 data class ItemStack(
   val count: Int = 1,
   val item: Item
 ) {
   constructor() : this(0, Items.air)
+  constructor(jsonValue: JsonValue) : this(
+    count = jsonValue["count"].asInt(),
+    item = Registries.items[jsonValue["item"].asString().asIdOrNull() ?: Items.air.id] ?: Items.air
+  )
+
   fun isEmpty(): Boolean = count == 0
 
   fun isNotEmpty(): Boolean = count > 0
@@ -35,6 +43,13 @@ data class ItemStack(
     var result = count
     result = 31 * result + item.hashCode()
     return result
+  }
+
+  fun json(): JsonValue {
+    return JsonValue(JsonValue.ValueType.`object`).also {
+      it.addChild("count", JsonValue(count.toLong()))
+      it.addChild("item", JsonValue(item.id.toString()))
+    }
   }
 
   companion object {

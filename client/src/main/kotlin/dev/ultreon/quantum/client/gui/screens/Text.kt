@@ -7,7 +7,6 @@ import dev.ultreon.quantum.client.gui.widget.GuiContainer
 import dev.ultreon.quantum.client.gui.widget.Widget
 import dev.ultreon.quantum.client.quantum
 import dev.ultreon.quantum.logger
-import dev.ultreon.quantum.util.id
 
 class Text(parent: GuiContainer?, widget: JsonValue) : Widget(parent, widget) {
   private var textLabel: Layout = Layout()

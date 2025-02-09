@@ -26,8 +26,24 @@ project(":lwjgl3") {
         if (System.getProperty("os.name").containsIgnoreCase("windows")) {
           buildArgs "-H:NativeLinkerOption=/SUBSYSTEM:WINDOWS"
           buildArgs "-H:NativeLinkerOption=/ENTRY:mainCRTStartup"
+          buildArgs "-H:NativeLinkerOption=/build/native/resources.o"
         }
       }
+    }
+  }
+
+  if (System.getProperty("os.name").containsIgnoreCase("windows")) {
+    project.tasks.register("compileIcon", Exec) {
+      commandLine("windres", "-o", "build/native/resources.o", "resources.rc")
+      inputs.file("resources.rc")
+      outputs.file("build/native/resources.o")
+    }
+  }
+
+  nativeCompile {
+    if (System.getProperty("os.name").containsIgnoreCase("windows")) {
+      dependsOn ":lwjgl3:compileIcon"
+      inputs.file("build/native/resources.o")
     }
   }
 
@@ -65,5 +81,49 @@ project(":lwjgl3") {
   "bundles":[]
 }"""
     )
+  }
+
+// Task to package the native image into a macOS .app bundle
+  tasks.register("packageMacApp") {
+    dependsOn nativeCompile
+    group = "build"
+    description = "Packages the native image into a macOS app bundle"
+
+    doLast {
+      def nativeBinary = file("build/native/nativeCompile/${graalvmNative.binaries.main.imageName}")
+      def appBundle = file("build/MyApp.app")
+      def appContents = file("${appBundle}/Contents")
+      def macosDir = file("${appContents}/MacOS")
+      def resourcesDir = file("${appContents}/Resources")
+
+      // Create app structure
+      appBundle.mkdirs()
+      macosDir.mkdirs()
+      resourcesDir.mkdirs()
+
+      // Move binary into the app bundle
+      nativeBinary.renameTo(file("${macosDir}/${appName}"))
+
+      // Create Info.plist
+      def infoPlist = file("${appContents}/Info.plist")
+      infoPlist.text = """
+        <?xml version="1.0" encoding="UTF-8"?>
+        <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+        <plist version="1.0">
+          <dict>
+            <key>CFBundleName</key>
+            <string>${appName}</string>
+            <key>CFBundleIdentifier</key>
+            <string>${project.group}.${project.name}</string>
+            <key>CFBundleExecutable</key>
+            <string>${appName}</string>
+            <key>CFBundleVersion</key>
+            <string>${project.version}</string>
+          </dict>
+        </plist>
+        """.stripIndent()
+
+      println "macOS .app bundle created at ${appBundle.absolutePath}"
+    }
   }
 }

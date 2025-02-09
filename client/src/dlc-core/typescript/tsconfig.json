@@ -4,7 +4,7 @@
   },
   "compilerOptions": {
     "target": "ESNext",
-    "outDir": "../resources/scripts/@ultreon/quantum-dlc-extended",
+    "outDir": "../resources/scripts/@ultreon/quantum-dlc-core",
     "moduleResolution": "node"
   },
   "include": [

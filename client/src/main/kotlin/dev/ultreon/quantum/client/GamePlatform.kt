@@ -46,4 +46,10 @@ interface GamePlatform {
   val isWebGL3: Boolean get() = false
 
   val isWebGL2: Boolean get() = false
+
+  val isSwitchGDX: Boolean get() = false
+
+  val isSwitch: Boolean get() = isSwitchGDX
+
+  val isUWP: Boolean get() = false
 }

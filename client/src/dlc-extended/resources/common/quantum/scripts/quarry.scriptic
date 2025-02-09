@@ -1,0 +1,33 @@
+when called:
+  if {state} isn't set:
+    set {state} to "init"
+
+  if {state} is "init":
+    set {current_x} to {x} + 1
+    set {current_y} to {y} - 1
+    set {current_z} to {z} + 1
+    set {state} to "working"
+
+  if {state} is "stop":
+    stop
+
+  if {state} is "stuck":
+    stop
+
+  set {drops} to {block}'s drops
+  set {block} to [quantum:air] at {current_pos} in dimension
+  set {current_z} to {current_z} - 1
+
+  if {current_z} < {z} - 1:
+    set {current_z} to {z} + 1
+    set {current_x} to {current_x} - 1
+
+  if {current_x} < {x} - 1:
+    set {current_x} to {x} + 1
+    set {current_y} to {current_y} - 1
+
+  if {current_y} < {y} - 64:
+    set {state} to "stop"
+    stop
+  else:
+    set {state} to "stuck"

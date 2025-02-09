@@ -1,8 +1,5 @@
 package dev.ultreon.quantum.lwjgl3
 
-import com.sun.jna.Native
-import com.sun.jna.ptr.IntByReference
-
 /**
  * Provides ANSI escape code constants and utility functions for styling terminal output.
  *

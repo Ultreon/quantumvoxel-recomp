@@ -1,6 +1,10 @@
 package dev.ultreon.quantum.server.player
 
-import com.artemis.Entity
+import dev.ultreon.quantum.entity.Entity
+import dev.ultreon.quantum.network.Connection
 import dev.ultreon.quantum.network.Player
 
-class ServerPlayer(entity: Entity, override val playerComponent: ServerPlayerComponent) : Player(entity, playerComponent)
+class ServerPlayer(override val entity: Entity?,
+                   override val name: String,
+                   override val connection: Connection
+) : Player()

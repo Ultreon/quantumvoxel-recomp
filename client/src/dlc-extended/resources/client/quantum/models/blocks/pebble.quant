@@ -1,0 +1,57 @@
+{
+  credit: Made with Blockbench
+  parent: quantum:cube_all
+  textures: {
+    1: quantum:blocks/pebble_large
+    particle: quantum:blocks/stone
+  }
+  elements: [
+    {
+      from: [5, 0, 6]
+      to: [11, 3, 11]
+      rotation: {angle: 22.5, axis: y, origin: [5, 0, 6]}
+      faces: {
+        north: {uv: [0, 0, 6, 3], texture: #1}
+        east: {uv: [6, 8, 11, 11], texture: #1}
+        south: {uv: [6, 0, 12, 3], texture: #1}
+        west: {uv: [0, 8, 5, 11], texture: #1}
+        up: {uv: [0, 3, 6, 8], texture: #1}
+        down: {uv: [6, 3, 12, 8], texture: #1}
+      }
+    }
+  ]
+  display: {
+    thirdperson_righthand: {
+      translation: [0, 3, 1]
+      scale: [0.55, 0.55, 0.55]
+    }
+    thirdperson_lefthand: {
+      translation: [0, 3, 1]
+      scale: [0.55, 0.55, 0.55]
+    }
+    firstperson_righthand: {
+      rotation: [0, 45, 0]
+      translation: [0, 3.5, 0]
+      scale: [0.4, 0.4, 0.4]
+    }
+    firstperson_lefthand: {
+      rotation: [0, 225, 0]
+      translation: [0, 3.5, 0]
+      scale: [0.4, 0.4, 0.4]
+    }
+    ground: {
+      translation: [0, 2, 0]
+      scale: [0.5, 0.5, 0.5]
+    }
+    gui: {
+      rotation: [30, 225, 0]
+      scale: [0.625, 0.625, 0.625]
+    }
+    head: {
+      translation: [0, 14.5, 0]
+    }
+    fixed: {
+      rotation: [0, 180, 0]
+    }
+  }
+}

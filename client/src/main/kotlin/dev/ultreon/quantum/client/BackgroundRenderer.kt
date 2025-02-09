@@ -70,7 +70,7 @@ class BackgroundRenderer : Disposable {
         // Create a platform
         for (x in 0 until SIZE) {
           for (z in 0 until SIZE) {
-            chunk.set(x, 0, z, Blocks.sand, BlockFlags.NONE)
+            chunk.set(x, 0, z, Blocks.sand ?: Blocks.grass, BlockFlags.NONE)
           }
         }
 
@@ -100,7 +100,7 @@ class BackgroundRenderer : Disposable {
         // Create a platform
         for (x in 0 until SIZE) {
           for (z in 0 until SIZE) {
-            chunk.set(x, 0, z, Blocks.sand, BlockFlags.NONE)
+            chunk.set(x, 0, z, Blocks.sand ?: Blocks.grass, BlockFlags.NONE)
             chunk.set(x, 1, z, Blocks.water, BlockFlags.NONE)
             chunk.set(x, 2, z, Blocks.water, BlockFlags.NONE)
           }

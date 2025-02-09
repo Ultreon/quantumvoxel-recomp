@@ -1,0 +1,59 @@
+#input x y z dimension
+#persist<block-entity> current_x current_y current_z state block drops
+
+if !present $state {
+  $state = 'init';
+}
+
+if !present $current_x {
+  $current_x = @x + 1;
+}
+
+if !present $current_y {
+  $current_y = @y - 1;
+}
+
+if !present $current_z {
+  $current_z = @z + 1;
+}
+
+if $state == 'init' {
+  $current_x = @x + 1;
+  $current_y = @y - 1;
+  $current_z = @z + 1;
+  $state = 'working';
+}
+
+if $state == 'stop' {
+  stop;
+}
+
+if $state == 'stuck' {
+  stop;
+}
+
+$block = @dimension:get_block(x: $current_x, y: $current_y, z: $current_z);
+
+if $block:type is [#quantum:stones] {
+  $drops = $block:drop();
+  @dimension:set_block(x: $current_x, y: $current_y, z: $current_z, id: [quantum:air]);
+  $current_z = $current_z - 1;
+
+  if $current_z < @z - 1 {
+    $current_z = @z + 1;
+    $current_x = $current_x - 1;
+  }
+
+  if $current_x < @x - 1 {
+    $current_x = @x + 1;
+    $current_y = $current_y - 1;
+  }
+
+  if $current_y < @y - 64 {
+    $state = 'stop';
+  }
+
+  stop;
+}
+
+$state = 'stuck';

@@ -48,14 +48,11 @@ object ModelRegistry : Disposable {
     if (Registries.blocks.values.isEmpty()) logger.error("Where are my blocks?")
     logger.debug("Loading blocks models")
     Registries.blocks.values.forEach {
-      logger.debug("Loading blocks model for ${it.id}")
       if (it == Blocks.air) return@forEach
 
       val load: JsonModel? = jsonModelLoader.load(it)
 
-      logger.debug("Loaded blocks model for ${it.id}")
       load?.let { model ->
-        logger.debug("Putting blocks model for ${it.id}")
         blockModels[it] = model
       } ?: run {
         logger.warn("No blocks model for ${it.id}")

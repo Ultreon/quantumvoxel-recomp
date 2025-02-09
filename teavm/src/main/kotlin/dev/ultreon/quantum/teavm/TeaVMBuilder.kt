@@ -5,13 +5,10 @@ import com.github.xpenatan.gdx.backends.teavm.config.TeaBuildConfiguration
 import com.github.xpenatan.gdx.backends.teavm.config.TeaBuilder
 import com.github.xpenatan.gdx.backends.teavm.gen.SkipClass
 import org.intellij.lang.annotations.Language
-import org.teavm.backend.javascript.JSModuleType
 import org.teavm.tooling.TeaVMTargetType
 import org.teavm.tooling.TeaVMTool
 import org.teavm.vm.TeaVMOptimizationLevel
 import java.io.File
-import java.nio.file.Files
-import java.nio.file.Path
 import kotlin.io.path.Path
 import kotlin.io.path.writeText
 

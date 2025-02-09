@@ -1,0 +1,8 @@
+{
+  listeners: [
+    {
+      type: "script"
+      name: "evt_block_broken.qfunc"
+    }
+  ]
+}

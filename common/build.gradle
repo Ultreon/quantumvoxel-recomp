@@ -1,4 +1,6 @@
-import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+plugins {
+    id "antlr"
+}
 
 apply plugin: 'org.jetbrains.kotlin.jvm'
 
@@ -6,47 +8,69 @@ apply plugin: 'org.jetbrains.kotlin.jvm'
 java.sourceCompatibility = 11
 java.targetCompatibility = 11
 if (JavaVersion.current().isJava9Compatible()) {
-  compileJava.options.release.set(11)
+    compileJava.options.release.set(11)
 }
 
 eclipse.project.name = appName + '-common'
 
-dependencies {
-  api "com.badlogicgames.gdx:gdx:$gdxVersion"
+compileKotlin {
+    dependsOn(generateGrammarSource)
+}
 
-  testImplementation "org.jetbrains.kotlin:kotlin-test:$kotlinVersion"
+generateGrammarSource {
+    maxHeapSize = "100m"
+    arguments += ["-visitor", "-long-messages"]
+    arguments += ["-package", "dev.ultreon.quantum.scripting.qfunc"]
+    outputDirectory = file("$projectDir/src/main/java/dev/ultreon/quantum/scripting/qfunc")
+}
+
+dependencies {
+    api "com.badlogicgames.gdx:gdx:$gdxVersion"
+
+    testImplementation "org.jetbrains.kotlin:kotlin-test:$kotlinVersion"
 
 //  implementation "io.ktor:ktor-network:2.3.12"
 
-  api "dev.ultreon.JNoiseJDK11:jnoise-core:a6507bcc7e", {
-    exclude group: "org.jspecify", module: "jspecify"
-  }
-  api "dev.ultreon.JNoiseJDK11:jnoise-pipeline:a6507bcc7e", {
-    exclude group: "org.jspecify", module: "jspecify"
-  }
-  api "dev.ultreon.JNoiseJDK11:jnoise-generators:a6507bcc7e", {
-    exclude group: "org.jspecify", module: "jspecify"
-  }
-  api "dev.ultreon.JNoiseJDK11:jnoise-modifiers:a6507bcc7e", {
-    exclude group: "org.jspecify", module: "jspecify"
-  }
-  api "dev.ultreon.JNoiseJDK11:jnoise-modules:a6507bcc7e", {
-    exclude group: "org.jspecify", module: "jspecify"
-  }
+    antlr "org.antlr:antlr4:4.5" // use ANTLR version 4
+    api "org.antlr:antlr4-runtime:4.13.1" // use ANTLR version 4
 
-  api "io.github.libktx:ktx-app:$ktxVersion"
-  api "io.github.libktx:ktx-artemis:$ktxVersion"
-  api "io.github.libktx:ktx-assets-async:$ktxVersion"
-  api "io.github.libktx:ktx-assets:$ktxVersion"
-  api "io.github.libktx:ktx-async:$ktxVersion"
-  api "io.github.libktx:ktx-collections:$ktxVersion"
-  api "io.github.libktx:ktx-i18n:$ktxVersion"
-  api "io.github.libktx:ktx-inject:$ktxVersion"
-  api "io.github.libktx:ktx-json:$ktxVersion"
-  api "io.github.libktx:ktx-log:$ktxVersion"
-  api "io.github.libktx:ktx-math:$ktxVersion"
-  api "io.github.libktx:ktx-preferences:$ktxVersion"
-  api "io.github.libktx:ktx-reflect:$ktxVersion"
+    api "dev.ultreon.JNoiseJDK11:jnoise-core:a6507bcc7e", {
+        exclude group: "org.jspecify", module: "jspecify"
+    }
+    api "dev.ultreon.JNoiseJDK11:jnoise-pipeline:a6507bcc7e", {
+        exclude group: "org.jspecify", module: "jspecify"
+    }
+    api "dev.ultreon.JNoiseJDK11:jnoise-generators:a6507bcc7e", {
+        exclude group: "org.jspecify", module: "jspecify"
+    }
+    api "dev.ultreon.JNoiseJDK11:jnoise-modifiers:a6507bcc7e", {
+        exclude group: "org.jspecify", module: "jspecify"
+    }
+    api "dev.ultreon.JNoiseJDK11:jnoise-modules:a6507bcc7e", {
+        exclude group: "org.jspecify", module: "jspecify"
+    }
+
+    api "io.github.libktx:ktx-app:$ktxVersion"
+    api "io.github.libktx:ktx-artemis:$ktxVersion"
+    api "io.github.libktx:ktx-assets-async:$ktxVersion"
+    api "io.github.libktx:ktx-assets:$ktxVersion"
+    api "io.github.libktx:ktx-async:$ktxVersion"
+    api "io.github.libktx:ktx-collections:$ktxVersion"
+    api "io.github.libktx:ktx-i18n:$ktxVersion"
+    api "io.github.libktx:ktx-inject:$ktxVersion"
+    api "io.github.libktx:ktx-json:$ktxVersion"
+    api "io.github.libktx:ktx-log:$ktxVersion"
+    api "io.github.libktx:ktx-math:$ktxVersion"
+    api "io.github.libktx:ktx-preferences:$ktxVersion"
+    api "io.github.libktx:ktx-reflect:$ktxVersion"
+
+    api "dev.ultreon:scriptic-lang:0.1-SNAPSHOT"
+
+    // Javet
+    implementation 'com.caoccao.javet:javet:4.1.1'
+    implementation 'com.caoccao.javet:javenode:0.8.0'
+
+    implementation "org.jetbrains.kotlin:kotlin-reflect:2.1.0"
 
 //  api "net.sf.py4j:py4j:0.10.9.9"
 
@@ -54,30 +78,30 @@ dependencies {
 //  api 'io.socket:socket.io-server:4.1.2'
 //  api("jakarta.servlet:jakarta.servlet-api:6.1.0")
 
-  // Javet
+    // Javet
 //  implementation 'com.caoccao.javet:javet:4.1.1'
 }
 
 jar {
-  archiveBaseName.set(appName)
-  duplicatesStrategy(DuplicatesStrategy.EXCLUDE)
-  dependsOn configurations.runtimeClasspath
-  doLast {
-    file(archiveFile).setExecutable(true, false)
-  }
+    archiveBaseName.set(appName)
+    duplicatesStrategy(DuplicatesStrategy.EXCLUDE)
+    dependsOn configurations.runtimeClasspath
+    doLast {
+        file(archiveFile).setExecutable(true, false)
+    }
 }
 
 
 // Equivalent to the jar task; here for compatibility with gdx-setup.
 tasks.register('dist') {
-  dependsOn 'jar'
+    dependsOn 'jar'
 }
 
 tasks.test {
-  useTestNG()
-  testClassesDirs = sourceSets.test.output.classesDirs
-  classpath = sourceSets.test.runtimeClasspath
-  description = "Runs the Kotlin test suite."
-  group = "verification"
+    useTestNG()
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath
+    description = "Runs the Kotlin test suite."
+    group = "verification"
 }
 

@@ -135,13 +135,13 @@ class Generator(val seed: Long = Random(java.lang.Double.doubleToLongBits(System
         if (height < 64.0) {
           when {
             dy < 64.0 && dy > height -> chunk[x, dy, z] = Blocks.water
-            dy < 64.0 && dy > height - 3 -> chunk[x, dy, z] = Blocks.sand
+            dy < 64.0 && dy > height - 3 -> chunk[x, dy, z] = Blocks.sand ?: Blocks.soil
             dy < 64.0 -> chunk[x, dy, z] = Blocks.stone
           }
           continue
         }
         when {
-          dy < height && height > 64.0 && height < 64.5 -> chunk[x, dy, z] = Blocks.sand
+          dy < height && height > 64.0 && height < 64.5 -> chunk[x, dy, z] = Blocks.sand ?: Blocks.soil
           dy == height.toInt() -> chunk[x, dy, z] = Blocks.grass
           dy < height && dy > height - 4 -> chunk[x, dy, z] = Blocks.soil
           dy <= height - 4 -> chunk[x, dy, z] = Blocks.stone
@@ -229,13 +229,13 @@ class Generator(val seed: Long = Random(java.lang.Double.doubleToLongBits(System
         if (height < 64.0) {
           when {
             dy < 64.0 && dy > height -> chunk[x, dy, z] = Blocks.water
-            dy < 64.0 && dy > height - 3 -> chunk[x, dy, z] = Blocks.sand
+            dy < 64.0 && dy > height - 3 -> chunk[x, dy, z] = Blocks.sand ?: Blocks.soil
             dy < 64.0 -> chunk[x, dy, z] = Blocks.stone
           }
           continue
         }
         when {
-          dy == height.toInt() -> chunk[x, dy, z] = Blocks.sand
+          dy == height.toInt() -> chunk[x, dy, z] = Blocks.sand ?: Blocks.soil
           dy < height && dy > height - 6 -> chunk[x, dy, z] = sandstone
           dy <= height - 6 -> chunk[x, dy, z] = Blocks.stone
         }
@@ -304,13 +304,13 @@ class Generator(val seed: Long = Random(java.lang.Double.doubleToLongBits(System
         if (height < 64.0) {
           when {
             dy < 64.0 && dy > height -> chunk[x, dy, z] = Blocks.water
-            dy < 64.0 && dy > height - 3 -> chunk[x, dy, z] = Blocks.sand
+            dy < 64.0 && dy > height - 3 -> chunk[x, dy, z] = Blocks.sand ?: Blocks.soil
             dy < 64.0 -> chunk[x, dy, z] = Blocks.stone
           }
           continue
         }
         when {
-          dy < height && height > 64.0 && height < 64.5 -> chunk[x, dy, z] = Blocks.sand
+          dy < height && height > 64.0 && height < 64.5 -> chunk[x, dy, z] = Blocks.sand ?: Blocks.soil
           dy == height.toInt() -> chunk[x, dy, z] = snowyGrass
           dy < height && dy > height - 4 -> chunk[x, dy, z] = Blocks.soil
           dy <= height - 4 -> chunk[x, dy, z] = Blocks.stone

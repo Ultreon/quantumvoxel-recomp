@@ -3,29 +3,26 @@
 
 package dev.ultreon.quantum.client
 
-//import com.caoccao.javet.interop.V8Host
-//import com.caoccao.javet.interop.V8Runtime
-//import com.caoccao.javet.javenode.JNEventLoop
 import com.artemis.Component
 import com.artemis.World
 import com.artemis.utils.Bag
 import com.badlogic.gdx.Gdx
 import com.badlogic.gdx.Input
-import com.badlogic.gdx.graphics.GL20
-import com.badlogic.gdx.graphics.OrthographicCamera
-import com.badlogic.gdx.graphics.Pixmap
-import com.badlogic.gdx.graphics.Texture
+import com.badlogic.gdx.graphics.*
 import com.badlogic.gdx.graphics.g2d.BitmapFont
 import com.badlogic.gdx.graphics.g2d.SpriteBatch
 import com.badlogic.gdx.graphics.g2d.TextureRegion
 import com.badlogic.gdx.math.Matrix4
 import com.badlogic.gdx.scenes.scene2d.ui.Touchpad
+import com.badlogic.gdx.utils.JsonValue
 import com.badlogic.gdx.utils.Queue
 import com.badlogic.gdx.utils.async.AsyncExecutor
 import com.badlogic.gdx.utils.viewport.ScreenViewport
 import com.badlogic.gdx.utils.viewport.Viewport
 import com.github.tommyettinger.textra.Font
 import com.github.tommyettinger.textra.KnownFonts
+import dev.ultreon.quantum.*
+import dev.ultreon.quantum.blocks.Block
 import dev.ultreon.quantum.blocks.Blocks
 import dev.ultreon.quantum.blocks.PropertyKeys
 import dev.ultreon.quantum.client.debug.DebugRenderer
@@ -35,17 +32,23 @@ import dev.ultreon.quantum.client.gui.screens.Screen
 import dev.ultreon.quantum.client.input.*
 import dev.ultreon.quantum.client.model.JsonModelLoader
 import dev.ultreon.quantum.client.model.ModelRegistry
-import dev.ultreon.quantum.client.scripting.TSType
+import dev.ultreon.quantum.client.scripting.ClientContextTypes
+import dev.ultreon.quantum.client.scripting.TSApi
 import dev.ultreon.quantum.client.scripting.TypescriptModule
+import dev.ultreon.quantum.client.scripting.cond.ClientConditions
 import dev.ultreon.quantum.client.texture.TextureManager
 import dev.ultreon.quantum.client.world.ClientDimension
-import dev.ultreon.quantum.client.world.PlayerEntity
-import dev.ultreon.quantum.commonResources
-import dev.ultreon.quantum.doContentRegistration
-import dev.ultreon.quantum.logger
+import dev.ultreon.quantum.client.world.LocalPlayer
+import dev.ultreon.quantum.network.Connection
 import dev.ultreon.quantum.resource.ResourceManager
+import dev.ultreon.quantum.scripting.ContextAware
+import dev.ultreon.quantum.scripting.ContextType
+import dev.ultreon.quantum.scripting.ContextValue
+import dev.ultreon.quantum.scripting.PersistentData
+import dev.ultreon.quantum.scripting.function.function
 import dev.ultreon.quantum.util.NamespaceID
-import dev.ultreon.quantum.vec3d
+import dev.ultreon.quantum.world.BlockFlags
+import dev.ultreon.quantum.world.Dimension
 import ktx.app.*
 import ktx.assets.disposeSafely
 import ktx.async.MainDispatcher
@@ -54,6 +57,8 @@ import java.io.FileNotFoundException
 import java.util.*
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.atomic.AtomicReference
+import java.util.zip.ZipInputStream
+import kotlin.io.path.Path
 import kotlin.math.min
 
 const val MINIMUM_WIDTH = 550
@@ -83,10 +88,12 @@ lateinit var gamePlatform: GamePlatform
  * - The `render` method manages the drawing lifecycle, including handling and rendering crash details if any exception occurs.
  * - The `dispose` method cleans up resources and disposes of components safely when the game is terminated.
  */
-class QuantumVoxel : KtxApplicationAdapter, KtxInputAdapter {
+class QuantumVoxel : KtxApplicationAdapter, KtxInputAdapter, TSApi, ContextAware<QuantumVoxel> {
   init {
     instance = this
   }
+
+  var connection: Connection? = null
 
   //  private lateinit var gen: Gen
 //  private lateinit var v8Runtime: V8Runtime
@@ -117,7 +124,7 @@ class QuantumVoxel : KtxApplicationAdapter, KtxInputAdapter {
     private set
   var debug = true
   var environmentRenderer: EnvironmentRenderer? = null
-  var player: PlayerEntity? = null
+  var player: LocalPlayer? = null
   var dimension: ClientDimension? = null
   private lateinit var crashFont: BitmapFont
   private lateinit var crashSpriteBatch: SpriteBatch
@@ -227,7 +234,23 @@ class QuantumVoxel : KtxApplicationAdapter, KtxInputAdapter {
     gamePlatform.loadResources(clientResources)
     gamePlatform.loadResources(commonResources)
 
+    Gdx.files.local("content-packs").let { path ->
+      if (path.exists()) {
+        path.list().forEach {
+          if (it.extension() == "qvcontent") {
+            ZipInputStream(it.read()).use { zip -> clientResources.loadZip(zip) }
+            ZipInputStream(it.read()).use { zip -> commonResources.loadZip(zip) }
+          }
+        }
+      } else {
+        path.mkdirs()
+      }
+    }
+
+    ClientConditions
+
     doContentRegistration()
+    clientEvents.load()
 
     guiCam = OrthographicCamera()
     guiViewport = ScreenViewport(guiCam)
@@ -390,6 +413,9 @@ class QuantumVoxel : KtxApplicationAdapter, KtxInputAdapter {
   }
 
   private fun doTick() {
+    clientEvents["game_tick"]
+      ?.callSync("client" to ContextValue(ClientContextTypes.client, this))
+
     dimension?.tick()
     bag.clear()
     player?.tick()
@@ -406,8 +432,8 @@ class QuantumVoxel : KtxApplicationAdapter, KtxInputAdapter {
    * @return The maximum allowable GUI scale as an integer value.
    */
   fun calcMaxGuiScale(): Int {
-    var windowWidth = this.width
-    var windowHeight = this.height
+    val windowWidth = this.width
+    val windowHeight = this.height
 
     if (windowWidth / MINIMUM_WIDTH < windowHeight / MINIMUM_HEIGHT) {
       return (windowWidth / MINIMUM_WIDTH).coerceAtLeast(1)
@@ -433,6 +459,13 @@ class QuantumVoxel : KtxApplicationAdapter, KtxInputAdapter {
 
     this.width = width
     this.height = height
+
+    clientEvents["resize"]
+      ?.callSync(
+        "client" to ContextValue(ClientContextTypes.client, this),
+        "width" to ContextValue(ContextType.int, width),
+        "height" to ContextValue(ContextType.int, height)
+      )
 
     super.resize(width, height)
 
@@ -460,6 +493,14 @@ class QuantumVoxel : KtxApplicationAdapter, KtxInputAdapter {
     if (this.screen == type) {
       return
     }
+
+    clientEvents["show_screen"]
+      ?.callSync(
+        "client" to ContextValue(ClientContextTypes.client, this),
+        "old_screen" to ContextValue(ClientContextTypes.screen, this.screen ?: PlaceholderScreen),
+        "screen" to ContextValue(ClientContextTypes.screen, type ?: PlaceholderScreen)
+      )
+
 
     this.screen?.hide()
     this.screen = type
@@ -499,6 +540,41 @@ class QuantumVoxel : KtxApplicationAdapter, KtxInputAdapter {
     return result or super.touchUp(screenX, screenY, pointer, button)
   }
 
+  override val persistentData: PersistentData = PersistentData()
+
+  override fun contextType(): ContextType<QuantumVoxel> {
+    return ClientContextTypes.client
+  }
+
+  private val vfStartWorld = function(function = {
+    return@function if (dimension == null) {
+      startWorld()
+      null
+    } else {
+      stopWorld {
+        startWorld()
+      }
+      null
+    }
+  })
+
+  override fun fieldOf(name: String, contextJson: JsonValue?): ContextValue<*>? {
+    return when (name) {
+      "dimension" -> dimension?.let { ContextValue(ClientContextTypes.clientDimension, it) }
+      "player" -> player?.let { ContextValue(ClientContextTypes.localPlayer, it) }
+      "screen" -> screen?.let { ContextValue(ClientContextTypes.screen, it) }
+      "global_batch" -> ContextValue(ClientContextTypes.batch, globalBatch)
+      "font" -> ContextValue(ClientContextTypes.font, quantum.font)
+      "renderer" -> ContextValue(ClientContextTypes.guiRenderer, guiRenderer)
+      "start_world" -> ContextValue(ContextType.function, vfStartWorld)
+      else -> super.fieldOf(name, contextJson)
+    }
+  }
+
+  override fun toString(): String {
+    return "QuantumVoxel"
+  }
+
   companion object {
     val executor: AsyncExecutor by lazy {
       AsyncExecutor((Runtime.getRuntime().availableProcessors() * 2).coerceAtLeast(8).also {
@@ -528,13 +604,23 @@ class QuantumVoxel : KtxApplicationAdapter, KtxInputAdapter {
       return waiting.get().get()
     }
 
+    @Deprecated("Use Quants instead")
     fun registerApis(typescriptModule: TypescriptModule) {
       typescriptModule.register("client") {
-        createType("Vector3") {
-          property("x", TSType.NUMBER)
-          property("y", TSType.NUMBER)
-          property("z", TSType.NUMBER)
-        }
+        createType<QuantumVoxel>("Client")
+        createType<ClientDimension>("ClientDimension")
+        createType<Dimension>("Dimension")
+        createType<World>("World")
+        createType<LocalPlayer>("PlayerEntity")
+        createType<Camera>("Camera")
+        createType<ShapeDrawer>("Shapes")
+        createType<DebugRenderer>("DebugRenderer")
+        createType<EnvironmentRenderer>("EnvironmentRenderer")
+        createType<BackgroundRenderer>("BackgroundRenderer")
+        createType<GuiRenderer>("GuiRenderer")
+        createType<SpriteBatch>("SpriteBatch")
+        createType<Block>("Block")
+        createType<BlockFlags>("BlockFlags")
       }
     }
   }

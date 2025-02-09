@@ -17,12 +17,11 @@ import com.badlogic.gdx.graphics.g3d.utils.DefaultRenderableSorter
 import com.badlogic.gdx.graphics.g3d.utils.DefaultShaderProvider
 import com.badlogic.gdx.math.Matrix4
 import com.badlogic.gdx.math.Vector3
-import com.badlogic.gdx.scenes.scene2d.Stage
-import com.badlogic.gdx.utils.Align
 import com.badlogic.gdx.utils.Disposable
 import com.github.tommyettinger.textra.Layout
 import dev.ultreon.quantum.blocks.Blocks
 import dev.ultreon.quantum.client.gui.screens.IdScreen
+import dev.ultreon.quantum.client.gui.screens.screen
 import dev.ultreon.quantum.client.input.KeyBinds
 import dev.ultreon.quantum.client.world.Skybox
 import dev.ultreon.quantum.entity.PositionComponent
@@ -33,14 +32,10 @@ import dev.ultreon.quantum.util.NamespaceID
 import dev.ultreon.quantum.util.id
 import dev.ultreon.quantum.vec3d
 import kotlinx.coroutines.launch
-import ktx.actors.onClick
 import ktx.app.clearScreen
 import ktx.assets.disposeSafely
 import ktx.async.KtxAsync
 import ktx.math.vec3
-import ktx.scene2d.actors
-import ktx.scene2d.button
-import ktx.scene2d.label
 
 private val tmp1 = vec3()
 
@@ -68,34 +63,9 @@ class EnvironmentRenderer : Disposable {
   private var lastRefreshTime: Long = 0
   private var lastPollTime: Long = 0
   private val speed: Float = 6f
-  private val hotbar: Hotbar = Hotbar().apply {
-    width = 216f
-    x = Gdx.graphics.width / guiScale / 2f - width / 2f
-    y = 10f
-  }
-  private val hud = Stage(quantum.guiViewport, spriteBatch()).apply {
-    actors {
-      if (isTouch) {
-        button {
-          label("Pause") {
-            setAlignment(Align.center)
-            setOrigin(0.5f, 0.5f)
-          }
-          onClick {
-            quantum.showScreen(IdScreen.get(id(path = "pause")) ?: kotlin.run {
-              logger.error("Pause screen not found")
-              return@onClick
-            })
-            Gdx.input.isCursorCatched = false
-          }
-          setPosition(Gdx.graphics.width / 2f - width / 2f, Gdx.graphics.height - height - 10f)
-          setSize(100f, 20f)
-        }
-      }
 
-      addActor(hotbar)
-    }
-  }
+  private val hud by screen(path = "hud")
+
   private val modelBatch = ModelBatch(
     if (gamePlatform.isWebGL3 || gamePlatform.isGL30 || gamePlatform.isGLES3) {
       object : DefaultShaderProvider(
@@ -210,17 +180,19 @@ class EnvironmentRenderer : Disposable {
       spriteBatch.transformMatrix.scale(quantum.guiScale, quantum.guiScale, quantum.guiScale)
 
     try {
-      spriteBatch.begin()
-      renderHud()
-      spriteBatch.end()
+      quantum.guiRenderer.begin()
+      renderHud(
+        (Gdx.input.x / quantum.guiScale).toInt(),
+        (Gdx.input.y / quantum.guiScale).toInt()
+      )
+      quantum.guiRenderer.end()
     } finally {
       spriteBatch.transformMatrix = backupMatrix
     }
   }
 
-  private fun renderHud() {
-    hud.act(Gdx.graphics.deltaTime)
-    hud.draw()
+  private fun renderHud(mouseX: Int, mouseY: Int) {
+    hud.render(quantum.guiRenderer, mouseX, mouseY, Gdx.graphics.deltaTime)
   }
 
   private fun rayCast(): BlockHit {
@@ -255,7 +227,7 @@ class EnvironmentRenderer : Disposable {
 
     vel.set(tmpVec).add(0F, -flight, 0F)
 
-    val collision = player!!.collisionComponent ?: return
+    val collision = player!!.physicsComponent ?: return
     if (vel.x != 0F) collision.velocityX = vel.x.toDouble() / TPS
     if (up && collision.onGround) collision.velocityY = 0.4
     if (vel.z != 0F) collision.velocityZ = vel.z.toDouble() / TPS
@@ -301,10 +273,12 @@ class EnvironmentRenderer : Disposable {
 
     if (Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE) && !gamePlatform.isMobile) {
       if (Gdx.input.isCursorCatched) {
-        quantum.submit { quantum.showScreen(IdScreen.get(id(path = "pause")) ?: run {
-          logger.error("No pause screen found")
-          return@submit
-        }) }
+        quantum.submit {
+          quantum.showScreen(IdScreen.get(id(path = "pause")) ?: run {
+            logger.error("No pause screen found")
+            return@submit
+          })
+        }
         Gdx.input.isCursorCatched = false
       }
     }
@@ -461,7 +435,10 @@ class EnvironmentRenderer : Disposable {
     spriteBatch.projectionMatrix =
       spriteBatch.projectionMatrix.setToOrtho2D(0f, 0f, width.toFloat(), height.toFloat())
 
-    hotbar.x = Gdx.graphics.width / guiScale / 2f - hotbar.width / 2f
+    hud.resize(
+      width = (width / quantum.guiScale).toInt(),
+      height = (height / quantum.guiScale).toInt()
+    )
   }
 }
 

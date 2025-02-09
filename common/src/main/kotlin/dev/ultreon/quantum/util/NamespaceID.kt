@@ -1,13 +1,31 @@
 package dev.ultreon.quantum.util
 
 import com.badlogic.gdx.utils.GdxRuntimeException
+import com.badlogic.gdx.utils.JsonValue
+import dev.ultreon.quantum.resource.ResourceManager
+import dev.ultreon.quantum.scripting.ContextAware
+import dev.ultreon.quantum.scripting.ContextType
+import dev.ultreon.quantum.scripting.ContextValue
+import dev.ultreon.quantum.scripting.PersistentData
+import org.intellij.lang.annotations.Language
 
 data class NamespaceID(
   val domain: String,
   val path: String
-) : Comparable<NamespaceID> {
+) : Comparable<NamespaceID>, ContextAware<NamespaceID> {
   fun mapPath(mapper: (String) -> String): NamespaceID = NamespaceID(domain, mapper(path))
   fun mapDomain(mapper: (String) -> String): NamespaceID = NamespaceID(mapper(domain), path)
+
+  override val persistentData: PersistentData = PersistentData()
+  override fun contextType(): ContextType<NamespaceID> = ContextType.id
+
+  override fun fieldOf(name: String, contextJson: JsonValue?): ContextValue<*>? {
+    return when (name) {
+      "domain" -> ContextValue(ContextType.string, domain)
+      "path" -> ContextValue(ContextType.string, path)
+      else -> null
+    }
+  }
 
   override fun equals(other: Any?): Boolean {
     if (this === other) return true
@@ -30,6 +48,9 @@ data class NamespaceID(
   }
 
   companion object {
+    @Language("RegExp")
+    const val PATTERN: String = "([a-z0-9_\\-]+):([a-z0-9_\\-/.]+)"
+
     fun parse(string: String): NamespaceID {
       val index = string.indexOf(':')
       if (index == -1) return NamespaceID("quantum", validatePath(string))
