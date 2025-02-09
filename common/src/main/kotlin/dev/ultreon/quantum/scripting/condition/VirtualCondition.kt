@@ -4,8 +4,12 @@ import dev.ultreon.quantum.scripting.function.CallContext
 import dev.ultreon.quantum.scripting.ContextAware
 import dev.ultreon.quantum.scripting.ContextParam
 import dev.ultreon.quantum.scripting.ContextType
+import dev.ultreon.quantum.scripting.PersistentData
+import java.util.Collections
 
 fun interface VirtualCondition : ContextAware<VirtualCondition> {
+  override val persistentData: PersistentData get() = throw UnsupportedOperationException()
+
   fun test(callContext: CallContext): Boolean
 
   override fun contextType(): ContextType<VirtualCondition> {

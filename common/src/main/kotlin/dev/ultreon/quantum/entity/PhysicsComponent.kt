@@ -1,6 +1,9 @@
 package dev.ultreon.quantum.entity
 
+import com.badlogic.gdx.utils.JsonValue
 import dev.ultreon.quantum.math.BoundingBoxD
+import dev.ultreon.quantum.scripting.json
+import dev.ultreon.quantum.scripting.load
 import dev.ultreon.quantum.util.BoundingBoxUtils
 import dev.ultreon.quantum.util.Tickable
 import dev.ultreon.quantum.vec3d
@@ -62,24 +65,7 @@ class PhysicsComponent : Component<PhysicsComponent>(), Tickable {
    * @param deltaZ the change in z-coordinate
    * @return true if the entity is colliding after the move, false otherwise
    */
-  fun move(deltaX: Double, deltaY: Double, deltaZ: Double): Boolean {
-    // Store the original deltas
-    var deX = deltaX
-    var deY = deltaY
-    var deZ = deltaZ
-
-    // Calculate the absolute values of the deltas
-    var absDeltaX = abs(deX)
-    var absDeltaY = abs(deY)
-    var absDeltaZ = abs(deZ)
-
-    // Check if the deltas are too small to cause a significant move
-    if (absDeltaX < 0.001 && absDeltaY < 0.001 && absDeltaZ < 0.001) {
-      absDeltaX = 0.0
-      absDeltaY = 0.0
-      absDeltaZ = 0.0
-    }
-
+  private fun move(deltaX: Double, deltaY: Double, deltaZ: Double): Boolean {
     // Trigger an event to allow modification of the move
     // TODO: Event
 //    val event: EntityMoveEvent = EntityMoveEvent(this, Vec(deltaX, deltaY, deltaZ))
@@ -96,18 +82,18 @@ class PhysicsComponent : Component<PhysicsComponent>(), Tickable {
 //    deltaZ = modifiedValue.z
 
     // Store the original deltas after potential modification
-    val originalDeltaXModified = deX
-    val originalDeltaYModified = deY
-    val originalDeltaZModified = deZ
+    val originalDeltaXModified = deltaX
+    val originalDeltaYModified = deltaY
+    val originalDeltaZModified = deltaZ
 
     // Update the bounding box based on the modified deltas
-    val updatedBoundingBoxD: BoundingBoxD = this.boundingBox.updateByDelta(deX, deY, deZ)
+    val updatedBoundingBoxD: BoundingBoxD = this.boundingBox.updateByDelta(deltaX, deltaY, deltaZ)
 
     // Move the entity based on the updated bounding box and deltas
     if (this.noClip) {
-      this.x += deX
-      this.y += deY
-      this.z += deZ
+      this.x += deltaX
+      this.y += deltaY
+      this.z += deltaZ
       this.onMoved()
       // TODO: Networking
 //      this.pipeline.putDouble("x", this.x)
@@ -116,9 +102,9 @@ class PhysicsComponent : Component<PhysicsComponent>(), Tickable {
     } else {
       this.moveWithCollision(
         updatedBoundingBoxD,
-        deX,
-        deY,
-        deZ,
+        deltaX,
+        deltaY,
+        deltaZ,
         originalDeltaXModified,
         originalDeltaYModified,
         originalDeltaZModified
@@ -262,6 +248,37 @@ class PhysicsComponent : Component<PhysicsComponent>(), Tickable {
   }
 
   override val componentType = ComponentType.physics
+  override fun json(): JsonValue {
+    return JsonValue(JsonValue.ValueType.`object`).also { json ->
+      json.addChild("velocityX", JsonValue(velocityX))
+      json.addChild("velocityY", JsonValue(velocityY))
+      json.addChild("velocityZ", JsonValue(velocityZ))
+      json.addChild("fallDistance", JsonValue(fallDistance))
+      json.addChild("isColliding", JsonValue(isColliding))
+      json.addChild("isCollidingX", JsonValue(isCollidingX))
+      json.addChild("isCollidingY", JsonValue(isCollidingY))
+      json.addChild("isCollidingZ", JsonValue(isCollidingZ))
+      json.addChild("wasOnGround", JsonValue(wasOnGround))
+      json.addChild("onGround", JsonValue(onGround))
+      json.addChild("noClip", JsonValue(noClip))
+      json.addChild("boundingBox", boundingBox.json())
+    }
+  }
+
+  override fun load(json: JsonValue) {
+    velocityX = json["velocityX"]?.asDouble() ?: 0.0
+    velocityY = json["velocityY"]?.asDouble() ?: 0.0
+    velocityZ = json["velocityZ"]?.asDouble() ?: 0.0
+    fallDistance = json["fallDistance"]?.asDouble() ?: 0.0
+    isColliding = json["isColliding"]?.asBoolean() ?: false
+    isCollidingX = json["isCollidingX"]?.asBoolean() ?: false
+    isCollidingY = json["isCollidingY"]?.asBoolean() ?: false
+    isCollidingZ = json["isCollidingZ"]?.asBoolean() ?: false
+    wasOnGround = json["wasOnGround"]?.asBoolean() ?: false
+    onGround = json["onGround"]?.asBoolean() ?: false
+    noClip = json["noClip"]?.asBoolean() ?: false
+    boundingBox.load(json["boundingBox"])
+  }
 }
 
 private fun BoundingBoxD.updateByDelta(deltaX: Double, deltaY: Double, deltaZ: Double): BoundingBoxD {

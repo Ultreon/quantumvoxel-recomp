@@ -8,10 +8,7 @@ import dev.ultreon.quantum.blocks.Block
 import dev.ultreon.quantum.blocks.Blocks
 import dev.ultreon.quantum.client.scripting.TSApi
 import dev.ultreon.quantum.math.BoundingBoxD
-import dev.ultreon.quantum.scripting.ContextAware
-import dev.ultreon.quantum.scripting.ContextParam
-import dev.ultreon.quantum.scripting.ContextType
-import dev.ultreon.quantum.scripting.ContextValue
+import dev.ultreon.quantum.scripting.*
 import dev.ultreon.quantum.scripting.function.VirtualFunction
 import dev.ultreon.quantum.scripting.function.function
 import dev.ultreon.quantum.util.BlockHit
@@ -140,4 +137,6 @@ abstract class Dimension : Disposable, TSApi, ContextAware<Dimension> {
   fun rayTrace(ray: RayD): BlockHit {
     return WorldRayCaster.rayCast(BlockHit(ray), this)
   }
+
+  override val persistentData: PersistentData = PersistentData()
 }

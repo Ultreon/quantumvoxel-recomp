@@ -10,11 +10,13 @@ import dev.ultreon.quantum.registry.Registries
 import dev.ultreon.quantum.registry.RegistryKeys
 import dev.ultreon.quantum.scripting.ContextType
 import dev.ultreon.quantum.scripting.ContextValue
+import dev.ultreon.quantum.scripting.PersistentData
 import dev.ultreon.quantum.util.id
 import dev.ultreon.quantum.world.Dimension
 
 class EntityTemplate(val componentTypes: List<ComponentType<*>>) :
   GameContent<EntityTemplate>(RegistryKeys.entityTypes), ContextAware<EntityTemplate> {
+  override val persistentData: PersistentData = PersistentData()
 
   override fun contextType(): ContextType<EntityTemplate> = ContextType.entityTemplate
   override fun fieldOf(name: String, contextJson: JsonValue?): ContextValue<*>? {
@@ -38,7 +40,7 @@ class EntityTemplate(val componentTypes: List<ComponentType<*>>) :
   }
 }
 
-class Entity(val template: EntityTemplate, var dimension: Dimension) : ContextAware<Entity>, GameObject("Entity [${template.id}]") {
+class Entity(private val template: EntityTemplate, var dimension: Dimension) : ContextAware<Entity>, GameObject("Entity [${template.id}]") {
   var id: Int = -1
   var x: Double = 0.0
   var y: Double = 0.0
@@ -47,6 +49,8 @@ class Entity(val template: EntityTemplate, var dimension: Dimension) : ContextAw
   fun edit(action: Entity.() -> Unit) {
     action(this)
   }
+
+  override val persistentData: PersistentData = PersistentData()
 
   override fun contextType(): ContextType<Entity> {
     return ContextType.entity

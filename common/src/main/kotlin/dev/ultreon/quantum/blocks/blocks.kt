@@ -14,6 +14,7 @@ import dev.ultreon.quantum.resource.ResourceManager
 import dev.ultreon.quantum.resource.asDirOrNull
 import dev.ultreon.quantum.resource.asDirectoryOrNull
 import dev.ultreon.quantum.scripting.ContextType
+import dev.ultreon.quantum.scripting.PersistentData
 import dev.ultreon.quantum.util.NamespaceID
 import dev.ultreon.quantum.util.asIdOrNull
 import dev.ultreon.quantum.util.id
@@ -42,6 +43,8 @@ class Block : ContextAware<Block> {
   )
 
   val isSolid: Boolean = true
+
+  override val persistentData: PersistentData = PersistentData()
 
   override fun contextType(): ContextType<Block> {
     return ContextType.block

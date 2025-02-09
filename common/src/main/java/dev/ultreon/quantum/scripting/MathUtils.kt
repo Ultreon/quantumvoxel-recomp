@@ -7,8 +7,8 @@ import dev.ultreon.quantum.scripting.function.function
 import kotlin.math.*
 
 object MathUtils : ContextAware<MathUtils> {
-  val PI = 3.1415926535897932384626433832795
-  val E = 2.7182818284590452353602874713527
+  const val PI = 3.141592653589793
+  const val E = 2.718281828459045
 
   val randint = function(
     ContextParam("min", ContextType.int),
@@ -22,6 +22,33 @@ object MathUtils : ContextAware<MathUtils> {
           }
           return@function ContextValue(ContextType.int, RandomXS128().nextInt(max - (min - 1)) + (min - 1))
         }
+      }
+      null
+    }
+  )
+
+  val randrange = function(
+    ContextParam("min", ContextType.double),
+    ContextParam("max", ContextType.double),
+    function = {
+      it.getDouble("min")?.let { min ->
+        it.getDouble("max")?.let { max ->
+          if (min > max) {
+            logger.warn("randrange: min is greater than max")
+            return@function ContextValue(ContextType.float, min)
+          }
+          return@function ContextValue(ContextType.float, RandomXS128().nextFloat() * (max - min) + min)
+        }
+      }
+      null
+    }
+  )
+
+  val randbool = function(
+    ContextParam("chance", ContextType.float),
+    function = {
+      it.getFloat("chance")?.let { chance ->
+        return@function ContextValue(ContextType.boolean, RandomXS128().nextFloat() < chance)
       }
       null
     }
@@ -108,6 +135,156 @@ object MathUtils : ContextAware<MathUtils> {
     }
   )
 
+  val log = function(
+    ContextParam("x", ContextType.float),
+    ContextParam("base", ContextType.float),
+    function = {
+      it.getDouble("x")?.let { x ->
+        it.getDouble("base")?.let { base ->
+          return@function ContextValue(ContextType.int, log(x, base).toInt())
+        }
+      }
+      null
+    }
+  )
+
+  val log2 = function(
+    ContextParam("x", ContextType.float),
+    function = {
+      it.getDouble("x")?.let { x ->
+        return@function ContextValue(ContextType.int, log(x, 2.0).toInt())
+      }
+    }
+  )
+
+  val sin = function(
+    ContextParam("x", ContextType.float),
+    function = {
+      it.getDouble("x")?.let { x ->
+        return@function ContextValue(ContextType.float, sin(x))
+      }
+    }
+  )
+
+  val cos = function(
+    ContextParam("x", ContextType.float),
+    function = {
+      it.getDouble("x")?.let { x ->
+        return@function ContextValue(ContextType.float, cos(x))
+      }
+    }
+  )
+
+  val tan = function(
+    ContextParam("x", ContextType.float),
+    function = {
+      it.getDouble("x")?.let { x ->
+        return@function ContextValue(ContextType.float, tan(x))
+      }
+    }
+  )
+
+  val asin = function(
+    ContextParam("x", ContextType.float),
+    function = {
+      it.getDouble("x")?.let { x ->
+        return@function ContextValue(ContextType.float, asin(x))
+      }
+    }
+  )
+
+  val acos = function(
+    ContextParam("x", ContextType.float),
+    function = {
+      it.getDouble("x")?.let { x ->
+        return@function ContextValue(ContextType.float, acos(x))
+      }
+    }
+  )
+
+  val atan = function(
+    ContextParam("x", ContextType.float),
+    function = {
+      it.getDouble("x")?.let { x ->
+        return@function ContextValue(ContextType.float, atan(x))
+      }
+    }
+  )
+
+  val sinh = function(
+    ContextParam("x", ContextType.float),
+    function = {
+      it.getDouble("x")?.let { x ->
+        return@function ContextValue(ContextType.float, sinh(x))
+      }
+    }
+  )
+
+  val cosh = function(
+    ContextParam("x", ContextType.float),
+    function = {
+      it.getDouble("x")?.let { x ->
+        return@function ContextValue(ContextType.float, cosh(x))
+      }
+    }
+  )
+
+  val tanh = function(
+    ContextParam("x", ContextType.float),
+    function = {
+      it.getDouble("x")?.let { x ->
+        return@function ContextValue(ContextType.float, tanh(x))
+      }
+    }
+  )
+
+  val asinh = function(
+    ContextParam("x", ContextType.float),
+    function = {
+      it.getDouble("x")?.let { x ->
+        return@function ContextValue(ContextType.float, asinh(x))
+      }
+    }
+  )
+
+  val acosh = function(
+    ContextParam("x", ContextType.float),
+    function = {
+      it.getDouble("x")?.let { x ->
+        return@function ContextValue(ContextType.float, acosh(x))
+      }
+    }
+  )
+
+  val atanh = function(
+    ContextParam("x", ContextType.float),
+    function = {
+      it.getDouble("x")?.let { x ->
+        return@function ContextValue(ContextType.float, atanh(x))
+      }
+    }
+  )
+
+  val degrees = function(
+    ContextParam("x", ContextType.float),
+    function = {
+      it.getDouble("x")?.let { x ->
+        return@function ContextValue(ContextType.float, x * 180 / PI)
+      }
+    }
+  )
+
+  val radians = function(
+    ContextParam("x", ContextType.float),
+    function = {
+      it.getDouble("x")?.let { x ->
+        return@function ContextValue(ContextType.float, x * PI / 180)
+      }
+    }
+  )
+
+  override val persistentData: PersistentData = PersistentData()
+
   override fun contextType(): ContextType<MathUtils> {
     return ContextType.math
   }
@@ -115,12 +292,34 @@ object MathUtils : ContextAware<MathUtils> {
   override fun fieldOf(name: String, contextJson: JsonValue?): ContextValue<*>? {
     return when (name) {
       "randint" -> ContextValue(ContextType.function, randint)
+      "randrange" -> ContextValue(ContextType.function, randrange)
+      "randbool" -> ContextValue(ContextType.function, randbool)
+      "abs_int" -> ContextValue(ContextType.function, absInt)
+      "pi" -> ContextValue(ContextType.float, PI)
+      "e" -> ContextValue(ContextType.float, E)
       "sqrt" -> ContextValue(ContextType.function, sqrt)
       "pow" -> ContextValue(ContextType.function, pow)
       "abs" -> ContextValue(ContextType.function, abs)
       "round" -> ContextValue(ContextType.function, round)
       "ceil" -> ContextValue(ContextType.function, ceil)
       "floor" -> ContextValue(ContextType.function, floor)
+      "log" -> ContextValue(ContextType.function, log)
+      "log2" -> ContextValue(ContextType.function, log2)
+      "log10" -> ContextValue(ContextType.function, log10)
+      "sin" -> ContextValue(ContextType.function, sin)
+      "cos" -> ContextValue(ContextType.function, cos)
+      "tan" -> ContextValue(ContextType.function, tan)
+      "asin" -> ContextValue(ContextType.function, asin)
+      "acos" -> ContextValue(ContextType.function, acos)
+      "atan" -> ContextValue(ContextType.function, atan)
+      "sinh" -> ContextValue(ContextType.function, sinh)
+      "cosh" -> ContextValue(ContextType.function, cosh)
+      "tanh" -> ContextValue(ContextType.function, tanh)
+      "asinh" -> ContextValue(ContextType.function, asinh)
+      "acosh" -> ContextValue(ContextType.function, acosh)
+      "atanh" -> ContextValue(ContextType.function, atanh)
+      "degrees" -> ContextValue(ContextType.function, degrees)
+      "radians" -> ContextValue(ContextType.function, radians)
       else -> null
     }
   }

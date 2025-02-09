@@ -15,6 +15,7 @@ import ktx.async.MainDispatcher
 import org.intellij.lang.annotations.Language
 import java.util.*
 import kotlin.coroutines.CoroutineContext
+import kotlin.math.abs
 
 class QFuncInterpreterException(message: String, val filename: String, val line: Int, val column: Int) :
   Exception("$message at $filename:$line:$column")
@@ -26,9 +27,9 @@ class QFuncInterpreter(private var inputParameters: Map<String, ContextValue<*>?
   private val loopValues: Stack<ContextValue<*>> = Stack()
   private var persistObject: ContextValue<*>? = null
   private lateinit var context: CoroutineContext
-  private var persistentGlobals: Map<String, ContextValue<*>?> = mapOf()
+  private var persistentGlobals: List<String> = listOf()
   private val stack: Stack<BacktraceElement> = Stack()
-  private val globals: MutableMap<String, ContextValue<*>?> = mutableMapOf()
+  private val variables: MutableMap<String, ContextValue<*>?> = mutableMapOf()
   var checkInput = true
   var checkPersist = false
   var state = S_NONE
@@ -112,7 +113,7 @@ class QFuncInterpreter(private var inputParameters: Map<String, ContextValue<*>?
       e.message?.let { logger.error(it + "\n" + e.stackTraceToString()) } ?: logger.error("An error occurred")
       return null
     } catch (e: QFuncInterpreterException) {
-      e.message?.let { logger.error(it + "\n" + e.stackTraceToString()) } ?: logger.error("An error occurred")
+      e.message?.let { logger.error(it) } ?: logger.error("An error occurred")
       return null
     } catch (e: Exception) {
       e.message?.let { logger.error(it + "\n" + e.stackTraceToString()) } ?: logger.error("An error occurred")
@@ -210,9 +211,73 @@ class QFuncInterpreter(private var inputParameters: Map<String, ContextValue<*>?
         visitBinaryOps(tree)
       }
 
+      is UnaryOpAST -> {
+        visitUnaryOp(tree)
+      }
+
       else -> {
         throw Exception("Unknown AST type: ${tree::class.simpleName}")
       }
+    }
+  }
+
+  private suspend fun visitUnaryOp(tree: UnaryOpAST): Any? {
+    val value = (visit(tree.expression) as? ContextValue<*> ?: run {
+      logger.error("Value not present at ${tree.filename}:${tree.line}:${tree.column}")
+      return null
+    }).value
+    when (tree.type) {
+      QFuncTokenType.NOT -> {
+        if (value is Boolean) {
+          return ContextValue(ContextType.boolean, !value)
+        } else {
+          throw QFuncInterpreterException("Cannot NOT non-boolean value", tree.filename, tree.line, tree.column)
+        }
+      }
+      QFuncTokenType.SUB -> {
+        when (value) {
+          is Int -> return ContextValue(ContextType.int, -value)
+          is Long -> return ContextValue(ContextType.long, -value)
+          is Float -> return ContextValue(ContextType.float, -value)
+          is Double -> return ContextValue(ContextType.double, -value)
+          else -> throw QFuncInterpreterException("Cannot SUB non-number value", tree.filename, tree.line, tree.column)
+        }
+      }
+      QFuncTokenType.ADD -> {
+        when (value) {
+          is Int -> return ContextValue(ContextType.int, abs(value))
+          is Long -> return ContextValue(ContextType.long, abs(value))
+          is Float -> return ContextValue(ContextType.float, abs(value))
+          is Double -> return ContextValue(ContextType.double, abs(value))
+          else -> throw QFuncInterpreterException("Cannot ADD non-number value", tree.filename, tree.line, tree.column)
+        }
+      }
+      QFuncTokenType.INCREMENT -> {
+        when (value) {
+          is Int -> return ContextValue(ContextType.int, value + 1)
+          is Long -> return ContextValue(ContextType.long, value + 1)
+          is Float -> return ContextValue(ContextType.float, value + 1)
+          is Double -> return ContextValue(ContextType.double, value + 1)
+          else -> throw QFuncInterpreterException("Cannot INCREMENT non-number value", tree.filename, tree.line, tree.column)
+        }
+      }
+      QFuncTokenType.DECREMENT -> {
+        when (value) {
+          is Int -> return ContextValue(ContextType.int, value - 1)
+          is Long -> return ContextValue(ContextType.long, value - 1)
+          is Float -> return ContextValue(ContextType.float, value - 1)
+          is Double -> return ContextValue(ContextType.double, value - 1)
+          else -> throw QFuncInterpreterException("Cannot DECREMENT non-number value", tree.filename, tree.line, tree.column)
+        }
+      }
+      QFuncTokenType.BITWISE_NOT -> {
+        when (value) {
+          is Int -> return ContextValue(ContextType.int, value.inv())
+          is Long -> return ContextValue(ContextType.long, value.inv())
+          else -> throw QFuncInterpreterException("Cannot BITWISE_NOT non-number or non-integer value", tree.filename, tree.line, tree.column)
+        }
+      }
+      else -> throw QFuncInterpreterException("Unknown operator: ${tree.type}", tree.filename, tree.line, tree.column)
     }
   }
 
@@ -317,7 +382,11 @@ class QFuncInterpreter(private var inputParameters: Map<String, ContextValue<*>?
   }
 
   private suspend fun visitGlobal(tree: GlobalAST): Any? {
-    var value: ContextValue<*>? = globals[tree.name] ?: return null
+    var value: ContextValue<*>? = if (tree.name in persistentGlobals) {
+      persistObject?.persistentData?.get(tree.name) ?: return null
+    } else {
+      variables[tree.name] ?: return null
+    }
     for (member in tree.members) {
       if (value == null) {
         throw QFuncInterpreterException("Value not present", tree.filename, tree.line, tree.column)
@@ -334,10 +403,14 @@ class QFuncInterpreter(private var inputParameters: Map<String, ContextValue<*>?
         }
 
         val actualValue = value.value
-        if (actualValue is VirtualFunction) {
-          return actualValue.call(callContext)
-        } else {
-          throw QFuncInterpreterException("Not a function", tree.filename, tree.line, tree.column)
+        try {
+          if (actualValue is VirtualFunction) {
+            return actualValue.call(callContext)
+          } else {
+            throw QFuncInterpreterException("Not a function", tree.filename, tree.line, tree.column)
+          }
+        } catch (e: Exception) {
+          throw QFuncInterpreterException("Error calling function: ${e.message}", tree.filename, tree.line, tree.column)
         }
       }
     }
@@ -366,10 +439,14 @@ class QFuncInterpreter(private var inputParameters: Map<String, ContextValue<*>?
           }
 
           val actualValue = returnValue.value
-          if (actualValue is VirtualFunction) {
-            return actualValue.call(callContext)
-          } else {
-            throw QFuncInterpreterException("Not a function", tree.filename, tree.line, tree.column)
+          try {
+            if (actualValue is VirtualFunction) {
+              return actualValue.call(callContext)
+            } else {
+              throw QFuncInterpreterException("Not a function", tree.filename, tree.line, tree.column)
+            }
+          } catch (e: Exception) {
+            throw QFuncInterpreterException("Error calling function: ${e.message}", tree.filename, tree.line, tree.column)
           }
         }
       }
@@ -384,9 +461,16 @@ class QFuncInterpreter(private var inputParameters: Map<String, ContextValue<*>?
 
   private suspend fun visitAssignment(tree: AssignmentAST): Any? {
     val value = visit(tree.expression)
-    globals[tree.global] = value as? ContextValue<*> ?: run {
+    val contextValue = value as? ContextValue<*> ?: run {
       logger.error("Value not present at ${tree.filename}:${tree.line}:${tree.column}")
       return null
+    }
+    if (tree.global in persistentGlobals) {
+      persistObject?.persistentData?.set(tree.global, contextValue) ?: run {
+        throw QFuncInterpreterException("Persistent object not present", tree.filename, tree.line, tree.column)
+      }
+    } else {
+      variables[tree.global] = contextValue
     }
     return value
   }
@@ -427,11 +511,7 @@ class QFuncInterpreter(private var inputParameters: Map<String, ContextValue<*>?
       }
 
       "persist" -> {
-        val map = mutableMapOf<String, ContextValue<*>?>()
-        for (value in values) {
-          map[value.value] = globals[value.value]
-        }
-        this.persistentGlobals = map
+        this.persistentGlobals = listOf(*(values.map { it.value }.toTypedArray()))
         this.persistObject = this.inputParameters[tree.type?.name ?: run {
           throw QFuncInterpreterException("Missing input type", tree.filename, tree.line, tree.column)
         }] ?: run {

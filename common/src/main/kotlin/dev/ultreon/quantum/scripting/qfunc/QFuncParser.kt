@@ -104,10 +104,6 @@ class QFuncParser(lexer: QFuncLexer) {
       statements.add(parseStatement() ?: continue)
     }
 
-    for (statement in statements) {
-      println(statement)
-    }
-
     file = FileAST(statements, filename)
   }
 
@@ -128,7 +124,7 @@ class QFuncParser(lexer: QFuncLexer) {
   private fun expect(type: QFuncTokenType): QFuncToken {
     val token = next()
     if (token.type != type) {
-      throw QFuncParserException("Expected '${type.value}', got '${token.stringValue}'", filename, token)
+      throw QFuncParserException("Expected '${type.value}', got '${token.text}'", filename, token)
     }
     return token
   }
@@ -282,8 +278,12 @@ class QFuncParser(lexer: QFuncLexer) {
         PresentAST(parseExpression(), filename, token.line, token.column)
       }
 
+      QFuncTokenType.NOT -> {
+        UnaryOpAST(QFuncTokenType.NOT, parseExpression(), filename, token.line, token.column)
+      }
+
       else -> {
-        throw QFuncParserException("Expected expression, got '${token.stringValue}'", filename, token)
+        throw QFuncParserException("Expected expression, got '${token.text}'", filename, token)
       }
     }.let {
       val expression = it
@@ -334,7 +334,7 @@ class QFuncParser(lexer: QFuncLexer) {
   }
 
   private fun parseIdLike(): IdLikeAST {
-    val token = peek()
+    val token = current()
     if (token.type == QFuncTokenType.HASH) {
       next()
       return parseTagId()
@@ -344,10 +344,10 @@ class QFuncParser(lexer: QFuncLexer) {
 
   private fun parseId(): IdAST {
     val namespace = expect(QFuncTokenType.IDENTIFIER)
-    if (peek().type == QFuncTokenType.COLON) {
+    if (current().type == QFuncTokenType.COLON) {
       next()
       val path = parsePath()
-      return IdAST(NamespaceID(namespace.value as String, path), filename, cur.line, cur.column)
+      return IdAST(NamespaceID(namespace.text, path), filename, cur.line, cur.column)
     } else {
       position--
       return IdAST(NamespaceID("quantum", path = parsePath()), filename, cur.line, cur.column)
@@ -356,10 +356,10 @@ class QFuncParser(lexer: QFuncLexer) {
 
   private fun parseTagId(): TagIdAST {
     val namespace = expect(QFuncTokenType.IDENTIFIER)
-    if (peek().type == QFuncTokenType.COLON) {
+    if (current().type == QFuncTokenType.COLON) {
       next()
       val path = parsePath()
-      return TagIdAST(NamespaceID(namespace.value as String, path), filename, cur.line, cur.column)
+      return TagIdAST(NamespaceID(namespace.text, path), filename, cur.line, cur.column)
     } else {
       position--
       return TagIdAST(NamespaceID("quantum", parsePath()), filename, cur.line, cur.column)
@@ -367,17 +367,18 @@ class QFuncParser(lexer: QFuncLexer) {
   }
 
   private fun parsePath(): String {
-    var path = expect(QFuncTokenType.IDENTIFIER).value as String
-    while (peek().type == QFuncTokenType.DIV) {
+    var path = expect(QFuncTokenType.IDENTIFIER).text as String
+    while (current().type == QFuncTokenType.DIV) {
       next()
-      val nextPath = expect(QFuncTokenType.IDENTIFIER).value as String
+      val nextPath = expect(QFuncTokenType.IDENTIFIER).text as String
       path += "/$nextPath"
     }
-    if (peek().type == QFuncTokenType.DOT) {
+    if (current().type == QFuncTokenType.DOT) {
       next()
-      val nextPath = expect(QFuncTokenType.IDENTIFIER).value as String
+      val nextPath = expect(QFuncTokenType.IDENTIFIER).text as String
       path += ".${nextPath}"
     }
+    expect(QFuncTokenType.RBRACKET)
     return path
   }
 
@@ -390,7 +391,7 @@ class QFuncParser(lexer: QFuncLexer) {
         val values = ArrayList<DirectiveValueAST>()
         while (current().type == QFuncTokenType.IDENTIFIER) {
           val nextToken = expect(QFuncTokenType.IDENTIFIER)
-          values.add(DirectiveValueAST(nextToken.stringValue, filename, cur.line, cur.column))
+          values.add(DirectiveValueAST(nextToken.text, filename, cur.line, cur.column))
         }
 
         DirectiveAST(name, null, values, filename, cur.line, cur.column)
@@ -401,13 +402,13 @@ class QFuncParser(lexer: QFuncLexer) {
 
         var directiveType: DirectiveTypeAST? = null
         expect(QFuncTokenType.LESS_THAN)
-        directiveType = DirectiveTypeAST(expect(QFuncTokenType.IDENTIFIER).stringValue, filename, cur.line, cur.column)
+        directiveType = DirectiveTypeAST(expect(QFuncTokenType.IDENTIFIER).text, filename, cur.line, cur.column)
         expect(QFuncTokenType.GREATER_THAN)
 
         val values = ArrayList<DirectiveValueAST>()
         while (current().type == QFuncTokenType.IDENTIFIER) {
           val nextToken = expect(QFuncTokenType.IDENTIFIER)
-          values.add(DirectiveValueAST(nextToken.stringValue, filename, cur.line, cur.column))
+          values.add(DirectiveValueAST(nextToken.text, filename, cur.line, cur.column))
         }
 
         DirectiveAST(name, directiveType, values, filename, cur.line, cur.column)
@@ -425,7 +426,7 @@ class QFuncParser(lexer: QFuncLexer) {
 
   private fun parseGlobal(): GlobalAST {
     val token = expect(QFuncTokenType.IDENTIFIER)
-    val name = token.stringValue
+    val name = token.text
     val members = ArrayList<MemberAST>()
     while (current().type == QFuncTokenType.COLON) {
       next()
@@ -436,7 +437,7 @@ class QFuncParser(lexer: QFuncLexer) {
 
   private fun parseInputParam(): InputParamAST {
     val token = expect(QFuncTokenType.IDENTIFIER)
-    val name = token.stringValue
+    val name = token.text
     val members = ArrayList<MemberAST>()
     while (current().type == QFuncTokenType.COLON) {
       next()
@@ -447,7 +448,7 @@ class QFuncParser(lexer: QFuncLexer) {
 
   private fun parseMember(): MemberAST {
     val token = expect(QFuncTokenType.IDENTIFIER)
-    val name = token.stringValue as String
+    val name = token.text as String
     val funcCall = if (current().type == QFuncTokenType.LPAREN) {
       next()
       parseFunctionCall()
@@ -471,7 +472,7 @@ class QFuncParser(lexer: QFuncLexer) {
 
   private fun parseArgument(): ArgumentAST {
     val token = expect(QFuncTokenType.IDENTIFIER)
-    val name = token.stringValue
+    val name = token.text
     expect(QFuncTokenType.COLON)
     return ArgumentAST(name, parseExpression(), filename, cur.line, cur.column)
   }

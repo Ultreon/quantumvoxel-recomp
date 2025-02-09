@@ -84,19 +84,12 @@ class JsonModelLoader @JvmOverloads constructor(
         logger.warn("No blocks model for ${block.id}")
         return null
       }
-      logger.debug("Retrieved resource for ${block.id}")
       val jsonReader = JsonReader()
-      logger.debug("Json reader created for ${block.id}")
       val inputStream = resource.inputStream()
-      logger.debug("Opened resource stream for ${block.id}")
       val modelData = jsonReader.parse(inputStream)
-      logger.debug("Parsed blocks model json for ${block.id}")
       val key1 = block.key
-      logger.debug("Attempting to load blocks model for ${block.id}")
       val load = this.load(key1, modelData)
-      logger.debug("Loaded blocks model for ${block.id}, closing stream")
       inputStream.close()
-      logger.debug("Returning blocks model for ${block.id}")
       return load
     } catch (e: IOException) {
       logger.error("Couldn't load blocks model for ${block.id}: ${e.message}")
@@ -113,9 +106,7 @@ class JsonModelLoader @JvmOverloads constructor(
         return null
       }
       val modelData = JsonReader().parse(resource.inputStream())
-      logger.debug("Loaded item model json for ${item.id}")
       val load = this.load(item.key, modelData)
-      logger.debug("Loaded item model for ${item.id}")
       return load
     } catch (e: IOException) {
       logger.error("Couldn't load item model for ${item.id}: ${e.message}")
@@ -130,30 +121,20 @@ class JsonModelLoader @JvmOverloads constructor(
     ) { "Invalid model key, must be blocks or item: $key" }
 
     val root: JsonValue = modelData
-
-    logger.debug("Root: $root")
     val textures: JsonValue = root["textures"]
-
-    logger.debug("Textures: $textures")
     val textureElements: Map<String, NamespaceID> = loadTextures(textures)
 
     //        GridPoint2 textureSize = loadVec2i(root.getAsJson5Array("texture_size"), new GridPoint2(16, 16));
     val textureSize = GridPoint2(16, 16)
-    logger.debug("Texture size: $textureSize")
 
     val elements: JsonValue = root["elements"]
 
-    logger.debug("Elements: $elements")
     val modelElements = loadElements(elements, textureSize.x, textureSize.y)
 
     val ambientOcclusion: Boolean = root.getBoolean("ambientocclusion", true)
 
-    logger.debug("Ambient occlusion: $ambientOcclusion")
-
     // TODO: Allow display properties.
     val display = Display()
-
-    logger.debug("Display: $display")
 
     return JsonModel(key.name, textureElements, modelElements, ambientOcclusion, display)
   }

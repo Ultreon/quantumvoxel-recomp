@@ -128,7 +128,7 @@ enum class QFuncTokenType(val value: String, val category: QFuncTokenCategory) {
   }
 }
 
-data class QFuncToken(val type: QFuncTokenType, val stringValue: String, val value: Any?, val position: Int, val line: Int, val column: Int) {
+data class QFuncToken(val type: QFuncTokenType, val text: String, val value: Any?, val position: Int, val line: Int, val column: Int) {
 
   val precedence: Int
     get() = type.precedence
@@ -194,14 +194,22 @@ class QFuncLexer(val input: String, val filename: String) {
       in '0'..'9' -> {
         val number = StringBuilder()
         var pos: MarkedPos
+        var decimal = false
         do {
           number.append(char)
           pos = MarkedPos(position, line, column)
           advance()
-        } while (char in '0'..'9')
+          if (char == '.') {
+            if (!decimal) {
+              decimal = true
+            } else {
+              throw QFuncSyntaxError("Expected a digit or end of number", position, line, column)
+            }
+          }
+        } while (char in '0'..'9' || char == '.')
 
         pos.let { this.reset(it) }
-        QFuncToken(QFuncTokenType.NUMBER, number.toString(), number.toString().toIntOrNull() ?: toString().toLongOrNull() ?: toString().toFloatOrNull() ?: toString().toDoubleOrNull() ?: throw QFuncSyntaxError("Expected a number", position, line, column), position, line, column)
+        QFuncToken(QFuncTokenType.NUMBER, number.toString(), number.toString().toIntOrNull() ?: number.toString().toLongOrNull() ?: number.toString().toFloatOrNull() ?: number.toString().toDoubleOrNull() ?: throw QFuncSyntaxError("Expected a number", position, line, column), position, line, column)
       }
       in 'A'..'Z', in 'a'..'z' -> {
         val identifier = StringBuilder()
@@ -218,6 +226,7 @@ class QFuncLexer(val input: String, val filename: String) {
       '\'' -> {
         val string = StringBuilder()
         var pos: MarkedPos
+        advance()
         do {
           string.append(char)
           pos = MarkedPos(position, line, column)
@@ -387,10 +396,6 @@ class QFuncLexer(val input: String, val filename: String) {
       }
 
       tokens.add(next())
-    }
-
-    for (token in tokens) {
-      println(token)
     }
 
     return tokens

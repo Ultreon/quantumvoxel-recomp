@@ -44,6 +44,7 @@ import dev.ultreon.quantum.resource.ResourceManager
 import dev.ultreon.quantum.scripting.ContextAware
 import dev.ultreon.quantum.scripting.ContextType
 import dev.ultreon.quantum.scripting.ContextValue
+import dev.ultreon.quantum.scripting.PersistentData
 import dev.ultreon.quantum.scripting.function.function
 import dev.ultreon.quantum.util.NamespaceID
 import dev.ultreon.quantum.world.BlockFlags
@@ -538,6 +539,8 @@ class QuantumVoxel : KtxApplicationAdapter, KtxInputAdapter, TSApi, ContextAware
 
     return result or super.touchUp(screenX, screenY, pointer, button)
   }
+
+  override val persistentData: PersistentData = PersistentData()
 
   override fun contextType(): ContextType<QuantumVoxel> {
     return ClientContextTypes.client

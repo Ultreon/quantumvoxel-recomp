@@ -1,5 +1,7 @@
 package dev.ultreon.quantum.entity
 
+import com.badlogic.gdx.utils.JsonValue
+
 abstract class Component<T : Component<T>> : Comparable<Component<*>> {
   abstract val componentType: ComponentType<out T>
 
@@ -21,4 +23,7 @@ abstract class Component<T : Component<T>> : Comparable<Component<*>> {
   override fun hashCode(): Int {
     return componentType.hashCode()
   }
+
+  abstract fun json(): JsonValue
+  abstract fun load(json: JsonValue)
 }

@@ -2,10 +2,14 @@ package dev.ultreon.quantum.resource
 
 import com.badlogic.gdx.Gdx
 import com.badlogic.gdx.files.FileHandle
+import com.badlogic.gdx.utils.JsonValue
 import dev.ultreon.quantum.LoggerFactory
+import dev.ultreon.quantum.scripting.*
+import dev.ultreon.quantum.scripting.function.function
 import dev.ultreon.quantum.util.NamespaceID
 import java.io.ByteArrayOutputStream
 import java.util.zip.ZipInputStream
+import javax.naming.Name
 
 private val logger = LoggerFactory["QV:Resources"]
 
@@ -18,8 +22,41 @@ private val logger = LoggerFactory["QV:Resources"]
  */
 class ResourceManager(
   private val assetRoot: String,
-) {
+) : ContextAware<ResourceManager> {
   private val root = ResourceRoot(assetRoot)
+
+  override val persistentData: PersistentData = PersistentData()
+  override fun contextType(): ContextType<ResourceManager> = ContextType.resources
+
+  private val get = function(
+    ContextParam("location", ContextType.id),
+    function = {
+      it.get<NamespaceID>("location")?.let { location ->
+        return@function ContextValue(ContextType.resource, get(location) ?: return@function null)
+      }
+    }
+  )
+
+  private val require = function(
+    ContextParam("location", ContextType.id),
+    function = {
+      it.get<NamespaceID>("location")?.let { location ->
+        return@function ContextValue(ContextType.resource, require(location))
+      } ?: run {
+        throw IllegalArgumentException("Missing parameter: location")
+      }
+    }
+  )
+
+
+  override fun fieldOf(name: String, contextJson: JsonValue?): ContextValue<*>? {
+    return when (name) {
+      "root" -> ContextValue(ContextType.resourceRoot, root)
+      "get" -> ContextValue(ContextType.function, get)
+      "require" -> ContextValue(ContextType.function, require)
+      else -> null
+    }
+  }
 
   /**
    * Retrieves a `ResourceCategory` by its name.
@@ -45,30 +82,24 @@ class ResourceManager(
    */
   @Throws(NoSuchResourceDirectoryException::class, NoSuchResourceException::class)
   operator fun get(location: NamespaceID): Resource? {
-    logger.debug("Access to resource: $location")
     val resourcesAt = resourcesAt(location)
-    logger.debug("Resources at location: $resourcesAt")
     return if (resourcesAt.isEmpty()) run {
       logger.error("No resources found at location: $location")
       null
     } else run {
-      logger.debug("Returning last resource: ${resourcesAt[resourcesAt.size - 1]}")
       resourcesAt[resourcesAt.size - 1]
     }
   }
 
   infix fun require(location: NamespaceID): Resource {
-    logger.debug("Required access to resource: $location")
     return resourcesAt(location).lastOrNull() ?: throw NoSuchResourceException(location.toString())
   }
 
   fun resourcesAt(location: NamespaceID): List<Resource> {
     val path = location.path.split('/')
-    logger.debug("Starting navigation to ${path[path.size - 1]}")
     var node: ResourceDir = root
 
     for (i in 0 until path.size - 1) {
-      logger.debug("Navigating to ${path[i]}")
       val resourceNode = node[path[i]]
       node = resourceNode as ResourceDir? ?: run {
         logger.error("Resource directory not found: ${path[i]}")
@@ -77,7 +108,6 @@ class ResourceManager(
     }
 
     val resourceNode = node[path[path.size - 1]]
-    logger.debug("Navigated to ${path[path.size - 1]}")
     if (resourceNode == null) {
       logger.error("Resource node not found: ${path[path.size - 1]}")
       return emptyList()
@@ -157,7 +187,6 @@ class ResourceManager(
           val path = domain.substring(domain.indexOf('/') + 1).split('/')
           val categories = path.dropLast(1)
           val filename = path.last()
-          logger.debug("Loading directory: ${entry.name}")
           loadDirectory(zip, categories.toMutableList(), filename, domainId)
         }
       }
@@ -190,8 +219,6 @@ class ResourceManager(
         byteArrayOutputStream.write(b)
         b = zip.read()
       }
-      logger.debug("Loaded resource: $domain:$path/$filename")
-      logger.debug("Resource node: $resourceNode")
       resourceNode?.asLeafOrNull()?.addResource(
         StaticResource(
           NamespaceID.of(domain, if (path == "") filename else "$path/$filename"),
@@ -228,10 +255,8 @@ class ResourceManager(
     list.forEach {
       if (it.isDirectory) {
         val domain = it.name()
-        logger.debug("Loading domain: $domain")
         it.list().forEach last@{ category ->
           if (category.isDirectory) {
-            logger.debug("Loading directory: ${it.name()}/${category.name()}")
             root.mkdir(category.name())
             val domainName = root[category.name()]!!.asDir().asDirectory()
             loadDirectory(category, domain, domainName, category.name() + "/")
@@ -242,7 +267,6 @@ class ResourceManager(
         val path = it.name().substring(it.name().indexOf('/') + 1).split('/')
         val categories = path.dropLast(1)
         val filename = path.last()
-        logger.debug("Loading resource: ${it.name()}")
         loadResource(
           it,
           root,
@@ -257,8 +281,6 @@ class ResourceManager(
     file.list().forEach { child ->
       when {
         child.isDirectory -> {
-          logger.debug("Parent: $dir")
-          logger.debug("Going to load directory: ${child.name()}")
           if (child.name() !in dir) {
             dir.mkdir(child.name())
           }
@@ -271,8 +293,6 @@ class ResourceManager(
         }
 
         dir != null -> {
-          logger.debug("Parent: $dir")
-          logger.debug("Going to load resource: ${child.name()}")
           loadResource(child, dir, domain, path + child.name())
         }
 
@@ -288,17 +308,12 @@ class ResourceManager(
     if (readBytes.isEmpty()) {
       logger.warn("Empty file: $file")
     }
-
-    logger.debug("Parent: $directory")
-    logger.debug("Loading resource: ${file.path()} -> $domain:$path")
     if (file.name() !in directory) {
       if (file.name() !in directory) {
         directory[file.name()] = ResourceLeaf(directory, file.name()).also {
-          logger.debug("Created resource leaf: $it")
         }
       }
       directory[file.name()]!!.asLeaf().addResource(StaticResource(NamespaceID.of(domain, path), readBytes)).also {
-        logger.debug("Added resource: ${NamespaceID.of(domain, path)}")
       }
     } else {
       logger.warn("Could not add resource: $domain:$path")

@@ -1,6 +1,7 @@
 package dev.ultreon.quantum.scripting
 
 import com.badlogic.gdx.utils.JsonValue
+import dev.ultreon.quantum.commonResources
 import dev.ultreon.quantum.logger
 import dev.ultreon.quantum.scripting.function.function
 
@@ -30,6 +31,7 @@ object CoreUtils : ContextAware<CoreUtils> {
   )
 
   private val log = logInfo
+  override val persistentData: PersistentData = PersistentData()
 
   override fun contextType(): ContextType<CoreUtils> {
     return ContextType.core
@@ -41,6 +43,7 @@ object CoreUtils : ContextAware<CoreUtils> {
       "log_warn" -> ContextValue(ContextType.function, logWarn)
       "log_error" -> ContextValue(ContextType.function, logError)
       "log" -> ContextValue(ContextType.function, log)
+      "resources" -> ContextValue(ContextType.resources, commonResources)
       "math" -> ContextValue(ContextType.math, MathUtils)
       else -> null
     }

@@ -6,7 +6,7 @@ import dev.ultreon.quantum.scripting.ContextAware
 import dev.ultreon.quantum.scripting.ContextType
 import dev.ultreon.quantum.scripting.ContextValue
 
-class CallContext(val originJson: JsonValue) {
+class CallContext(val originJson: JsonValue = JsonValue(JsonValue.ValueType.nullValue)) {
   val paramValues = hashMapOf<String, ContextValue<*>>()
 
   operator fun <T : Any> set(type: ContextType<out T>, value: T) {
@@ -43,28 +43,32 @@ class CallContext(val originJson: JsonValue) {
 
   @Suppress("UNCHECKED_CAST")
   fun <T : Any> get(contextType: ContextType<T>): ContextValue<T>? {
-    return paramValues[contextType.name] as ContextValue<T>?
+    return paramValues[contextType.name]?.value as ContextValue<T>?
   }
 
   @Suppress("UNCHECKED_CAST")
   fun <T : Any> getList(contextType: ContextType<T>): List<ContextValue<*>>? {
-    return paramValues[contextType.name] as? List<ContextValue<*>>
+    return paramValues[contextType.name]?.value as? List<ContextValue<*>>
   }
 
   inline fun <reified T : ContextAware<T>> get(name: String): T? {
-    return paramValues[name] as? T
+    return paramValues[name]?.value as? T
   }
 
   inline fun <reified T : ContextAware<T>> getList(name: String): List<T>? {
-    return (paramValues[name] as? List<*>)?.mapNotNull { it as? T? }
+    return (paramValues[name]?.value as? List<*>)?.mapNotNull { it as? T? }
   }
 
   inline fun <reified T : Any> getNullableList(name: String): List<T?>? {
-    return (paramValues[name] as? List<*>)?.map { it as? T? }
+    return (paramValues[name]?.value as? List<*>)?.map { it as? T? }
   }
 
   fun getRaw(s: String): Any? {
-    return paramValues[s]
+    return paramValues[s]?.value
+  }
+
+  fun getValue(name: String): ContextValue<*>? {
+    return paramValues[name]
   }
 
   companion object {

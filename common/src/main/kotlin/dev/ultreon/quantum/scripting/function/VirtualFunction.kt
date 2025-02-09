@@ -5,10 +5,7 @@ import dev.ultreon.quantum.commonResources
 import dev.ultreon.quantum.logger
 import dev.ultreon.quantum.resource.asDir
 import dev.ultreon.quantum.resource.asLeaf
-import dev.ultreon.quantum.scripting.ContextAware
-import dev.ultreon.quantum.scripting.ContextParam
-import dev.ultreon.quantum.scripting.ContextType
-import dev.ultreon.quantum.scripting.ContextValue
+import dev.ultreon.quantum.scripting.*
 import dev.ultreon.quantum.scripting.qfunc.QFuncInterpreter
 
 abstract class VirtualFunction(
@@ -60,6 +57,8 @@ abstract class VirtualFunction(
           override suspend fun call(context: CallContext): ContextValue<*>? {
             return function(context)
           }
+
+          override val persistentData: PersistentData = PersistentData()
         }
       })
     }
@@ -120,6 +119,8 @@ object VirtualFunctions {
         override suspend fun call(context: CallContext): ContextValue<*>? {
           return function(context)
         }
+
+        override val persistentData: PersistentData = PersistentData()
       }
     })
   }
@@ -145,7 +146,26 @@ fun function(vararg params: ContextParam<*>, function: suspend (CallContext) -> 
     contextJson = JsonValue(JsonValue.ValueType.nullValue)
   ) {
     override suspend fun call(context: CallContext): ContextValue<*>? {
+      val errors = ArrayList<String>()
+      for (param in params) {
+        if (context.paramValues[param.name] == null) {
+          errors += "Missing parameter '${param.name}'"
+        }
+      }
+
+      for (paramValue in context.paramValues.keys) {
+        if (!params.any { it.name == paramValue }) {
+          errors += "Unknown parameter: '$paramValue'"
+        }
+      }
+
+      if (errors.isNotEmpty()) {
+        throw IllegalArgumentException("\n" + errors.joinToString("\n") { it.prependIndent("  ")} + "\n")
+      }
+
       return function(context)
     }
+
+    override val persistentData: PersistentData = PersistentData()
   }
 }
