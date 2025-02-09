@@ -51,10 +51,9 @@ class QFuncInterpreter(private var inputParameters: Map<String, ContextValue<*>?
   fun interpret(
     code: String,
     callContext: CallContext,
-    completion: () -> Unit = {},
-    error: (Throwable) -> Unit = {}
-  ) {
-    val lexer = QFuncLexer(code, "<dynamic>")
+    filename: String = "<dynamic>"
+  ): ContextValue<*>? {
+    val lexer = QFuncLexer(code, filename)
     val parser = QFuncParser(lexer)
 
     this@QFuncInterpreter.inputParameters =
@@ -62,12 +61,16 @@ class QFuncInterpreter(private var inputParameters: Map<String, ContextValue<*>?
     this@QFuncInterpreter.context = MainDispatcher
 
     try {
-      runBlocking { visit(parser.file ?: return@runBlocking) }
-      completion()
+      return runBlocking { visit(parser.file ?: return@runBlocking null) as? ContextValue<*> }
     } catch (e: QFuncSyntaxError) {
       logger.error(e.toString())
-      error(e)
+    } catch (e: QFuncParserException) {
+      logger.error("Error parsing: " + e.message)
+    } catch (e: Exception) {
+      logger.error(e.toString() + "\n" + e.stackTraceToString())
     }
+
+    return null
   }
 
   suspend fun interpretAsync(
@@ -234,6 +237,7 @@ class QFuncInterpreter(private var inputParameters: Map<String, ContextValue<*>?
           throw QFuncInterpreterException("Cannot NOT non-boolean value", tree.filename, tree.line, tree.column)
         }
       }
+
       QFuncTokenType.SUB -> {
         when (value) {
           is Int -> return ContextValue(ContextType.int, -value)
@@ -243,6 +247,7 @@ class QFuncInterpreter(private var inputParameters: Map<String, ContextValue<*>?
           else -> throw QFuncInterpreterException("Cannot SUB non-number value", tree.filename, tree.line, tree.column)
         }
       }
+
       QFuncTokenType.ADD -> {
         when (value) {
           is Int -> return ContextValue(ContextType.int, abs(value))
@@ -252,31 +257,50 @@ class QFuncInterpreter(private var inputParameters: Map<String, ContextValue<*>?
           else -> throw QFuncInterpreterException("Cannot ADD non-number value", tree.filename, tree.line, tree.column)
         }
       }
+
       QFuncTokenType.INCREMENT -> {
         when (value) {
           is Int -> return ContextValue(ContextType.int, value + 1)
           is Long -> return ContextValue(ContextType.long, value + 1)
           is Float -> return ContextValue(ContextType.float, value + 1)
           is Double -> return ContextValue(ContextType.double, value + 1)
-          else -> throw QFuncInterpreterException("Cannot INCREMENT non-number value", tree.filename, tree.line, tree.column)
+          else -> throw QFuncInterpreterException(
+            "Cannot INCREMENT non-number value",
+            tree.filename,
+            tree.line,
+            tree.column
+          )
         }
       }
+
       QFuncTokenType.DECREMENT -> {
         when (value) {
           is Int -> return ContextValue(ContextType.int, value - 1)
           is Long -> return ContextValue(ContextType.long, value - 1)
           is Float -> return ContextValue(ContextType.float, value - 1)
           is Double -> return ContextValue(ContextType.double, value - 1)
-          else -> throw QFuncInterpreterException("Cannot DECREMENT non-number value", tree.filename, tree.line, tree.column)
+          else -> throw QFuncInterpreterException(
+            "Cannot DECREMENT non-number value",
+            tree.filename,
+            tree.line,
+            tree.column
+          )
         }
       }
+
       QFuncTokenType.BITWISE_NOT -> {
         when (value) {
           is Int -> return ContextValue(ContextType.int, value.inv())
           is Long -> return ContextValue(ContextType.long, value.inv())
-          else -> throw QFuncInterpreterException("Cannot BITWISE_NOT non-number or non-integer value", tree.filename, tree.line, tree.column)
+          else -> throw QFuncInterpreterException(
+            "Cannot BITWISE_NOT non-number or non-integer value",
+            tree.filename,
+            tree.line,
+            tree.column
+          )
         }
       }
+
       else -> throw QFuncInterpreterException("Unknown operator: ${tree.type}", tree.filename, tree.line, tree.column)
     }
   }
@@ -446,7 +470,12 @@ class QFuncInterpreter(private var inputParameters: Map<String, ContextValue<*>?
               throw QFuncInterpreterException("Not a function", tree.filename, tree.line, tree.column)
             }
           } catch (e: Exception) {
-            throw QFuncInterpreterException("Error calling function: ${e.message}", tree.filename, tree.line, tree.column)
+            throw QFuncInterpreterException(
+              "Error calling function: ${e.message}",
+              tree.filename,
+              tree.line,
+              tree.column
+            )
           }
         }
       }
@@ -567,16 +596,7 @@ class QFuncInterpreter(private var inputParameters: Map<String, ContextValue<*>?
         break
       }
 
-      try {
-        visit(tree.body)
-      } catch (e: QFuncInterpreterException) {
-        logger.error("Error in while loop at ${tree.filename}:${tree.line}:${tree.column}", e)
-        throw e
-      } catch (e: Break) {
-        break
-      } catch (e: Continue) {
-        continue
-      }
+      visit(tree.body)
     }
 
     return null
@@ -594,18 +614,9 @@ class QFuncInterpreter(private var inputParameters: Map<String, ContextValue<*>?
     }
 
     for (item in iterable) {
-      try {
-        this.loopValues.push(ContextValue(ContextType[(item!!)::class] as ContextType<*>, item))
-        visit(tree.body)
-        this.loopValues.pop()
-      } catch (e: QFuncInterpreterException) {
-        logger.error("Error in for loop at ${tree.filename}:${tree.line}:${tree.column}", e)
-        throw e
-      } catch (e: Break) {
-        break
-      } catch (e: Continue) {
-        continue
-      }
+      this.loopValues.push(ContextValue(ContextType[(item!!)::class] as ContextType<*>, item))
+      visit(tree.body)
+      this.loopValues.pop()
     }
 
     return null

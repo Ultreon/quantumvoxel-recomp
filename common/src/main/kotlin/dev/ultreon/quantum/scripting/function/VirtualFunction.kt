@@ -101,7 +101,7 @@ object VirtualFunctions {
     val last = commonResources["scripts"]?.asDir()?.get(name)?.asLeaf()?.last()
     val text = last?.text
     return@register QFuncInterpreter(context.paramValues)
-      .interpretAsync(
+      .interpret(
         text ?: run {
           logger.error("Script not found: $name")
           return@register null
