@@ -49,6 +49,7 @@ import dev.ultreon.quantum.scripting.function.function
 import dev.ultreon.quantum.util.NamespaceID
 import dev.ultreon.quantum.world.BlockFlags
 import dev.ultreon.quantum.world.Dimension
+import kotlinx.coroutines.yield
 import ktx.app.*
 import ktx.assets.disposeSafely
 import ktx.async.MainDispatcher
@@ -58,7 +59,6 @@ import java.util.*
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.atomic.AtomicReference
 import java.util.zip.ZipInputStream
-import kotlin.io.path.Path
 import kotlin.math.min
 
 const val MINIMUM_WIDTH = 550
@@ -66,8 +66,6 @@ const val MINIMUM_HEIGHT = 300
 
 const val TPS = 20
 const val SPT = 1F / TPS
-
-lateinit var gamePlatform: GamePlatform
 
 
 /**
@@ -567,6 +565,7 @@ class QuantumVoxel : KtxApplicationAdapter, KtxInputAdapter, TSApi, ContextAware
       "font" -> ContextValue(ClientContextTypes.font, quantum.font)
       "renderer" -> ContextValue(ClientContextTypes.guiRenderer, guiRenderer)
       "start_world" -> ContextValue(ContextType.function, vfStartWorld)
+      "resources" -> ContextValue(ContextType.resources, clientResources)
       else -> super.fieldOf(name, contextJson)
     }
   }
@@ -587,7 +586,7 @@ class QuantumVoxel : KtxApplicationAdapter, KtxInputAdapter, TSApi, ContextAware
       get() = Thread.currentThread().id == mainThread.id
     lateinit var instance: QuantumVoxel
 
-    fun <T : Any?> await(function: () -> T): T {
+    fun <T : Any?> invoke(function: () -> T): T {
       if (isMainThread) {
         return function()
       }
@@ -599,6 +598,23 @@ class QuantumVoxel : KtxApplicationAdapter, KtxInputAdapter, TSApi, ContextAware
 
       while (waiting.isEmpty) {
         Thread.yield()
+      }
+
+      return waiting.get().get()
+    }
+
+    suspend fun <T : Any?> awaitAsync(function: () -> T): T {
+      if (isMainThread) {
+        return function()
+      }
+
+      var waiting = Optional.empty<AtomicReference<T>>()
+      quantum.submit {
+        waiting = Optional.of(AtomicReference(function()))
+      }
+
+      while (waiting.isEmpty) {
+        yield()
       }
 
       return waiting.get().get()

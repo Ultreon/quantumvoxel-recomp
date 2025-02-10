@@ -7,12 +7,13 @@ import com.github.xpenatan.gdx.backends.teavm.TeaApplication
 import com.github.xpenatan.gdx.backends.teavm.TeaApplicationConfiguration
 import dev.ultreon.quantum.Logger
 import dev.ultreon.quantum.LoggerFactory
-import dev.ultreon.quantum.client.GamePlatform
+import dev.ultreon.quantum.GamePlatform
 import dev.ultreon.quantum.client.QuantumVoxel
-import dev.ultreon.quantum.client.gamePlatform
+import dev.ultreon.quantum.gamePlatform
 import dev.ultreon.quantum.factory
 import dev.ultreon.quantum.resource.ResourceManager
 import org.teavm.jso.JSObject
+import org.teavm.jso.browser.Window
 
 /** Launches the TeaVM/HTML application. */
 fun main() {
@@ -49,6 +50,12 @@ fun main() {
 
     override val isMobile: Boolean
       get() = TeaApplication.isMobileDevice()
+
+    override val isWeb: Boolean
+      get() = true
+
+    override val isDebug: Boolean
+      get() = Window.current().location.hostName == "localhost"
   }
   dev.ultreon.quantum.teavm.TeaApplication(QuantumVoxel(), config)
 }

@@ -45,6 +45,8 @@ object CoreUtils : ContextAware<CoreUtils> {
       "log" -> ContextValue(ContextType.function, log)
       "resources" -> ContextValue(ContextType.resources, commonResources)
       "math" -> ContextValue(ContextType.math, MathUtils)
+      "platform" -> ContextValue(ContextType.platform, PlatformUtils)
+      "files" -> ContextValue(ContextType.files, FilesUtils)
       else -> null
     }
   }

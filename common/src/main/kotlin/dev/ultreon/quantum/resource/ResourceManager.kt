@@ -23,7 +23,7 @@ private val logger = LoggerFactory["QV:Resources"]
 class ResourceManager(
   private val assetRoot: String,
 ) : ContextAware<ResourceManager> {
-  private val root = ResourceRoot(assetRoot)
+  internal val root = ResourceRoot(assetRoot)
 
   override val persistentData: PersistentData = PersistentData()
   override fun contextType(): ContextType<ResourceManager> = ContextType.resources

@@ -2,12 +2,31 @@
 
 package dev.ultreon.quantum.dedicated
 
-/** Launches the headless application. Can be converted into a server application or a scripting utility. */
-fun main() {
-//  HeadlessApplication(QuantumVoxelServer(), HeadlessApplicationConfiguration().apply {
-     // When this value is negative, QuantumVoxel#render() is never called:
-//    updatesPerSecond = 20
-//  })
+import com.badlogic.gdx.Gdx
+import com.badlogic.gdx.backends.headless.HeadlessApplication
+import com.badlogic.gdx.backends.headless.HeadlessApplicationConfiguration
+import dev.ultreon.quantum.GamePlatform
+import dev.ultreon.quantum.gamePlatform
+import dev.ultreon.quantum.resource.ResourceManager
 
-  TODO("Implement headless application")
+/**
+ * Launches the dedicated server.
+ *
+ * @see DedicatedServer
+ * @author XyperCode
+ * @since 0.0.1
+ */
+fun main() {
+  gamePlatform = object : GamePlatform {
+    override val isServer: Boolean
+      get() = true
+
+    override fun loadResources(resourceManager: ResourceManager) {
+      resourceManager.loadFromAssetsTxt(Gdx.files.internal("assets.txt"))
+    }
+  }
+
+  HeadlessApplication(DedicatedServer(), HeadlessApplicationConfiguration().apply {
+    updatesPerSecond = 20
+  })
 }

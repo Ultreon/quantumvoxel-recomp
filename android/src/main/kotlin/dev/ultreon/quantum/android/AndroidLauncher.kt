@@ -6,10 +6,12 @@ import android.view.MotionEvent
 import com.badlogic.gdx.Gdx
 import com.badlogic.gdx.backends.android.AndroidApplication
 import com.badlogic.gdx.backends.android.AndroidApplicationConfiguration
-import dev.ultreon.quantum.client.GamePlatform
+import com.badlogic.gdx.backends.android.surfaceview.ResolutionStrategy
+import dev.ultreon.quantum.BuildConfig
+import dev.ultreon.quantum.GamePlatform
 import dev.ultreon.quantum.client.QuantumVoxel
 import dev.ultreon.quantum.client.gameInput
-import dev.ultreon.quantum.client.gamePlatform
+import dev.ultreon.quantum.gamePlatform
 import dev.ultreon.quantum.resource.ResourceManager
 
 
@@ -25,11 +27,32 @@ class AndroidLauncher : AndroidApplication() {
 
       override val isMobile: Boolean
         get() = true
+
+      override val isDebug: Boolean
+        get() = BuildConfig.DEBUG
+
+      override val isGLES3: Boolean
+        get() = Gdx.gl30 != null
+
+      override val isGLES2: Boolean
+        get() = Gdx.gl20 != null
+
+      override val isServer: Boolean
+        get() = false
     }
     initialize(QuantumVoxel(), AndroidApplicationConfiguration().apply {
       // Configure your application here.
       useImmersiveMode = true // Recommended, but not required.
       useGyroscope = true
+      useCompass = true
+      useAccelerometer = true
+      useGL30 = true
+      r = 8
+      g = 8
+      b = 8
+      a = 8
+      depth = 24
+      stencil = 8
     })
   }
 
@@ -38,7 +61,7 @@ class AndroidLauncher : AndroidApplication() {
       if (event.actionMasked == MotionEvent.ACTION_HOVER_MOVE) {
         gameInput.onMouseMove(event.x, event.y) // Handle the movement
 
-        // Reset cursor to the center
+        // Reset the cursor to the center
         resetCursorToCenter()
       }
       return true

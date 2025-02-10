@@ -20,12 +20,14 @@ import dev.ultreon.quantum.vec3d
 import dev.ultreon.quantum.world.BlockFlags
 import dev.ultreon.quantum.world.Chunk
 import dev.ultreon.quantum.world.SIZE
+import kotlinx.coroutines.invoke
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.yield
 import ktx.assets.disposeSafely
 import ktx.async.KtxAsync
 import ktx.async.MainDispatcher
+import ktx.async.isOnRenderingThread
 import ktx.collections.GdxArray
 import ktx.math.vec3
 
@@ -132,78 +134,76 @@ class ClientChunk(x: Int, y: Int, z: Int, private val material: Material, val di
   }
 
   suspend fun buildModel() {
-    val builder = ModelBuilder()
-    builder.begin()
-    allLoading++
-    if (allLoading > 1000 || dimension.chunks.size + allLoading > 8000) {
-      throw ProtectionFault("Too many chunks loading")
-    }
-    val part1 = builder.part(
-      "world#default", GL20.GL_TRIANGLES, VertexAttributes(
-        VertexAttribute.Position(),
-        VertexAttribute.Normal(),
-        VertexAttribute.ColorPacked(),
-        VertexAttribute.TexCoords(0)
-      ), this@ClientChunk.material
-    )
-    val part2 = builder.part(
-      "world#water", GL20.GL_TRIANGLES, VertexAttributes(
-        VertexAttribute.Position(),
-        VertexAttribute.Normal(),
-        VertexAttribute.ColorPacked(),
-        VertexAttribute.TexCoords(0)
-      ), this@ClientChunk.material
-    )
-    val part3 = builder.part(
-      "world#water", GL20.GL_TRIANGLES, VertexAttributes(
-        VertexAttribute.Position(),
-        VertexAttribute.Normal(),
-        VertexAttribute.ColorPacked(),
-        VertexAttribute.TexCoords(0)
-      ), this@ClientChunk.material
-    )
-    for (x in 0..<SIZE) {
-      for (y in 0..<SIZE) {
-        for (z in 0..<SIZE) {
-          loadBlockInto(part1, x, y, z)
+    return MainDispatcher.invoke {
+      val builder = ModelBuilder()
+      builder.begin()
+      allLoading++
+      if (allLoading > 1000 || dimension.chunks.size + allLoading > 8000) {
+        throw ProtectionFault("Too many chunks loading")
+      }
+      val part1 = builder.part(
+        "world#default", GL20.GL_TRIANGLES, VertexAttributes(
+          VertexAttribute.Position(),
+          VertexAttribute.Normal(),
+          VertexAttribute.ColorPacked(),
+          VertexAttribute.TexCoords(0)
+        ), this@ClientChunk.material
+      )
+      val part2 = builder.part(
+        "world#water", GL20.GL_TRIANGLES, VertexAttributes(
+          VertexAttribute.Position(),
+          VertexAttribute.Normal(),
+          VertexAttribute.ColorPacked(),
+          VertexAttribute.TexCoords(0)
+        ), this@ClientChunk.material
+      )
+      val part3 = builder.part(
+        "world#water", GL20.GL_TRIANGLES, VertexAttributes(
+          VertexAttribute.Position(),
+          VertexAttribute.Normal(),
+          VertexAttribute.ColorPacked(),
+          VertexAttribute.TexCoords(0)
+        ), this@ClientChunk.material
+      )
+      for (x in 0..<SIZE) {
+        for (y in 0..<SIZE) {
+          for (z in 0..<SIZE) {
+            loadBlockInto(part1, x, y, z)
+          }
         }
       }
-    }
 
-    yield()
-    for (x in 0..<SIZE) {
-      for (y in 0..<SIZE) {
-        for (z in 0..<SIZE) {
-          loadBlockInto(part2, x, y, z, renderType = "water")
+      for (x in 0..<SIZE) {
+        for (y in 0..<SIZE) {
+          for (z in 0..<SIZE) {
+            loadBlockInto(part2, x, y, z, renderType = "water")
+          }
         }
       }
-    }
 
-    yield()
-    for (x in 0..<SIZE) {
-      for (y in 0..<SIZE) {
-        for (z in 0..<SIZE) {
-          loadBlockInto(part3, x, y, z, renderType = "foliage")
+      for (x in 0..<SIZE) {
+        for (y in 0..<SIZE) {
+          for (z in 0..<SIZE) {
+            loadBlockInto(part3, x, y, z, renderType = "foliage")
+          }
         }
       }
+
+      // Hotswap model and model instance
+      if (worldModelInstance != null || worldModel != null) {
+        worldModel.disposeSafely()
+        worldModel = null
+        worldModelInstance = null
+      }
+
+      val model = builder.end()
+      worldModel = model
+      worldModelInstance = ModelInstance(worldModel)
+      loading = false
+      allLoading--
+
+      yield()
     }
-
-    yield()
-
-    // Hotswap model and model instance
-    if (worldModelInstance != null || worldModel != null) {
-      worldModel.disposeSafely()
-      worldModel = null
-      worldModelInstance = null
-    }
-
-    val model = builder.end()
-    worldModel = model
-    worldModelInstance = ModelInstance(worldModel)
-    loading = false
-    allLoading--
-
-    yield()
   }
 
   private fun loadBlockInto(
@@ -244,12 +244,6 @@ class ClientChunk(x: Int, y: Int, z: Int, private val material: Material, val di
     return this[localX, localY, localZ]
   }
 
-  suspend fun getAsync(localX: Int, localY: Int, localZ: Int): Block {
-    val block = getSafe(localX, localY, localZ)
-    yield()
-    return block
-  }
-
   override fun getRenderables(array: GdxArray<Renderable>, pool: Pool<Renderable>) {
     if (!hasBlocks) return
     worldModelInstance?.getRenderables(array, pool)
@@ -259,6 +253,7 @@ class ClientChunk(x: Int, y: Int, z: Int, private val material: Material, val di
     if (loading) {
       return false
     }
+
     worldModel.disposeSafely()
     return true
   }

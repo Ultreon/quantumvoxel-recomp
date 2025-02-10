@@ -2,7 +2,7 @@ package dev.ultreon.bubbles.switchgdx;
 
 import com.badlogic.gdx.Gdx;
 import com.thelogicmaster.switchgdx.SwitchApplication;
-import dev.ultreon.quantum.client.GamePlatform;
+import dev.ultreon.quantum.GamePlatform;
 import dev.ultreon.quantum.resource.ResourceManager;
 import org.jetbrains.annotations.NotNull;
 

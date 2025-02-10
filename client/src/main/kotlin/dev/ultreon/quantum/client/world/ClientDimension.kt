@@ -4,9 +4,10 @@ import com.badlogic.gdx.graphics.PerspectiveCamera
 import com.badlogic.gdx.graphics.g3d.Material
 import com.badlogic.gdx.graphics.g3d.ModelBatch
 import com.badlogic.gdx.math.GridPoint3
+import com.badlogic.gdx.utils.async.AsyncExecutor
 import dev.ultreon.quantum.blocks.Block
 import dev.ultreon.quantum.blocks.Blocks
-import dev.ultreon.quantum.client.gamePlatform
+import dev.ultreon.quantum.gamePlatform
 import dev.ultreon.quantum.logger
 import dev.ultreon.quantum.math.Vector3D
 import dev.ultreon.quantum.util.BlockHit
@@ -14,7 +15,13 @@ import dev.ultreon.quantum.util.RayD
 import dev.ultreon.quantum.world.BlockFlags
 import dev.ultreon.quantum.world.Dimension
 import dev.ultreon.quantum.world.SIZE
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.invoke
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.yield
+import ktx.async.AsyncExecutorDispatcher
+import ktx.async.KtxAsync
+import ktx.async.MainDispatcher
 import ktx.collections.GdxArray
 import ktx.collections.GdxSet
 import java.util.concurrent.ConcurrentHashMap
@@ -28,6 +35,7 @@ open class ClientDimension(private val material: Material) : Dimension() {
   val chunks: MutableMap<Long, ClientChunk> = ConcurrentHashMap()
   val chunksToLoad = GdxArray<Pair<GridPoint3, Long>>()
   val generator = Generator()
+  val asyncChunkGen = AsyncExecutorDispatcher(AsyncExecutor(8, "ChunkGeneratorPool"), 8)
 
   private var toRemove = listOf<ClientChunk>()
   private var toRebuild = listOf<ClientChunk>()
@@ -43,7 +51,7 @@ open class ClientDimension(private val material: Material) : Dimension() {
       logger.info("Setting blocks at $x, $y, $z to $block")
       it.set(x % SIZE, y % SIZE, z % SIZE, block, flags)
       it.rebuild()
-      forChunksAround(it) { rebuild() }
+      forChunksAround(it) { rebuild(true) }
     }
   }
 
@@ -78,6 +86,12 @@ open class ClientDimension(private val material: Material) : Dimension() {
     return false
   }
 
+  suspend fun putAsync(chunk: ClientChunk): Boolean {
+    return MainDispatcher.invoke {
+      put(chunk)
+    }
+  }
+
   fun remove(chunk: ClientChunk): Boolean {
     if (!chunk.disposeChunk()) {
       return true
@@ -104,9 +118,7 @@ open class ClientDimension(private val material: Material) : Dimension() {
 
   suspend fun loadChunkAsync(cx: Int, cy: Int, cz: Int, build: Boolean = true) {
     val chunk = ClientChunk(cx, cy, cz, material, this)
-    if (put(chunk.apply {
-        generateAsync(this)
-      })) return
+    if (putAsync(chunk.also { return@also asyncChunkGen.invoke { generateAsync(it) } })) return
     chunk.buildModel()
     forChunksAround(chunk) { rebuild() }
   }

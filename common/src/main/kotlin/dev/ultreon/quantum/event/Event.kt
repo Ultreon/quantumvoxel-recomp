@@ -66,7 +66,6 @@ class Event(val name: String, vararg val contextParams: ContextParam<*>) {
       })
 
       if ((System.currentTimeMillis() - start) > 50) {
-        yield()
         start = System.currentTimeMillis()
       }
     }

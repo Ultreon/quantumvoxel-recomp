@@ -4,10 +4,9 @@ import com.badlogic.gdx.ApplicationListener;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
-import com.badlogic.gdx.graphics.glutils.ShaderProgram;
 import com.badlogic.gdx.utils.ScreenUtils;
+import dev.ultreon.quantum.GamePlatformKt;
 import dev.ultreon.quantum.LoggingKt;
-import dev.ultreon.quantum.client.QuantumClientKt;
 import dev.ultreon.quantum.client.QuantumVoxel;
 
 public class SafeLoadWrapper implements ApplicationListener {
@@ -22,7 +21,7 @@ public class SafeLoadWrapper implements ApplicationListener {
         batch = new SpriteBatch();
         font = new BitmapFont();
         try {
-            QuantumClientKt.setGamePlatform(new SwitchPlatform());
+            GamePlatformKt.setGamePlatform(new SwitchPlatform());
             LoggingKt.setFactory(new SwitchLoggerFactory());
 
             quantum = new QuantumVoxel();

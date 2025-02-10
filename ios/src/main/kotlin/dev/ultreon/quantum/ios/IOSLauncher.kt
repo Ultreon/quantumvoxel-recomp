@@ -5,11 +5,12 @@ package dev.ultreon.quantum.ios
 import com.badlogic.gdx.Gdx
 import com.badlogic.gdx.backends.iosrobovm.IOSApplication
 import com.badlogic.gdx.backends.iosrobovm.IOSApplicationConfiguration
-import dev.ultreon.quantum.client.GamePlatform
+import dev.ultreon.quantum.GamePlatform
 import dev.ultreon.quantum.client.QuantumVoxel
-import dev.ultreon.quantum.client.gamePlatform
+import dev.ultreon.quantum.gamePlatform
 import dev.ultreon.quantum.resource.ResourceManager
 import org.robovm.apple.foundation.NSAutoreleasePool
+import org.robovm.apple.foundation.NSBundle
 import org.robovm.apple.uikit.UIApplication
 
 /** Launches the iOS (RoboVM) application. */
@@ -28,6 +29,9 @@ class IOSLauncher : IOSApplication.Delegate() {
 
       override val isMobile: Boolean
         get() = true
+
+      override val isDebug: Boolean
+        get() = NSBundle.getMainBundle().getInfoDictionaryObject("CFBundleDevelopmentRegion") != null
     }
 
     return IOSApplication(QuantumVoxel(), IOSApplicationConfiguration().apply
@@ -35,6 +39,7 @@ class IOSLauncher : IOSApplication.Delegate() {
         useGL30 = true
       })
   }
+
 
   companion object {
     @JvmStatic

@@ -20,6 +20,7 @@ import com.badlogic.gdx.math.Vector3
 import com.badlogic.gdx.utils.GdxRuntimeException
 import com.github.tommyettinger.textra.Font
 import dev.ultreon.quantum.InternalApi
+import dev.ultreon.quantum.gamePlatform
 import dev.ultreon.quantum.math.Vector3D
 import dev.ultreon.quantum.util.NamespaceID
 import dev.ultreon.quantum.vec3d

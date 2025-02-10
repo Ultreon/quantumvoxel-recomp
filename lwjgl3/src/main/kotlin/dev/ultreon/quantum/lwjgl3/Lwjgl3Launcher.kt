@@ -5,11 +5,10 @@ package dev.ultreon.quantum.lwjgl3
 import com.badlogic.gdx.Gdx
 import com.badlogic.gdx.utils.Os
 import com.badlogic.gdx.utils.SharedLibraryLoader
-import dev.ultreon.quantum.Logger
-import dev.ultreon.quantum.LoggerFactory
+import dev.ultreon.quantum.*
 import dev.ultreon.quantum.client.*
-import dev.ultreon.quantum.factory
 import dev.ultreon.quantum.resource.ResourceManager
+import java.lang.management.ManagementFactory
 import java.nio.file.Files
 import java.nio.file.StandardCopyOption
 import kotlin.io.path.Path
@@ -134,6 +133,9 @@ abstract class DesktopPlatform(val logger: Logger) : GamePlatform {
 
     resourceManager.loadFromAssetsTxt(Gdx.files.internal("assets.txt"))
   }
+
+  override val isDebug: Boolean
+    get() = ManagementFactory.getRuntimeMXBean().inputArguments.any { "jdwp" in it || "-Xdebug" in it || "-Xrunjdwp" in it }
 
   override val isMobile: Boolean
     get() = false

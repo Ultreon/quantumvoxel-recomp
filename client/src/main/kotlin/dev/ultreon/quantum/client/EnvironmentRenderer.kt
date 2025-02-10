@@ -25,6 +25,7 @@ import dev.ultreon.quantum.client.gui.screens.screen
 import dev.ultreon.quantum.client.input.KeyBinds
 import dev.ultreon.quantum.client.world.Skybox
 import dev.ultreon.quantum.entity.PositionComponent
+import dev.ultreon.quantum.gamePlatform
 import dev.ultreon.quantum.logger
 import dev.ultreon.quantum.math.Vector3D
 import dev.ultreon.quantum.util.BlockHit
