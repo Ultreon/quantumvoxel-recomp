@@ -51,7 +51,7 @@ open class ClientDimension(private val material: Material) : Dimension() {
       logger.info("Setting blocks at $x, $y, $z to $block")
       it.set(x % SIZE, y % SIZE, z % SIZE, block, flags)
       it.rebuild()
-      forChunksAround(it) { rebuild(true) }
+      forChunksAround(it) { rebuild() }
     }
   }
 
