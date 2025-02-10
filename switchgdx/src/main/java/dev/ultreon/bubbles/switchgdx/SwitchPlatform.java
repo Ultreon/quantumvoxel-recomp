@@ -121,4 +121,24 @@ public class SwitchPlatform implements GamePlatform {
     public boolean isWebGL2() {
         return false;
     }
+
+    @Override
+    public boolean isClient() {
+        return true;
+    }
+
+    @Override
+    public boolean isServer() {
+        return false;
+    }
+
+    @Override
+    public boolean isDebug() {
+        return false;
+    }
+
+    @Override
+    public boolean isWeb() {
+        return false;
+    }
 }
