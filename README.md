@@ -17,5 +17,10 @@ Quantum Voxel: Recomputed. Rewritten in Kotlin now!
  * For Web: `./gradlew :teavm:run`
  * For Android: `./gradlew :android:run`
  * For iOS: *Coming soon*
-
+##system requirments
+cpu:
+ram:
+os:
+graphics:
+opengl/vulkan/directX:
 Also check out [PlayQV](https://playqv.ultreon.dev)!
