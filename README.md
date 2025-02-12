@@ -17,10 +17,24 @@ Quantum Voxel: Recomputed. Rewritten in Kotlin now!
  * For Web: `./gradlew :teavm:run`
  * For Android: `./gradlew :android:run`
  * For iOS: *Coming soon*
-##system requirments
-cpu:
-ram:
-os:
-graphics:
-opengl/vulkan/directX:
+
+## System requirements
+
+CPU:
+ * Recommended to be released 2016 or later, 4 cores recommended. (No specific requirement)
+
+RAM:
+ * 4 GBs minimum, 8 GBs recommended.
+
+OS:
+ * **Windows 10** or higher
+ * **macOS 11** or higher
+ * Any Linux distibution capable of OpenGL 2.0
+ * **Android 12** or higher
+
+Graphics: 
+ * **OpenGL (Desktop):** _Version 2.0, (3.2 or higher recommended)_
+ * **OpenGLES (Android):** _Version 2, (3 recommended)_
+ * **WebGL (Web):** _Version 2, (3 recommended)_
+
 Also check out [PlayQV](https://playqv.ultreon.dev)!
